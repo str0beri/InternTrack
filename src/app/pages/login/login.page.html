@@ -33,33 +33,35 @@
 
       <form (ngSubmit)="login()">
 
-        <!-- role selector -->
-        <div class="form-group">
-          <label for="role">
-            Role <span>*</span>
-          </label>
+        <!-- role selector (desktop only) -->
+        @if (!isMobile) {
+          <div class="form-group">
+            <label for="role">
+              Role <span>*</span>
+            </label>
 
-          <div class="input-container">
-            <ion-icon name="person-circle-outline"></ion-icon>
+            <div class="input-container">
+              <ion-icon name="person-circle-outline"></ion-icon>
 
-            <select
-              id="role"
-              name="role"
-              [(ngModel)]="selectedRole"
-              class="role-select">
-              <option value="student_intern">Student Intern</option>
-              <option value="company_supervisor">Company Supervisor</option>
-              <option value="ojt_coordinator">OJT Coordinator</option>
-            </select>
+              <select
+                id="role"
+                name="role"
+                [(ngModel)]="selectedRole"
+                class="role-select">
+                <option value="student_intern">Student Intern</option>
+                <option value="company_supervisor">Company Supervisor</option>
+                <option value="ojt_coordinator">OJT Coordinator</option>
+              </select>
 
-            <ion-icon name="chevron-down-outline" class="dropdown-arrow"></ion-icon>
+              <ion-icon name="chevron-down-outline" class="dropdown-arrow"></ion-icon>
+            </div>
           </div>
-        </div>
+        }
 
         <!-- student id / email -->
         <div class="form-group">
           <label for="studentIdOrEmail">
-            @if (selectedRole === 'student_intern') {
+            @if (selectedRole === 'student_intern' || isMobile) {
               Student ID
             } @else {
               Email
@@ -69,7 +71,7 @@
           <div class="input-container">
             <ion-icon name="person-circle-outline"></ion-icon>
 
-            @if (selectedRole === 'student_intern') {
+            @if (selectedRole === 'student_intern' || isMobile) {
               <input
                 id="studentIdOrEmail"
                 type="text"

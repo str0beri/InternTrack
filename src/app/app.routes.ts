@@ -149,6 +149,14 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./pages/supervisor/interns/interns.page')
             .then(m => m.InternsPage)
+      },
+
+      // supervisor profile
+      {
+        path: 'profile',
+        loadComponent: () =>
+          import('./pages/supervisor/profile/supervisor-profile.page')
+            .then(m => m.SupervisorProfilePage)
       }
 
     ]

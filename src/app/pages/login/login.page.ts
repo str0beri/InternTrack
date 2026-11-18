@@ -1,7 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
-import { AlertController, IonContent, IonIcon } from '@ionic/angular';
+import { AlertController, IonContent, IonIcon, Platform } from '@ionic/angular';
 import { addIcons } from 'ionicons';
 import { personCircleOutline, lockClosedOutline, eyeOutline, eyeOffOutline, chevronDownOutline } from 'ionicons/icons';
 
@@ -30,14 +30,21 @@ export class LoginPage {
   showPassword = false;
   errorMessage = '';
   isLoading = false;
+  isMobile = false;
 
   // register icons
   private readonly router = inject(Router);
   private readonly alertController = inject(AlertController);
   private readonly authService = inject(AuthService);
+  private readonly platform = inject(Platform);
 
   constructor() {
     addIcons({personCircleOutline,chevronDownOutline,lockClosedOutline,eyeOutline,eyeOffOutline});
+    this.checkMobile();
+  }
+
+  checkMobile(): void {
+    this.isMobile = this.platform.is('mobile') || this.platform.is('mobileweb');
   }
 
   // toggle password visibility
@@ -61,8 +68,8 @@ export class LoginPage {
     try {
       let result: { success: boolean; error?: string };
 
-      // If student role, use secure student ID login via Edge Function
-      if (this.selectedRole === 'student_intern') {
+      // If student role (or mobile device), use secure student ID login via Edge Function
+      if (this.selectedRole === 'student_intern' || this.isMobile) {
         result = await this.authService.signInWithStudentId(
           this.studentIdOrEmail.trim(),
           this.password

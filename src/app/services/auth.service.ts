@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { User } from '@supabase/supabase-js';
+import type { User } from '@supabase/supabase-js';
+
 import { SupabaseService } from './supabase.service';
 
 @Injectable({
@@ -11,8 +12,9 @@ export class AuthService {
   private supabase = this.supabaseService.getClient();
   private currentUser: User | null = null;
   private userRole: string | null = null;
+  private router = inject(Router);
 
-  constructor(private router: Router) {
+  constructor() {
     // Check for existing session on initialization
     this.initializeAuth();
   }
@@ -23,12 +25,11 @@ export class AuthService {
       this.currentUser = session.user;
       await this.loadUserRole(session.user.id);
     }
-
     // Listen for auth changes
-    this.supabase.auth.onAuthStateChange(async (event, session) => {
+    this.supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
         this.currentUser = session.user;
-        await this.loadUserRole(session.user.id);
+        setTimeout(() => this.loadUserRole(session.user.id), 0);   // outside the lock
       } else if (event === 'SIGNED_OUT') {
         this.currentUser = null;
         this.userRole = null;
@@ -36,11 +37,9 @@ export class AuthService {
       }
     });
   }
-
   private async loadUserRole(userId: string): Promise<void> {
     try {
-      // Load role from users table (old schema)
-      const { data, error } = await this.supabase
+      const { data } = await this.supabase
         .from('users')
         .select('role')
         .eq('id', userId)
@@ -48,6 +47,8 @@ export class AuthService {
 
       if (data) {
         this.userRole = data.role;
+      } else {
+        console.error('No user role found for:', userId);
       }
     } catch (error) {
       console.error('Error loading user role:', error);
@@ -90,7 +91,7 @@ export class AuthService {
   private async loadStudentIdFromUsers(userId: string): Promise<void> {
     try {
       // Load student ID from users table (old schema)
-      const { data, error } = await this.supabase
+      const { data } = await this.supabase
         .from('users')
         .select('user_id')
         .eq('id', userId)

@@ -39,8 +39,6 @@ $$;
 -- ============================================================================
 -- HELPER FUNCTION: Check if current user is a supervisor
 -- ============================================================================
--- NOTE: Supervisors are not yet linked to auth.users
--- This function will return false until supervisors are linked
 CREATE OR REPLACE FUNCTION is_supervisor()
 RETURNS BOOLEAN
 LANGUAGE SQL
@@ -101,7 +99,10 @@ SECURITY DEFINER
 AS $$
   SELECT ARRAY_AGG(student_id) 
   FROM intern_supervisor_assignments 
-  WHERE supervisor_id = auth.uid();
+  WHERE supervisor_id IN (
+    SELECT id FROM company_supervisors 
+    WHERE user_id = auth.uid()
+  );
 $$;
 
 -- ============================================================================
@@ -364,9 +365,16 @@ WITH CHECK (is_coordinator());
 -- COMPANY SUPERVISORS TABLE POLICIES
 -- ============================================================================
 
--- NOTE: Supervisors table is not yet linked to Supabase Auth users
--- For now, only coordinators can access this table
--- TODO: Update this when supervisors are linked to auth.users
+-- Supervisors can read their own record
+CREATE POLICY "Supervisors can read own record"
+ON company_supervisors FOR SELECT
+USING (user_id = auth.uid());
+
+-- Supervisors can update their own record
+CREATE POLICY "Supervisors can update own record"
+ON company_supervisors FOR UPDATE
+USING (user_id = auth.uid())
+WITH CHECK (user_id = auth.uid());
 
 -- Coordinators can read all supervisors
 CREATE POLICY "Coordinators can read all supervisors"
@@ -415,8 +423,17 @@ WITH CHECK (is_coordinator());
 -- NOTE: supervisor_id references company_supervisors.id (UUID)
 -- student_id references students.id (UUID)
 -- company_name is required
--- NOTE: Supervisors are not yet linked to auth.users, so they cannot read their own assignments
--- TODO: Update this when supervisors are linked to auth.users
+
+-- Supervisors can read their own assignments
+CREATE POLICY "Supervisors can read own assignments"
+ON intern_supervisor_assignments FOR SELECT
+USING (
+  is_supervisor() AND
+  supervisor_id IN (
+    SELECT id FROM company_supervisors 
+    WHERE user_id = auth.uid()
+  )
+);
 
 -- Coordinators can read all assignments
 CREATE POLICY "Coordinators can read all assignments"
