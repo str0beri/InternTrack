@@ -1,146 +1,239 @@
 <div class="attendance-container">
 
-  <!-- intern selection -->
-  <section class="intern-selector">
-
-    <span class="selector-label">Select Intern:</span>
-
-    <button
-      type="button"
-      *ngFor="let intern of interns"
-      class="intern-tab"
-      [class.active]="selectedInternId === intern.id"
-      (click)="selectIntern(intern.id)">
-
-      {{ intern.name }}
-
-    </button>
-
-  </section>
-
-  <!-- attendance content -->
-  <section class="attendance-card" *ngIf="selectedIntern">
-
-    <!-- intern information -->
-    <div class="intern-header">
-
-      <div class="intern-details">
-        <h2>{{ selectedIntern.name }}</h2>
-
-        <p>
-          {{ selectedIntern.id }} · {{ selectedIntern.department }}
-        </p>
-      </div>
-
-      <div class="rendered-hours">
-        {{ selectedIntern.totalRendered }}h total rendered ·
-        {{ selectedIntern.totalVerified }}h verified
-      </div>
-
+  <!-- Loading State -->
+  @if (loading) {
+    <div class="loading-container">
+      <p>Loading attendance data...</p>
     </div>
+  }
 
-    <!-- attendance table -->
-    <div class="table-wrapper">
+  <!-- Attendance Content -->
+  @if (!loading) {
 
-      <table class="attendance-table">
+    <!-- intern selection -->
+    <section class="intern-selector">
 
-        <thead>
-          <tr>
-            <th>DATE</th>
-            <th>IN</th>
-            <th>OUT</th>
-            <th>HOURS</th>
-            <th>PHOTO</th>
-            <th>LOCATION</th>
-            <th>STATUS</th>
-            <th>ACTION</th>
-          </tr>
-        </thead>
+      <span class="selector-label">Select Intern:</span>
 
-        <tbody>
+      @for (intern of interns; track intern.id) {
+        <button
+          type="button"
+          class="intern-tab"
+          [class.active]="selectedInternId === intern.id"
+          (click)="selectIntern(intern.id)">
 
-          <tr *ngFor="let record of filteredAttendance">
+          {{ intern.name }}
 
-            <td class="date-cell">
-              {{ record.date }}
-              <span>({{ record.day }})</span>
-            </td>
+        </button>
+      }
 
-            <td>{{ record.timeIn }}</td>
+    </section>
 
-            <td>
-              <span
-                *ngIf="record.timeOut === 'Active'"
-                class="active-time">
-                Active
-              </span>
+    <!-- attendance content -->
+    @if (selectedIntern) {
+      <section class="attendance-card">
 
-              <span *ngIf="record.timeOut !== 'Active'">
-                {{ record.timeOut }}
-              </span>
-            </td>
+        <!-- intern information -->
+        <div class="intern-header">
 
-            <td>
-              <span
-                class="hours-value"
-                [class.no-hours]="record.hours === '--'">
-                {{ record.hours }}
-              </span>
-            </td>
+          <div class="intern-details">
+            <h2>{{ selectedIntern.name }}</h2>
 
-            <td>
+            <p>
+              {{ selectedIntern.id }} · {{ selectedIntern.department }}
+            </p>
+          </div>
+
+          <div class="rendered-hours">
+            {{ selectedIntern.totalRendered }} records ·
+            {{ selectedIntern.totalVerified }} verified
+          </div>
+
+        </div>
+
+        <!-- date filter -->
+        <div class="filter-section">
+          <label for="dateFilter">Filter by Date:</label>
+          <button
+            type="button"
+            class="date-picker-button"
+            (click)="isCalendarOpen = true">
+            <ion-icon name="calendar-outline"></ion-icon>
+            @if (selectedDate) {
+              {{ selectedDate }}
+            } @else {
+              Select Date
+            }
+          </button>
+          @if (selectedDate) {
+            <button
+              type="button"
+              class="clear-filter"
+              (click)="clearDateFilter()">
+              Clear
+            </button>
+          }
+        </div>
+
+        <!-- Calendar Modal -->
+        <ion-modal [isOpen]="isCalendarOpen" (didDismiss)="isCalendarOpen = false">
+          <ng-template>
+            <div class="calendar-modal">
+              <ion-datetime
+                presentation="date"
+                [(ngModel)]="selectedDate"
+                (ionChange)="onDateChange($event)">
+              </ion-datetime>
               <button
                 type="button"
-                class="photo-link"
-                *ngIf="record.photo">
-
-                <ion-icon name="camera-outline"></ion-icon>
-                View
-
+                class="close-calendar"
+                (click)="isCalendarOpen = false">
+                Done
               </button>
-            </td>
+            </div>
+          </ng-template>
+        </ion-modal>
 
-            <td class="location-cell">
-              {{ record.location }}
-            </td>
+        <!-- attendance table -->
+        <div class="table-wrapper">
 
-            <td>
-              <span
-                class="status-badge"
-                [class.provisional]="record.status === 'PROVISIONAL'"
-                [class.verified]="record.status === 'VERIFIED'">
+          <table class="attendance-table">
 
-                {{ record.status }}
+            <thead>
+              <tr>
+                <th>DATE</th>
+                <th>IN</th>
+                <th>OUT</th>
+                <th>HOURS</th>
+                <th>PHOTO</th>
+                <th>LOCATION</th>
+                <th>STATUS</th>
+                <th>REMARKS</th>
+                <th>ACTION</th>
+              </tr>
+            </thead>
 
-              </span>
-            </td>
+            <tbody>
 
-            <td class="action-cell">
+              @for (record of filteredAttendance; track record.id) {
+                <tr>
 
-              <button
-                *ngIf="record.action === 'VERIFY'"
-                type="button"
-                class="verify-button"
-                (click)="verifyAttendance(record.id)">
+                  <td class="date-cell">
+                    {{ record.date }}
+                    <span>({{ record.day }})</span>
+                  </td>
 
-                VERIFY
+                  <td>{{ record.timeIn }}</td>
 
-              </button>
+                  <td>
+                    @if (record.timeOut === 'Active') {
+                      <span class="active-time">Active</span>
+                    } @else {
+                      <span>{{ record.timeOut }}</span>
+                    }
+                  </td>
 
-              <span *ngIf="record.action !== 'VERIFY'">
-                {{ record.action }}
-              </span>
+                  <td>
+                    <span
+                      class="hours-value"
+                      [class.no-hours]="record.hours === '--'">
+                      {{ record.hours }}
+                    </span>
+                  </td>
 
-            </td>
+                  <td>
+                    <div class="photo-buttons">
+                      @if (record.timeInPhoto) {
+                        <button
+                          type="button"
+                          class="photo-link"
+                          (click)="viewPhoto(record.timeInPhoto)"
+                          title="View Time In Photo">
 
-          </tr>
+                          <ion-icon name="camera-outline"></ion-icon>
+                          In
 
-        </tbody>
+                        </button>
+                      }
 
-      </table>
+                      @if (record.timeOutPhoto) {
+                        <button
+                          type="button"
+                          class="photo-link"
+                          (click)="viewPhoto(record.timeOutPhoto)"
+                          title="View Time Out Photo">
 
-    </div>
+                          <ion-icon name="camera-outline"></ion-icon>
+                          Out
 
-  </section>
+                        </button>
+                      }
+                    </div>
+                  </td>
+
+                  <td class="location-cell">
+                    {{ record.location }}
+                  </td>
+
+                  <td>
+                    <span
+                      class="status-badge"
+                      [class.provisional]="record.status === 'PROVISIONAL'"
+                      [class.verified]="record.status === 'VERIFIED'">
+
+                      {{ record.status }}
+
+                    </span>
+                  </td>
+
+                  <td class="remarks-cell">
+                    @if (record.status === 'PROVISIONAL') {
+                      <input
+                        type="text"
+                        [(ngModel)]="verificationRemark"
+                        placeholder="Add remark (optional)"
+                        class="remarks-input">
+                    } @else if (record.remarks) {
+                      <span>{{ record.remarks }}</span>
+                    }
+                  </td>
+
+                  <td class="action-cell">
+
+                    @if (record.action === 'VERIFY') {
+                      <button
+                        type="button"
+                        class="verify-button"
+                        (click)="verifyAttendance(record.id)">
+
+                        VERIFY
+
+                      </button>
+                    } @else {
+                      <span>{{ record.action }}</span>
+                    }
+
+                  </td>
+
+                </tr>
+              }
+
+            </tbody>
+
+          </table>
+
+        </div>
+
+      </section>
+    }
+
+    <!-- Empty State -->
+    @if (!selectedIntern && interns.length === 0) {
+      <div class="empty-state">
+        <p>No interns assigned to you yet.</p>
+      </div>
+    }
+
+  }
 
 </div>

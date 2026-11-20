@@ -1,7 +1,12 @@
 <div class="interns-container">
 
-  <!-- interns grid -->
-  <section class="interns-grid">
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-container">
+    <p>Loading interns...</p>
+  </div>
+
+  <!-- Interns Grid -->
+  <section class="interns-grid" *ngIf="!loading">
 
     <article
       class="intern-card"
@@ -66,7 +71,12 @@
         </p>
 
         <p>
-          <strong>End Date:</strong>
+          <strong>OJT Start:</strong>
+          {{ intern.startDate }}
+        </p>
+
+        <p>
+          <strong>OJT End:</strong>
           {{ intern.endDate }}
         </p>
 
@@ -75,5 +85,10 @@
     </article>
 
   </section>
+
+  <!-- Empty State -->
+  <div *ngIf="!loading && interns.length === 0" class="empty-state">
+    <p>No interns assigned to you yet.</p>
+  </div>
 
 </div>

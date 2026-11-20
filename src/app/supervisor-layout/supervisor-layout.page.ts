@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { IonIcon } from '@ionic/angular';
 import {
   Router,
@@ -13,6 +13,9 @@ import { logOutOutline } from 'ionicons/icons';
 
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { filter } from 'rxjs';
+
+import { AuthService } from '../services/auth.service';
+import { SupabaseService } from '../services/supabase.service';
 
 // navigation item interface
 interface SupervisorNavItem {
@@ -36,16 +39,23 @@ interface SupervisorNavItem {
     class: 'ion-page',
   },
 })
-export class SupervisorLayoutComponent {
+export class SupervisorLayoutComponent implements OnInit {
 
   // router
   private readonly router = inject(Router);
+  private readonly authService = inject(AuthService);
+  private readonly supabaseService = inject(SupabaseService);
+  private readonly supabase = this.supabaseService.getClient();
 
   // sidebar state
   isSidebarOpen = false;
 
   // current page
   currentPageTitle = 'Dashboard';
+
+  // supervisor info
+  supervisorName = 'Loading...';
+  supervisorInitials = '??';
 
   // navigation items
   readonly navItems: SupervisorNavItem[] = [
@@ -64,6 +74,10 @@ export class SupervisorLayoutComponent {
     {
       label: 'Intern Roster & Progress',
       path: '/supervisor/interns',
+    },
+    {
+      label: 'My Profile',
+      path: '/supervisor/profile',
     },
   ];
 
@@ -90,6 +104,39 @@ export class SupervisorLayoutComponent {
       });
   }
 
+  ngOnInit(): void {
+    this.loadSupervisorInfo();
+  }
+
+  async loadSupervisorInfo(): Promise<void> {
+    try {
+      const userId = this.authService.getCurrentUser()?.id;
+      if (!userId) return;
+
+      const { data: supervisor } = await this.supabase
+        .from('company_supervisors')
+        .select('full_name')
+        .eq('user_id', userId)
+        .single();
+
+      if (supervisor) {
+        this.supervisorName = supervisor.full_name || 'Supervisor';
+        this.supervisorInitials = this.getInitials(supervisor.full_name);
+      }
+    } catch (error) {
+      console.error('Error loading supervisor info:', error);
+    }
+  }
+
+  private getInitials(name: string): string {
+    if (!name) return '??';
+    const parts = name.trim().split(' ');
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  }
+
   // update page title
   private updatePageTitle(url: string): void {
 
@@ -114,6 +161,11 @@ export class SupervisorLayoutComponent {
   // close sidebar
   closeSidebar(): void {
     this.isSidebarOpen = false;
+  }
+
+  // logout
+  async logout(): Promise<void> {
+    await this.authService.signOut();
   }
 
 }

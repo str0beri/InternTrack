@@ -63,18 +63,19 @@
       <div class="supervisor-profile">
 
         <div class="profile-avatar">
-          RG
+          {{ supervisorInitials }}
         </div>
 
         <div class="profile-information">
-          <h3>Engr. Roberto Guinto</h3>
+          <h3>{{ supervisorName }}</h3>
           <p>Company Supervisor</p>
         </div>
 
         <button
           type="button"
           class="logout-button"
-          aria-label="Log out">
+          aria-label="Log out"
+          (click)="logout()">
 
           <ion-icon name="log-out-outline"></ion-icon>
 

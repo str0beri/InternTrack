@@ -1,0 +1,132 @@
+<div class="profile-container">
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-container">
+    <p>Loading profile...</p>
+  </div>
+
+  <!-- Profile Content -->
+  <div *ngIf="!loading" class="profile-content">
+
+    <!-- Profile Header -->
+    <div class="profile-header">
+      <div class="avatar">
+        <ion-icon name="person-outline"></ion-icon>
+      </div>
+      <div class="profile-info">
+        <h1>{{ profile.name }}</h1>
+        <p class="supervisor-id">{{ profile.supervisorId }}</p>
+        <span class="status-badge" [class.active]="profile.accountStatus === 'active'">
+          {{ profile.accountStatus }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Profile Details -->
+    <div class="profile-details">
+
+      <div class="detail-row">
+        <div class="detail-label">
+          <ion-icon name="mail-outline"></ion-icon>
+          <span>Email</span>
+        </div>
+        <div class="detail-value">
+          {{ profile.email }}
+        </div>
+      </div>
+
+      <div class="detail-row">
+        <div class="detail-label">
+          <ion-icon name="briefcase-outline"></ion-icon>
+          <span>Company</span>
+        </div>
+        <div class="detail-value">
+          {{ profile.company }}
+        </div>
+      </div>
+
+      <div class="detail-row">
+        <div class="detail-label">
+          <ion-icon name="briefcase-outline"></ion-icon>
+          <span>Department</span>
+        </div>
+        <div class="detail-value" *ngIf="!editing">
+          {{ profile.department || 'Not specified' }}
+        </div>
+        <div class="detail-value" *ngIf="editing">
+          <input type="text" [(ngModel)]="editForm.department" class="edit-input">
+        </div>
+      </div>
+
+      <div class="detail-row">
+        <div class="detail-label">
+          <ion-icon name="person-outline"></ion-icon>
+          <span>Position</span>
+        </div>
+        <div class="detail-value" *ngIf="!editing">
+          {{ profile.position || 'Not specified' }}
+        </div>
+        <div class="detail-value" *ngIf="editing">
+          <input type="text" [(ngModel)]="editForm.position" class="edit-input">
+        </div>
+      </div>
+
+      <div class="detail-row">
+        <div class="detail-label">
+          <ion-icon name="person-outline"></ion-icon>
+          <span>Full Name</span>
+        </div>
+        <div class="detail-value" *ngIf="!editing">
+          {{ profile.name }}
+        </div>
+        <div class="detail-value" *ngIf="editing">
+          <input type="text" [(ngModel)]="editForm.name" class="edit-input">
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Password Change Section -->
+    <div class="password-section" *ngIf="editingPassword">
+      <h3>Change Password</h3>
+      <div class="password-form">
+        <div class="form-group">
+          <label>New Password:</label>
+          <input type="password" [(ngModel)]="passwordForm.newPassword" class="edit-input">
+        </div>
+        <div class="form-group">
+          <label>Confirm Password:</label>
+          <input type="password" [(ngModel)]="passwordForm.confirmPassword" class="edit-input">
+        </div>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="action-buttons">
+      <button *ngIf="!editing && !editingPassword" type="button" class="edit-button" (click)="startEdit()">
+        Edit Profile
+      </button>
+      <button *ngIf="!editing && !editingPassword" type="button" class="password-button" (click)="startPasswordEdit()">
+        Change Password
+      </button>
+      <div *ngIf="editing" class="edit-actions">
+        <button type="button" class="save-button" (click)="saveProfile()">
+          Save Changes
+        </button>
+        <button type="button" class="cancel-button" (click)="cancelEdit()">
+          Cancel
+        </button>
+      </div>
+      <div *ngIf="editingPassword" class="edit-actions">
+        <button type="button" class="save-button" (click)="changePassword()">
+          Change Password
+        </button>
+        <button type="button" class="cancel-button" (click)="cancelPasswordEdit()">
+          Cancel
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+</div>
