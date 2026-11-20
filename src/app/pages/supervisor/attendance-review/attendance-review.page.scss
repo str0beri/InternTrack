@@ -6,6 +6,25 @@
   color: #222222;
 }
 
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+  font-size: 16px;
+  color: #666;
+}
+
+.empty-state {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+  font-size: 16px;
+  color: #666;
+  text-align: center;
+}
+
 .attendance-container {
   width: 100%;
   min-height: 100%;
@@ -185,30 +204,149 @@
   }
 }
 
+// filter section
+
+.filter-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+
+  label {
+    font-size: 12px;
+    color: #555;
+    font-weight: 500;
+  }
+
+  input[type="date"] {
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 12px;
+    background: #ffffff;
+    color: #222;
+  }
+
+  .date-picker-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: #ffffff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    color: #3155df;
+
+    ion-icon {
+      font-size: 16px;
+    }
+
+    &:hover {
+      background: #f5f5f5;
+    }
+  }
+
+  .clear-filter {
+    padding: 6px 12px;
+    background: #f0f0f0;
+    border: none;
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: pointer;
+
+    &:hover {
+      background: #e0e0e0;
+    }
+  }
+}
+
+// calendar modal
+
+.calendar-modal {
+  padding: 20px;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+
+  ion-datetime {
+    width: 100%;
+  }
+
+  .close-calendar {
+    padding: 10px 20px;
+    background: #3155df;
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    align-self: flex-end;
+
+    &:hover {
+      background: #2547c8;
+    }
+  }
+}
+
+// remarks
+
+.remarks-cell {
+  .remarks-input {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 11px;
+    background: #ffffff;
+    color: #222;
+
+    &:focus {
+      outline: none;
+      border-color: #3155df;
+    }
+  }
+}
+
 // photo
+
+.photo-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
 
 .photo-link {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 0;
+  gap: 4px;
+  padding: 4px 8px;
   background: transparent;
-  border: none;
+  border: 1px solid #3155df;
+  border-radius: 4px;
   color: #3155df;
   font-family: inherit;
-  font-size: 11px;
+  font-size: 10px;
   cursor: pointer;
+  white-space: nowrap;
 
   ion-icon {
     display: block;
-    width: 14px;
-    height: 14px;
-    font-size: 14px;
+    width: 12px;
+    height: 12px;
+    font-size: 12px;
     color: #3155df;
   }
 
   &:hover {
-    text-decoration: underline;
+    background: #3155df;
+    color: #ffffff;
+
+    ion-icon {
+      color: #ffffff;
+    }
   }
 }
 

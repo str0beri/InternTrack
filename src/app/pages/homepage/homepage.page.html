@@ -10,10 +10,12 @@
 
       <h1 class="student-name">{{ studentName }}</h1>
 
-      <div class="company-location">
-        <ion-icon name="business-outline"></ion-icon>
-        <span>{{ companyLocation }}</span>
-      </div>
+      @if (companyLocation) {
+        <div class="company-location">
+          <ion-icon name="business-outline"></ion-icon>
+          <span>{{ companyLocation }}</span>
+        </div>
+      }
     </header>
 
     <!-- today's attendance -->
@@ -21,10 +23,10 @@
       <div class="attendance-header">
         <div class="attendance-info">
           <p>Today's Attendance</p>
-          <h2>Not timed in yet</h2>
+          <h2>{{ todayStatusText }}</h2>
         </div>
 
-        <span class="attendance-time">8:01 am</span>
+        <span class="attendance-time">{{ currentLiveTime }}</span>
       </div>
 
       <!-- time in button -->
@@ -33,7 +35,7 @@
         class="time-in-button"
         routerLink="/tabs/attendance">
         <ion-icon name="camera-outline"></ion-icon>
-        <span>Time In</span>
+        <span>{{ isTimedInToday ? 'View Attendance Status' : 'Time In' }}</span>
       </button>
 
       <p class="attendance-note">
@@ -56,7 +58,9 @@
 
       <!-- hours summary -->
       <div class="hours-summary">
-        <span class="completed-hours">{{ totalHours }}</span>
+        <span class="completed-hours">
+          {{ totalHours | number:'1.1-1' }}
+        </span>
         <span class="required-hours">
           of {{ requiredHours }} hrs required
         </span>
@@ -87,17 +91,23 @@
 
         <div class="legend-item">
           <span class="legend-dot verified"></span>
-          <span>Verified: <strong>{{ verifiedHours }}h</strong></span>
+          <span>Verified: 
+            <strong>{{ verifiedHours | number:'1.1-1' }}h</strong>
+          </span>
         </div>
 
         <div class="legend-item">
           <span class="legend-dot provisional"></span>
-          <span>Provisional: <strong>{{ provisionalHours }}h</strong></span>
+          <span>Provisional: 
+            <strong>{{ provisionalHours | number:'1.1-1' }}h</strong>
+          </span>
         </div>
 
         <div class="legend-item">
           <span class="legend-dot remaining"></span>
-          <span>Remaining: <strong>{{ remainingHours }}h</strong></span>
+          <span>Remaining: 
+            <strong>{{ remainingHours | number:'1.1-1' }}h</strong>
+          </span>
         </div>
 
       </div>
@@ -107,6 +117,7 @@
     <section class="todo-section">
       <h2 class="section-title">To Do</h2>
 
+      @if (currentReportWeek > 0) {
       <button
         type="button"
         class="todo-card"
@@ -117,17 +128,38 @@
         </div>
 
         <div class="todo-details">
-          <h3>Week 9 Report</h3>
-          <p>Due Fri, Oct 30</p>
+          <h3>Week {{ currentReportWeek }} Report</h3>
+          <p>{{ currentReportPeriod }}</p>
         </div>
 
-        <span class="draft-badge">Draft</span>
+        <span class="draft-badge">{{ currentReportStatus === 'draft' ? 'Draft' : currentReportStatus }}</span>
 
         <ion-icon
           name="chevron-forward-outline"
           class="todo-arrow">
         </ion-icon>
       </button>
+      } @else {
+      <button
+        type="button"
+        class="todo-card"
+        routerLink="/tabs/reports">
+
+        <div class="todo-icon">
+          <ion-icon name="document-text-outline"></ion-icon>
+        </div>
+
+        <div class="todo-details">
+          <h3>No Pending Reports</h3>
+          <p>Create a new weekly report</p>
+        </div>
+
+        <ion-icon
+          name="chevron-forward-outline"
+          class="todo-arrow">
+        </ion-icon>
+      </button>
+      }
     </section>
 
     <!-- recent activities -->
@@ -135,32 +167,34 @@
       <div class="section-header">
         <h2 class="section-title">Recent Activities</h2>
 
+      @if (activities.length > 3) {
         <button
           type="button"
           class="see-all"
           (click)="toggleActivities()">
           {{ showAllActivities ? 'See Less' : 'See All' }}
         </button>
+      }
       </div>
 
       <!-- activities list -->
-      <div class="activities-card">
-        @for (activity of displayedActivities; track activity.id) {
-          <div class="activity-item">
+      @if (displayedActivities.length > 0) {
+        <div class="activities-card">
+          @for (activity of displayedActivities; track activity.id) {
+            <div class="activity-item">
+              <div class="activity-details">
+                <p>{{ activity.description }}</p>
+              </div>
 
-            <div class="activity-icon">
-              <ion-icon [name]="activity.icon"></ion-icon>
+              <span class="activity-day">{{ activity.day }}</span>
             </div>
-
-            <div class="activity-details">
-              <p>{{ activity.description }}</p>
-            </div>
-
-            <span class="activity-day">{{ activity.day }}</span>
-
-          </div>
-        }
-      </div>
+          }
+        </div>
+      } @else {
+        <div class="activities-card empty-activities">
+          <p>No recent activities yet.</p>
+        </div>
+      }
     </section>
 
   </main>
