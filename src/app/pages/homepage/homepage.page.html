@@ -10,10 +10,12 @@
 
       <h1 class="student-name">{{ studentName }}</h1>
 
-      <div class="company-location">
-        <ion-icon name="business-outline"></ion-icon>
-        <span>{{ companyLocation }}</span>
-      </div>
+      @if (companyLocation) {
+        <div class="company-location">
+          <ion-icon name="business-outline"></ion-icon>
+          <span>{{ companyLocation }}</span>
+        </div>
+      }
     </header>
 
     <!-- today's attendance -->
@@ -56,7 +58,9 @@
 
       <!-- hours summary -->
       <div class="hours-summary">
-        <span class="completed-hours">{{ totalHours }}</span>
+        <span class="completed-hours">
+          {{ totalHours | number:'1.1-1' }}
+        </span>
         <span class="required-hours">
           of {{ requiredHours }} hrs required
         </span>
@@ -87,17 +91,23 @@
 
         <div class="legend-item">
           <span class="legend-dot verified"></span>
-          <span>Verified: <strong>{{ verifiedHours }}h</strong></span>
+          <span>Verified: 
+            <strong>{{ verifiedHours | number:'1.1-1' }}h</strong>
+          </span>
         </div>
 
         <div class="legend-item">
           <span class="legend-dot provisional"></span>
-          <span>Provisional: <strong>{{ provisionalHours }}h</strong></span>
+          <span>Provisional: 
+            <strong>{{ provisionalHours | number:'1.1-1' }}h</strong>
+          </span>
         </div>
 
         <div class="legend-item">
           <span class="legend-dot remaining"></span>
-          <span>Remaining: <strong>{{ remainingHours }}h</strong></span>
+          <span>Remaining: 
+            <strong>{{ remainingHours | number:'1.1-1' }}h</strong>
+          </span>
         </div>
 
       </div>
@@ -157,33 +167,33 @@
       <div class="section-header">
         <h2 class="section-title">Recent Activities</h2>
 
+      @if (activities.length > 3) {
         <button
-    type="button"
-    class="see-all"
-     (click)="toggleActivities()">
-     {{ showAllActivities ? 'See Less' : 'See All' }}
-    </button>
+          type="button"
+          class="see-all"
+          (click)="toggleActivities()">
+          {{ showAllActivities ? 'See Less' : 'See All' }}
+        </button>
+      }
       </div>
 
       <!-- activities list -->
-      @if (showAllActivities) {
-      <div class="activities-card">
-        @for (activity of displayedActivities; track activity.id) {
-          <div class="activity-item">
+      @if (displayedActivities.length > 0) {
+        <div class="activities-card">
+          @for (activity of displayedActivities; track activity.id) {
+            <div class="activity-item">
+              <div class="activity-details">
+                <p>{{ activity.description }}</p>
+              </div>
 
-            <div class="activity-icon">
-              <ion-icon [name]="activity.icon"></ion-icon>
+              <span class="activity-day">{{ activity.day }}</span>
             </div>
-
-            <div class="activity-details">
-              <p>{{ activity.description }}</p>
-            </div>
-
-            <span class="activity-day">{{ activity.day }}</span>
-
-          </div>
-        }
-      </div>
+          }
+        </div>
+      } @else {
+        <div class="activities-card empty-activities">
+          <p>No recent activities yet.</p>
+        </div>
       }
     </section>
 
