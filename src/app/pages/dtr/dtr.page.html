@@ -1,12 +1,12 @@
 <ion-content class="dtr-content">
   <main class="dtr-container">
 
-    <!-- page header -->
+    <!-- PAGE HEADER -->
     <header class="dtr-header">
       <h1>My Daily Time Record</h1>
     </header>
 
-    <!-- calendar switch -->
+    <!-- CALENDAR SWITCH -->
     <section class="calendar-switch">
       <button
         type="button"
@@ -27,15 +27,17 @@
       </button>
     </section>
 
-    <!-- calendar card -->
+    <!-- CALENDAR CARD -->
     <section class="calendar-card">
+
       <div class="calendar-title">
         <h2>{{ monthLabel }}</h2>
       </div>
 
-      <!-- weekly calendar -->
+      <!-- WEEKLY CALENDAR -->
       @if (calendarMode === 'weekly') {
         <div class="weekly-calendar">
+
           <button
             type="button"
             class="week-arrow"
@@ -52,8 +54,14 @@
               [attr.aria-label]="day.fullLabel"
               [attr.aria-pressed]="isSelected(day.key)"
               (click)="selectDate(day.date)">
-              <span class="day-number">{{ day.number }}</span>
-              <span class="day-label">{{ day.label }}</span>
+
+              <span class="day-number">
+                {{ day.number }}
+              </span>
+
+              <span class="day-label">
+                {{ day.label }}
+              </span>
 
               @if (getMarker(day.key); as marker) {
                 <span
@@ -61,6 +69,7 @@
                   [class.provisional]="marker === 'provisional'">
                 </span>
               }
+
             </button>
           }
 
@@ -71,13 +80,16 @@
             (click)="changePeriod(1)">
             <ion-icon name="chevron-forward-outline"></ion-icon>
           </button>
+
         </div>
       }
 
-      <!-- monthly calendar -->
+      <!-- MONTHLY CALENDAR -->
       @if (calendarMode === 'monthly') {
         <div class="monthly-calendar">
+
           <div class="month-navigation">
+
             <button
               type="button"
               aria-label="Previous month"
@@ -93,23 +105,29 @@
               (click)="changePeriod(1)">
               <ion-icon name="chevron-forward-outline"></ion-icon>
             </button>
+
           </div>
 
+          <!-- WEEKDAY LABELS -->
           <div class="month-weekdays">
             @for (day of weekdays; track day) {
               <span>{{ day }}</span>
             }
           </div>
 
+          <!-- MONTHLY DATE GRID -->
           <div class="month-grid">
             @for (day of monthlyDays; track $index) {
+
               @if (day) {
                 <button
                   type="button"
                   class="month-day"
                   [class.selected]="isSelected(day.key)"
                   [attr.aria-label]="day.fullLabel"
+                  [attr.aria-pressed]="isSelected(day.key)"
                   (click)="selectDate(day.date)">
+
                   <span>{{ day.number }}</span>
 
                   @if (getMarker(day.key); as marker) {
@@ -118,28 +136,38 @@
                       [class.provisional]="marker === 'provisional'">
                     </span>
                   }
+
                 </button>
               } @else {
                 <span class="empty-day"></span>
               }
+
             }
           </div>
+
         </div>
       }
+
     </section>
 
-    <!-- daily time record -->
+    <!-- DAILY TIME RECORD -->
     <section class="daily-record-card">
+
       <div class="record-header">
         <h2>{{ selectedDateLabel }}</h2>
-        <span class="record-badge" [class.recorded]="selectedRecord">
+
+        <span
+          class="record-badge"
+          [class.recorded]="selectedRecord">
           {{ selectedRecord ? 'RECORDED' : 'NO LOG' }}
         </span>
       </div>
 
-      <!-- recorded shift or empty state -->
+      <!-- RECORDED SHIFT -->
       @if (selectedRecord; as record) {
+
         <div class="record-information">
+
           <div class="record-time">
             <span>Time In</span>
             <strong>{{ record.timeIn }}</strong>
@@ -149,68 +177,194 @@
 
           <div class="record-time">
             <span>Time Out</span>
-            <strong>{{ record.timeOut || '--:--' }}</strong>
+            <strong>
+              {{ record.timeOut || '--:--' }}
+            </strong>
           </div>
+
         </div>
 
         <p class="record-caption">
-          {{ record.status === 'verified' ? 'Verified attendance record' : 'Waiting for approval' }}
+          @if (record.status === 'verified') {
+            Verified attendance record
+          } @else if (record.status === 'rejected') {
+            Attendance record rejected
+          } @else {
+            Waiting for approval
+          }
         </p>
+
       } @else {
+
+        <!-- EMPTY STATE -->
         <div class="empty-record">
-          <ion-icon name="cafe-outline" class="empty-icon"></ion-icon>
+
+          <ion-icon
+            name="cafe-outline"
+            class="empty-icon">
+          </ion-icon>
+
           <h3>No Shift Activity</h3>
-          <p>No time-in or time-out entries have been recorded for the selected date.</p>
+
+          <p>
+            No time-in or time-out entries have been
+            recorded for the selected date.
+          </p>
+
         </div>
+
       }
+
     </section>
 
-    <!-- hours summary -->
+    <!-- HOURS SUMMARY -->
     <section class="hours-summary">
+
+      <!-- VERIFIED HOURS -->
       <div class="hours-card">
+
         <div class="hours-card-header">
           <span>Total Verified</span>
-          <ion-icon name="checkmark-circle-outline" class="verified-icon"></ion-icon>
+
+          <ion-icon
+            name="checkmark-circle-outline"
+            class="verified-icon">
+          </ion-icon>
         </div>
 
         <div class="hours-value">
-          <strong>{{ verifiedHours.toFixed(1) }}</strong>
+          <strong>
+            {{ verifiedHours.toFixed(1) }}
+          </strong>
           <span>hrs</span>
         </div>
 
         <p>Approved by Supervisor</p>
+
       </div>
 
+      <!-- PROVISIONAL HOURS -->
       <div class="hours-card">
+
         <div class="hours-card-header">
           <span>Provisional</span>
-          <ion-icon name="time-outline" class="provisional-icon"></ion-icon>
+
+          <ion-icon
+            name="time-outline"
+            class="provisional-icon">
+          </ion-icon>
         </div>
 
         <div class="hours-value">
-          <strong>{{ provisionalHours.toFixed(1) }}</strong>
+          <strong>
+            {{ provisionalHours.toFixed(1) }}
+          </strong>
           <span>hrs</span>
         </div>
 
         <p>Waiting for Approval</p>
+
       </div>
+
     </section>
 
-    <!-- total hours -->
+    <!-- TOTAL COMPLETED HOURS -->
     <section class="total-hours">
       <span>Total Hours Completed:</span>
-      <strong>{{ totalHours.toFixed(1) }} / {{ requiredHours }} hrs</strong>
+
+      <strong>
+        {{ totalHours.toFixed(1) }} /
+        {{ requiredHours }} hrs
+      </strong>
     </section>
 
-    <!-- dtr actions -->
-    <button type="button" class="export-button" (click)="exportDtr()">
-      <ion-icon name="download-outline"></ion-icon>
-      <span>Export DTR</span>
-    </button>
+    <!-- DTR ACTIONS -->
+    <section class="dtr-actions">
 
-    <button type="button" class="preview-button" (click)="previewDtr()">
-      Preview DTR
-    </button>
+      <!-- EXPORT PDF -->
+      <button
+        type="button"
+        class="export-button"
+        [disabled]="isGeneratingPdf"
+        (click)="exportDtr()">
+
+        <ion-icon name="download-outline"></ion-icon>
+
+        <span>
+          {{ isGeneratingPdf
+            ? 'Generating PDF...'
+            : 'Export Weekly DTR (PDF)' }}
+        </span>
+
+      </button>
+
+      <!-- PREVIEW PDF -->
+      <button
+        type="button"
+        class="preview-button"
+        [disabled]="isGeneratingPdf"
+        (click)="previewDtr()">
+
+        Preview Weekly DTR
+
+      </button>
+
+    </section>
 
   </main>
+
+  <!-- PDF PREVIEW MODAL -->
+  @if (isPdfPreviewOpen && pdfPreviewUrl) {
+
+    <div
+      class="pdf-preview-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="pdf-preview-title">
+
+      <div class="pdf-preview-panel">
+
+        <!-- PREVIEW HEADER -->
+        <div class="pdf-preview-header">
+
+          <h2 id="pdf-preview-title">
+            Weekly DTR Preview
+          </h2>
+
+          <button
+            type="button"
+            aria-label="Close PDF preview"
+            (click)="closePdfPreview()">
+            Close
+          </button>
+
+        </div>
+
+        <!-- ACTUAL PDF DOCUMENT -->
+        <iframe
+          [src]="pdfPreviewUrl"
+          title="Weekly Daily Time Record PDF">
+        </iframe>
+
+        <!-- PREVIEW ACTIONS -->
+        <div class="pdf-preview-actions">
+
+          <button
+            type="button"
+            [disabled]="isGeneratingPdf"
+            (click)="exportDtr()">
+
+            <ion-icon name="download-outline"></ion-icon>
+            <span>Download PDF</span>
+
+          </button>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  }
+
 </ion-content>

@@ -1,54 +1,53 @@
-// page background
+/* =========================================
+   INTERNTRACK - MY DAILY TIME RECORD
+   ========================================= */
+
+:host {
+  display: block;
+}
+
 .dtr-content {
   --background: #f5f7fc;
   --color: #252525;
 }
 
-// main container
 .dtr-container {
   width: 100%;
   max-width: 440px;
   min-height: 100%;
-
   margin: 0 auto;
-  padding: 40px 29px 20px;
-
+  padding: 40px 29px 24px;
   box-sizing: border-box;
   font-family: 'Inter', sans-serif;
 }
 
-// page header
+/* PAGE HEADER */
+
 .dtr-header {
   width: 100%;
   margin-bottom: 25px;
+
+  h1 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.7px;
+    color: #252525;
+  }
 }
 
-.dtr-header h1 {
-  margin: 0;
-  padding: 0;
+/* CALENDAR SWITCH */
 
-  font-family: 'Inter', sans-serif;
-  font-size: 24px;
-  font-weight: 700;
-  line-height: 1.2;
-  letter-spacing: -0.7px;
-
-  color: #252525;
-}
-
-// calendar switch
 .calendar-switch {
   display: flex;
   align-items: center;
-
   width: 100%;
   height: 36px;
   padding: 4px;
   margin-bottom: 17px;
-
   background: #ffffff;
   border-radius: 10px;
-
   box-shadow: 0 3px 12px rgba(0, 0, 0, 0.03);
   box-sizing: border-box;
 }
@@ -57,40 +56,31 @@
   flex: 1;
   height: 28px;
   padding: 0;
-
   border: none;
   border-radius: 6px;
-
   background: transparent;
   color: #a5a5a5;
-
   font-family: 'Inter', sans-serif;
   font-size: 11px;
   font-weight: 500;
-
   cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
 
-  transition:
-    background-color 0.2s ease,
-    color 0.2s ease;
+  &.active {
+    background: #3157d5;
+    color: #ffffff;
+  }
 }
 
-.switch-button.active {
-  background: #3157d5;
-  color: #ffffff;
-}
+/* CALENDAR CARD */
 
-// calendar card
 .calendar-card {
   width: 100%;
   min-height: 101px;
-
   padding: 13px 13px 15px;
   margin-bottom: 22px;
-
   background: #ffffff;
   border-radius: 13px;
-
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
   box-sizing: border-box;
 }
@@ -98,31 +88,26 @@
 .calendar-title {
   display: flex;
   align-items: center;
-
   min-height: 16px;
   padding-left: 7px;
   margin-bottom: 14px;
-
   border-left: 3px solid #3157d5;
+
+  h2 {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.2;
+    color: #252525;
+  }
 }
 
-.calendar-title h2 {
-  margin: 0;
+/* WEEKLY CALENDAR */
 
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1.2;
-
-  color: #252525;
-}
-
-// weekly calendar
 .weekly-calendar {
   display: grid;
   grid-template-columns: 14px repeat(7, minmax(0, 1fr)) 14px;
   align-items: center;
-
   width: 100%;
   gap: 5px;
 }
@@ -131,52 +116,47 @@
   display: flex;
   align-items: center;
   justify-content: center;
-
   width: 14px;
   height: 40px;
   padding: 0;
-
   border: none;
   background: transparent;
   color: #c4c4c8;
-
   cursor: pointer;
+
+  ion-icon {
+    font-size: 16px;
+    --ionicon-stroke-width: 40px;
+  }
 }
 
-.week-arrow ion-icon {
-  font-size: 16px;
-  --ionicon-stroke-width: 40px;
-}
-
-// calendar days
 .calendar-day {
   position: relative;
-
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-
   min-width: 0;
   height: 40px;
   padding: 4px 0;
-
   border: none;
   border-radius: 7px;
-
   background: #e9ebf2;
   color: #252525;
-
   box-sizing: border-box;
   cursor: pointer;
+  transition: background-color 0.2s ease;
 
-  transition:
-    background-color 0.2s ease,
-    transform 0.2s ease;
+  &.selected {
+    background: #ffb77f;
+
+    .day-label {
+      color: #a9683d;
+    }
+  }
 }
 
 .day-number {
-  font-family: 'Inter', sans-serif;
   font-size: 11px;
   font-weight: 600;
   line-height: 1.2;
@@ -184,42 +164,31 @@
 
 .day-label {
   margin-top: 2px;
-
-  font-family: 'Inter', sans-serif;
-  font-size: 6px;
+  font-size: 7px;
   font-weight: 500;
   line-height: 1.1;
-
   color: #999da8;
 }
 
-// selected date
-.calendar-day.selected {
-  background: #ffb77f;
-  color: #252525;
-}
-
-.calendar-day.selected .day-label {
-  color: #a9683d;
-}
-
-// date indicators
-.day-dot {
+.day-dot,
+.month-dot {
   position: absolute;
-  bottom: 2px;
-
-  width: 3px;
-  height: 3px;
-
   border-radius: 50%;
   background: #3157d5;
+
+  &.provisional {
+    background: #a568ff;
+  }
 }
 
-.day-dot.provisional {
-  background: #a568ff;
+.day-dot {
+  bottom: 2px;
+  width: 3px;
+  height: 3px;
 }
 
-// monthly calendar
+/* MONTHLY CALENDAR */
+
 .monthly-calendar {
   width: 100%;
 }
@@ -228,87 +197,71 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-
   margin-bottom: 12px;
+
+  span {
+    font-size: 11px;
+    font-weight: 600;
+    color: #252525;
+  }
+
+  button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 7px;
+    background: #f0f2f8;
+    color: #3157d5;
+    cursor: pointer;
+  }
+
+  ion-icon {
+    font-size: 16px;
+  }
 }
 
-.month-navigation span {
-  font-size: 11px;
-  font-weight: 600;
-  color: #252525;
-}
-
-.month-navigation button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  width: 28px;
-  height: 28px;
-
-  border: none;
-  border-radius: 7px;
-
-  background: #f0f2f8;
-  color: #3157d5;
-
-  cursor: pointer;
-}
-
-.month-navigation ion-icon {
-  font-size: 16px;
-}
-
-// monthly weekday labels
 .month-weekdays {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-
   margin-bottom: 8px;
+
+  span {
+    font-size: 9px;
+    font-weight: 600;
+    text-align: center;
+    color: #999999;
+  }
 }
 
-.month-weekdays span {
-  font-size: 9px;
-  font-weight: 600;
-  text-align: center;
-
-  color: #999999;
-}
-
-// monthly date grid
 .month-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-
   gap: 5px;
 }
 
 .month-day {
   position: relative;
-
   display: flex;
   align-items: center;
   justify-content: center;
-
   min-width: 0;
   height: 35px;
-
   border: none;
   border-radius: 7px;
-
   background: #f0f2f8;
   color: #252525;
-
   font-family: 'Inter', sans-serif;
   font-size: 11px;
   font-weight: 500;
-
   cursor: pointer;
-}
 
-.month-day.selected {
-  background: #ffb77f;
-  font-weight: 700;
+  &.selected {
+    background: #ffb77f;
+    font-weight: 700;
+  }
 }
 
 .empty-day {
@@ -316,31 +269,20 @@
 }
 
 .month-dot {
-  position: absolute;
   bottom: 3px;
-
   width: 4px;
   height: 4px;
-
-  border-radius: 50%;
-  background: #3157d5;
 }
 
-.month-dot.provisional {
-  background: #a568ff;
-}
+/* DAILY RECORD CARD */
 
-// daily record card
 .daily-record-card {
   width: 100%;
   min-height: 169px;
-
   padding: 13px 14px 15px;
   margin-bottom: 15px;
-
   background: #ffffff;
   border-radius: 13px;
-
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
   box-sizing: border-box;
 }
@@ -349,101 +291,80 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-
   gap: 8px;
   margin-bottom: 10px;
+
+  h2 {
+    margin: 0;
+    font-size: 11px;
+    font-weight: 500;
+    color: #252525;
+  }
 }
 
-.record-header h2 {
-  margin: 0;
-
-  font-family: 'Inter', sans-serif;
-  font-size: 11px;
-  font-weight: 500;
-
-  color: #252525;
-}
-
-// record status
 .record-badge {
   padding: 4px 12px;
-
-  background: #f0f0f0;
   border-radius: 100px;
-
+  background: #f0f0f0;
+  color: #b5b5b5;
   font-size: 8px;
   font-weight: 500;
-
-  color: #b5b5b5;
   white-space: nowrap;
+
+  &.recorded {
+    background: #dfe6ff;
+    color: #3157d5;
+  }
 }
 
-.record-badge.recorded {
-  background: #dfe6ff;
-  color: #3157d5;
-}
+/* EMPTY RECORD */
 
-// empty record
 .empty-record {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-
   width: calc(100% - 16px);
   min-height: 112px;
-
   margin: 0 auto;
   padding: 12px 20px;
-
   background: #f2f2f2;
   border-radius: 11px;
-
   box-sizing: border-box;
   text-align: center;
+
+  .empty-icon {
+    font-size: 25px;
+    color: #c8c8c8;
+    --ionicon-stroke-width: 32px;
+  }
+
+  h3 {
+    margin: 6px 0 0;
+    font-size: 10px;
+    font-weight: 400;
+    color: #a2a2a2;
+  }
+
+  p {
+    max-width: 230px;
+    margin: 4px 0 0;
+    font-size: 8px;
+    line-height: 1.4;
+    color: #b5b5b5;
+  }
 }
 
-.empty-icon {
-  font-size: 25px;
-  color: #c8c8c8;
+/* RECORDED TIME */
 
-  --ionicon-stroke-width: 32px;
-}
-
-.empty-record h3 {
-  margin: 6px 0 0;
-
-  font-family: 'Inter', sans-serif;
-  font-size: 10px;
-  font-weight: 400;
-
-  color: #a2a2a2;
-}
-
-.empty-record p {
-  max-width: 230px;
-  margin: 4px 0 0;
-
-  font-family: 'Inter', sans-serif;
-  font-size: 8px;
-  font-weight: 400;
-  line-height: 1.4;
-
-  color: #b5b5b5;
-}
-
-// recorded time details
 .record-information {
   display: flex;
   align-items: center;
   justify-content: space-around;
-
   min-height: 112px;
   padding: 12px;
-
   background: #f5f7fc;
   border-radius: 11px;
-
   box-sizing: border-box;
 }
 
@@ -451,43 +372,38 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-
   gap: 8px;
-}
 
-.record-time span {
-  font-size: 10px;
-  color: #929292;
-}
+  span {
+    font-size: 10px;
+    color: #929292;
+  }
 
-.record-time strong {
-  font-size: 16px;
-  font-weight: 700;
-
-  color: #252525;
+  strong {
+    font-size: 16px;
+    font-weight: 700;
+    color: #252525;
+  }
 }
 
 .time-divider {
   width: 1px;
   height: 35px;
-
   background: #dedfe4;
 }
 
 .record-caption {
   margin: 8px 0 0;
-
   font-size: 9px;
   text-align: center;
-
   color: #999999;
 }
 
-// hours summary
+/* HOURS SUMMARY */
+
 .hours-summary {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-
   gap: 14px;
   margin-bottom: 12px;
 }
@@ -495,12 +411,9 @@
 .hours-card {
   min-width: 0;
   height: 98px;
-
   padding: 12px 15px;
-
   background: #ffffff;
   border-radius: 13px;
-
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
   box-sizing: border-box;
 }
@@ -509,20 +422,17 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-
   gap: 5px;
-}
 
-.hours-card-header span {
-  font-size: 11px;
-  font-weight: 400;
+  span {
+    font-size: 11px;
+    color: #9d9d9d;
+  }
 
-  color: #9d9d9d;
-}
-
-.hours-card-header ion-icon {
-  font-size: 15px;
-  flex-shrink: 0;
+  ion-icon {
+    font-size: 15px;
+    flex-shrink: 0;
+  }
 }
 
 .verified-icon {
@@ -535,136 +445,221 @@
   --ionicon-stroke-width: 40px;
 }
 
-// hours values
 .hours-value {
   display: flex;
   align-items: baseline;
-
   gap: 5px;
   margin-top: 10px;
-}
 
-.hours-value strong {
-  font-size: 24px;
-  font-weight: 700;
-  letter-spacing: -0.6px;
-  line-height: 1;
+  strong {
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: -0.6px;
+    line-height: 1;
+    color: #252525;
+  }
 
-  color: #252525;
-}
-
-.hours-value span {
-  font-size: 11px;
-  color: #9d9d9d;
+  span {
+    font-size: 11px;
+    color: #9d9d9d;
+  }
 }
 
 .hours-card p {
   margin: 9px 0 0;
-
   font-size: 8px;
-  font-weight: 400;
-
   color: #b5b5b5;
 }
 
-// total hours banner
+/* TOTAL HOURS */
+
 .total-hours {
   display: flex;
   align-items: center;
   justify-content: space-between;
-
   width: 100%;
   min-height: 50px;
-
   padding: 12px 16px;
   margin-bottom: 12px;
-
   gap: 8px;
-
   background: #d6dfff;
   border-radius: 13px;
-
   box-sizing: border-box;
+
+  span {
+    font-size: 11px;
+    color: #3157d5;
+  }
+
+  strong {
+    font-size: 14px;
+    font-weight: 700;
+    color: #3157d5;
+    white-space: nowrap;
+  }
 }
 
-.total-hours span {
-  font-size: 11px;
-  font-weight: 400;
+/* DTR ACTIONS */
 
-  color: #3157d5;
+.dtr-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
 }
 
-.total-hours strong {
-  font-size: 14px;
-  font-weight: 700;
-
-  color: #3157d5;
-  white-space: nowrap;
-}
-
-// export button
 .export-button {
   display: flex;
   align-items: center;
   justify-content: center;
-
   width: 100%;
-  height: 51px;
-
+  min-height: 51px;
+  padding: 12px 16px;
   gap: 10px;
-
   border: none;
   border-radius: 11px;
-
   background: #3157d5;
   color: #ffffff;
-
   font-family: 'Inter', sans-serif;
   font-size: 13px;
   font-weight: 600;
-
   cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.2s ease;
 
-  transition:
-    background-color 0.2s ease,
-    transform 0.2s ease;
+  ion-icon {
+    font-size: 19px;
+    flex-shrink: 0;
+    --ionicon-stroke-width: 40px;
+  }
+
+  &:active:not(:disabled) {
+    background: #2448b8;
+    transform: scale(0.98);
+  }
 }
 
-.export-button ion-icon {
-  font-size: 19px;
-  --ionicon-stroke-width: 40px;
-}
-
-.export-button:active {
-  background: #2448b8;
-  transform: scale(0.98);
-}
-
-// preview button
 .preview-button {
   width: 100%;
-
-  margin-top: 13px;
-  padding: 3px 0 8px;
-
+  min-height: 40px;
+  padding: 8px 12px;
   border: none;
+  border-radius: 9px;
   background: transparent;
-
+  color: #3157d5;
   font-family: 'Inter', sans-serif;
   font-size: 12px;
   font-weight: 600;
-
-  color: #b5b5b5;
-  text-align: center;
-
   cursor: pointer;
+
+  &:active:not(:disabled) {
+    background: #e9edfc;
+  }
 }
 
-.preview-button:active {
-  color: #3157d5;
+.export-button:disabled,
+.preview-button:disabled,
+.pdf-preview-actions button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
-// responsive - small screens
+/* PDF PREVIEW MODAL */
+
+.pdf-preview-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px;
+  background: rgba(18, 24, 45, 0.65);
+  box-sizing: border-box;
+}
+
+.pdf-preview-panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 700px;
+  height: 90%;
+  max-height: 900px;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+}
+
+.pdf-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid #eeeeee;
+  background: #ffffff;
+
+  h2 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    color: #252525;
+  }
+
+  button {
+    min-height: 40px;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 8px;
+    background: #f0f2f8;
+    color: #3157d5;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+}
+
+.pdf-preview-panel iframe {
+  display: block;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  border: none;
+  background: #ffffff;
+}
+
+.pdf-preview-actions {
+  padding: 12px 16px;
+  border-top: 1px solid #eeeeee;
+  background: #ffffff;
+
+  button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 46px;
+    gap: 8px;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 9px;
+    background: #3157d5;
+    color: #ffffff;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+
+    ion-icon {
+      font-size: 18px;
+    }
+  }
+}
+
+/* SMALL SCREENS */
+
 @media (max-width: 360px) {
   .dtr-container {
     padding-left: 19px;
@@ -680,16 +675,36 @@
     padding-right: 11px;
   }
 
-  .total-hours strong {
-    font-size: 12px;
+  .total-hours {
+    span {
+      font-size: 10px;
+    }
+
+    strong {
+      font-size: 12px;
+    }
   }
 
-  .total-hours span {
-    font-size: 10px;
+  .pdf-preview-overlay {
+    padding: 8px;
+  }
+
+  .pdf-preview-panel {
+    height: 94%;
+    border-radius: 10px;
+  }
+
+  .pdf-preview-header {
+    padding: 12px;
+  }
+
+  .pdf-preview-actions {
+    padding: 10px 12px;
   }
 }
 
-// responsive - short screens
+/* SHORT SCREENS */
+
 @media (max-height: 750px) {
   .dtr-container {
     padding-top: 45px;
@@ -701,5 +716,9 @@
 
   .calendar-card {
     margin-bottom: 17px;
+  }
+
+  .pdf-preview-panel {
+    height: 94%;
   }
 }
