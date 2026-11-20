@@ -314,7 +314,7 @@
   </main>
 
   <!-- PDF PREVIEW MODAL -->
-  @if (isPdfPreviewOpen && pdfPreviewUrl) {
+  @if (isPdfPreviewOpen) {
 
     <div
       class="pdf-preview-overlay"
@@ -341,10 +341,11 @@
         </div>
 
         <!-- ACTUAL PDF DOCUMENT -->
-        <iframe
-          [src]="pdfPreviewUrl"
-          title="Weekly Daily Time Record PDF">
-        </iframe>
+        <div
+          #pdfPagesContainer
+          class="pdf-pages-container"
+          aria-label="Weekly Daily Time Record PDF preview">
+        </div>
 
         <!-- PREVIEW ACTIONS -->
         <div class="pdf-preview-actions">

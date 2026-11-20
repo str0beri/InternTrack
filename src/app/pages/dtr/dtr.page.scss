@@ -21,7 +21,9 @@
   font-family: 'Inter', sans-serif;
 }
 
-/* PAGE HEADER */
+/* =========================================
+   PAGE HEADER
+   ========================================= */
 
 .dtr-header {
   width: 100%;
@@ -37,7 +39,9 @@
   }
 }
 
-/* CALENDAR SWITCH */
+/* =========================================
+   CALENDAR SWITCH
+   ========================================= */
 
 .calendar-switch {
   display: flex;
@@ -64,7 +68,9 @@
   font-size: 11px;
   font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
 
   &.active {
     background: #3157d5;
@@ -72,7 +78,9 @@
   }
 }
 
-/* CALENDAR CARD */
+/* =========================================
+   CALENDAR CARD
+   ========================================= */
 
 .calendar-card {
   width: 100%;
@@ -102,11 +110,14 @@
   }
 }
 
-/* WEEKLY CALENDAR */
+/* =========================================
+   WEEKLY CALENDAR
+   ========================================= */
 
 .weekly-calendar {
   display: grid;
-  grid-template-columns: 14px repeat(7, minmax(0, 1fr)) 14px;
+  grid-template-columns:
+    14px repeat(7, minmax(0, 1fr)) 14px;
   align-items: center;
   width: 100%;
   gap: 5px;
@@ -187,7 +198,9 @@
   height: 3px;
 }
 
-/* MONTHLY CALENDAR */
+/* =========================================
+   MONTHLY CALENDAR
+   ========================================= */
 
 .monthly-calendar {
   width: 100%;
@@ -238,7 +251,8 @@
 
 .month-grid {
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-columns:
+    repeat(7, minmax(0, 1fr));
   gap: 5px;
 }
 
@@ -274,7 +288,9 @@
   height: 4px;
 }
 
-/* DAILY RECORD CARD */
+/* =========================================
+   DAILY RECORD CARD
+   ========================================= */
 
 .daily-record-card {
   width: 100%;
@@ -317,7 +333,9 @@
   }
 }
 
-/* EMPTY RECORD */
+/* =========================================
+   EMPTY RECORD
+   ========================================= */
 
 .empty-record {
   display: flex;
@@ -355,7 +373,9 @@
   }
 }
 
-/* RECORDED TIME */
+/* =========================================
+   RECORDED TIME
+   ========================================= */
 
 .record-information {
   display: flex;
@@ -399,11 +419,14 @@
   color: #999999;
 }
 
-/* HOURS SUMMARY */
+/* =========================================
+   HOURS SUMMARY
+   ========================================= */
 
 .hours-summary {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
   gap: 14px;
   margin-bottom: 12px;
 }
@@ -471,7 +494,9 @@
   color: #b5b5b5;
 }
 
-/* TOTAL HOURS */
+/* =========================================
+   TOTAL HOURS
+   ========================================= */
 
 .total-hours {
   display: flex;
@@ -499,7 +524,9 @@
   }
 }
 
-/* DTR ACTIONS */
+/* =========================================
+   DTR ACTIONS
+   ========================================= */
 
 .dtr-actions {
   display: flex;
@@ -524,7 +551,9 @@
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.2s ease, transform 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    transform 0.2s ease;
 
   ion-icon {
     font-size: 19px;
@@ -563,15 +592,19 @@
   cursor: not-allowed;
 }
 
-/* PDF PREVIEW MODAL */
+/* =========================================
+   PDF PREVIEW MODAL
+   ========================================= */
 
 .pdf-preview-overlay {
   position: fixed;
   inset: 0;
   z-index: 9999;
+
   display: flex;
   align-items: center;
   justify-content: center;
+
   padding: 14px;
   background: rgba(18, 24, 45, 0.65);
   box-sizing: border-box;
@@ -580,11 +613,13 @@
 .pdf-preview-panel {
   display: flex;
   flex-direction: column;
+
   width: 100%;
   max-width: 700px;
   height: 90%;
   max-height: 900px;
   min-height: 0;
+
   overflow: hidden;
   border-radius: 14px;
   background: #ffffff;
@@ -595,8 +630,11 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-shrink: 0;
+
   gap: 12px;
   padding: 14px 16px;
+
   border-bottom: 1px solid #eeeeee;
   background: #ffffff;
 
@@ -612,8 +650,10 @@
     padding: 8px 12px;
     border: none;
     border-radius: 8px;
+
     background: #f0f2f8;
     color: #3157d5;
+
     font-family: 'Inter', sans-serif;
     font-size: 12px;
     font-weight: 600;
@@ -621,17 +661,49 @@
   }
 }
 
-.pdf-preview-panel iframe {
+/* =========================================
+   PDF.JS DOCUMENT PREVIEW
+   ========================================= */
+
+.pdf-pages-container {
   display: block;
+  flex: 1 1 auto;
+
   width: 100%;
-  flex: 1;
+  min-width: 0;
   min-height: 0;
-  border: none;
-  background: #ffffff;
+
+  padding: 12px;
+  overflow-x: hidden;
+  overflow-y: auto;
+
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+
+  background: #e9edf5;
+  box-sizing: border-box;
+
+  canvas {
+    display: block;
+    max-width: 100%;
+    height: auto;
+
+    margin: 0 auto 12px;
+    background: #ffffff;
+
+    box-shadow:
+      0 2px 8px rgba(0, 0, 0, 0.08);
+  }
 }
 
+/* =========================================
+   PDF PREVIEW ACTIONS
+   ========================================= */
+
 .pdf-preview-actions {
+  flex-shrink: 0;
   padding: 12px 16px;
+
   border-top: 1px solid #eeeeee;
   background: #ffffff;
 
@@ -639,14 +711,18 @@
     display: flex;
     align-items: center;
     justify-content: center;
+
     width: 100%;
     min-height: 46px;
     gap: 8px;
     padding: 10px 16px;
+
     border: none;
     border-radius: 9px;
+
     background: #3157d5;
     color: #ffffff;
+
     font-family: 'Inter', sans-serif;
     font-size: 13px;
     font-weight: 600;
@@ -658,9 +734,12 @@
   }
 }
 
-/* SMALL SCREENS */
+/* =========================================
+   SMALL SCREENS
+   ========================================= */
 
 @media (max-width: 360px) {
+
   .dtr-container {
     padding-left: 19px;
     padding-right: 19px;
@@ -676,6 +755,7 @@
   }
 
   .total-hours {
+
     span {
       font-size: 10px;
     }
@@ -701,11 +781,18 @@
   .pdf-preview-actions {
     padding: 10px 12px;
   }
+
+  .pdf-pages-container {
+    padding: 8px;
+  }
 }
 
-/* SHORT SCREENS */
+/* =========================================
+   SHORT SCREENS
+   ========================================= */
 
 @media (max-height: 750px) {
+
   .dtr-container {
     padding-top: 45px;
   }
