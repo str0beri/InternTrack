@@ -81,6 +81,87 @@ InternTrack focuses on:
 - Weekly accomplishment report submission and review
 - OJT progress monitoring
 
+## Technology Stack
+
+| Technology | Purpose |
+|---|---|
+| Angular | Application framework |
+| Ionic Framework | Mobile application UI |
+| TypeScript | Application development |
+| Capacitor | Native Android integration |
+| Supabase | Backend services integration |
+| PDF.js | PDF document processing |
+| pdfmake | PDF document generation |
+
+## Getting Started
+
+### Prerequisites
+
+Before running InternTrack, install:
+
+- Node.js and npm compatible with Angular 22
+- Git
+- Android Studio (for Android development)
+
+### Installation
+
+1. Clone the repository:
+
+```bash
+git clone https://github.com/str0beri/InternTrack.git
+```
+
+2. Navigate to the project directory:
+
+```bash
+cd InternTrack
+```
+
+3. Install dependencies:
+
+```bash
+npm ci
+```
+
+4. Configure the required Supabase connection using
+   your authorized project credentials.
+
+5. Start the development server:
+
+```bash
+npm start
+```
+
+### Available Commands
+
+| Command | Description |
+|---|---|
+| `npm start` | Start the Angular development server |
+| `npm run build` | Build the application |
+| `npm run test:unit` | Run unit tests |
+| `npm run test:e2e` | Run Playwright end-to-end tests |
+| `npm run eslint` | Check code using ESLint |
+
+### Android Development
+
+The project includes Capacitor Android dependencies.
+
+After configuring the Android development environment,
+the application can be synchronized with the Android project:
+
+```bash
+npx cap sync android
+```
+
+Android Studio is required to build and run the native Android application.
+
+## Development Notes
+
+- The project is currently under development.
+- Backend access requires valid Supabase configuration.
+- Never commit API secrets or private credentials.
+- Some features may require additional configuration.
+
 ## Project Status
 
 Under Development
