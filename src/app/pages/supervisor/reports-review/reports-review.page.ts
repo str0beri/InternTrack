@@ -1,357 +1,511 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, inject, type OnInit } from '@angular/core';
+import {
+  ChangeDetectorRef,
+  Component,
+  inject,
+  OnInit,
+  OnDestroy
+} from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 
 import { AuthService } from '../../../services/auth.service';
 import { SupabaseService } from '../../../services/supabase.service';
 
+type ReportStatus = 'pending_review' | 'approved' | 'returned';
+
 interface Intern {
   id: string;
-  studentId: string;
   name: string;
   initials: string;
   department: string;
+  avatarColor: string;
 }
 
-interface Report {
-  weekLabel: string;
+interface WeeklyReport {
+  id: number;
+  studentId: string;
+  studentName: string;
+  initials: string;
+  avatarColor: string;
+  week: number;
+  period: string;
   submittedDate: string;
-  hoursLogged: string;
-  daysPresent: string;
-  dtrStatus: string;
-  activities: string;
-  reflection: string;
-  status: string;
-  rawData: any;
+  submittedAt: string | null;
+  status: ReportStatus;
+  statusLabel: string;
 }
 
 @Component({
   selector: 'app-reports-review',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './reports-review.page.html',
   styleUrls: ['./reports-review.page.scss'],
 })
-export class ReportsReviewPage implements OnInit {
+export class ReportsReviewPage implements OnInit, OnDestroy {
+
   private supabaseService = inject(SupabaseService);
   private supabase = this.supabaseService.getClient();
   private authService = inject(AuthService);
+  private router = inject(Router);
   private cdr = inject(ChangeDetectorRef);
 
-  selectedInternId = '';
-  selectedWeek = '';
-  interns: Intern[] = [];
-  reports: Report[] = [];
-  report: Report | null = null;
-  loading = true;
+  private loadVersion = 0;
 
-  reviewComment = '';
+  interns: Intern[] = [];
+  reports: WeeklyReport[] = [];
+
+  loading = true;
+  loadError = '';
+
+  searchQuery = '';
+  selectedWeek = 'all';
+  selectedStatus = 'all';
+
+  currentPage = 1;
+  readonly pageSize = 8;
 
   ngOnInit(): void {
-    this.loadData();
+    void this.loadData();
+  }
+
+  ngOnDestroy(): void {
+    this.loadVersion++;
   }
 
   async loadData(): Promise<void> {
+
+    const version = ++this.loadVersion;
+
+    this.loading = true;
+    this.loadError = '';
+    this.interns = [];
+    this.reports = [];
+    this.currentPage = 1;
+
+    this.cdr.markForCheck();
+
+    const userId = this.authService.getCurrentUser()?.id;
+
     try {
-      this.loading = true;
-      const userId = this.authService.getCurrentUser()?.id;
-      
+
       if (!userId) {
-        console.error('No user ID found');
-        return;
+        throw new Error('No authenticated user found.');
       }
 
-      // Get supervisor profile
-      const { data: supervisor } = await this.supabase
-        .from('company_supervisors')
-        .select('id')
-        .eq('user_id', userId)
-        .single();
+      // Get the current supervisor profile
+
+      const { data: supervisor, error: supervisorError } =
+        await this.supabase
+          .from('company_supervisors')
+          .select('id')
+          .eq('user_id', userId)
+          .single();
+
+      if (supervisorError) throw supervisorError;
 
       if (!supervisor) {
-        console.error('No supervisor profile found');
-        return;
+        throw new Error('Supervisor profile not found.');
       }
 
-      // Get assigned interns
-      const { data: assignments, error: e1 } = await this.supabase
-        .from('intern_supervisor_assignments')
-        .select('student_id, students!student_id(id, student_id, full_name, course)')
-        .eq('supervisor_id', supervisor.id)
-        .eq('assignment_status', 'active');
-      if (e1) throw e1;
+      if (!this.isCurrentRequest(version, userId)) return;
 
-      this.interns = (assignments?.map(a => {
-        const student = Array.isArray(a.students) ? a.students[0] : a.students;
-        return {
-          id: student?.student_id || '',
-          studentId: student?.id || '',
-          name: student?.full_name || 'Unknown',
-          initials: this.getInitials(student?.full_name),
-          department: student?.course || 'N/A',
-        };
-      }) || []).filter(i => i.id);
+      // Get actively assigned interns
 
-      // Select first intern by default
-      if (this.interns.length > 0 && !this.selectedInternId) {
-        this.selectedInternId = this.interns[0].id;
-        await this.loadReportsForIntern(this.selectedInternId);
-      }
+      const { data: assignments, error: assignmentError } =
+        await this.supabase
+          .from('intern_supervisor_assignments')
+          .select(`
+            student_id,
+            students!student_id(
+              id,
+              student_id,
+              full_name,
+              course,
+              department
+            )
+          `)
+          .eq('supervisor_id', supervisor.id)
+          .eq('assignment_status', 'active');
 
-    } catch (error) {
-      console.error('Error loading data:', error);
-    } finally {
-      this.loading = false;
-      this.cdr.detectChanges();
-    }
-  }
+      if (assignmentError) throw assignmentError;
 
-  private getInitials(fullName?: string): string {
-    if (!fullName) return '??';
-    const parts = fullName.trim().split(' ');
-    if (parts.length === 0) return '??';
-    if (parts.length === 1) return parts[0][0].toUpperCase();
-    return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
-  }
+      if (!this.isCurrentRequest(version, userId)) return;
 
-  async loadReportsForIntern(internId: string): Promise<void> {
-    try {
-      const intern = this.interns.find(i => i.id === internId);
-      if (!intern) return;
+      const internMap = new Map<string, Intern>();
 
-      // Get reports for this student using text student_id
-      // Show all non-draft reports (pending_review, approved, returned)
-      // Drafts should never appear to supervisor
-      const { data: reports, error } = await this.supabase
-        .from('reports')
-        .select('*')
-        .eq('student_id', internId)  // Use text ID
-        .neq('status', 'draft')  // Exclude drafts
-        .order('week', { ascending: false });
+      for (const assignment of assignments || []) {
 
-      if (error) throw error;
+        const student = Array.isArray(assignment.students)
+          ? assignment.students[0]
+          : assignment.students;
 
-      // Get attendance records for weekly summary calculation
-      const { data: attendance } = await this.supabase
-        .from('attendance')
-        .select('attendance_date, time_in, time_out, verification_status')
-        .eq('student_id', internId)
-        .eq('verification_status', 'verified');
+        if (!student?.student_id) continue;
 
-      this.reports = (reports || []).map(report => {
-        // Calculate weekly hours and days present for this report's week
-        const weekNum = report.week;
-        const weekStart = this.getWeekStart(weekNum);
-        const weekEnd = this.getWeekEnd(weekNum);
+        const name = student.full_name || 'Unknown student';
 
-        const weekAttendance = (attendance || []).filter(att => {
-          const attDate = new Date(att.attendance_date);
-          return attDate >= weekStart && attDate <= weekEnd;
+        internMap.set(student.student_id, {
+          id: student.student_id,
+          name,
+          initials: this.getInitials(name),
+          department: student.department || 'Not provided',
+          avatarColor: this.getAvatarColor(student.student_id)
         });
+      }
 
-        const hoursLogged = weekAttendance.reduce((sum, att) => {
-          if (att.time_in && att.time_out) {
-            const start = new Date(att.time_in);
-            const end = new Date(att.time_out);
-            return sum + ((end.getTime() - start.getTime()) / (1000 * 60 * 60));
+      this.interns = Array.from(internMap.values());
+
+      if (this.interns.length === 0) return;
+
+      const studentIds = this.interns.map(intern => intern.id);
+
+      const allReports: WeeklyReport[] = [];
+
+      // Retrieve reports in batches
+
+      const batchSize = 50;
+      const fetchSize = 500;
+
+      for (
+        let batchStart = 0;
+        batchStart < studentIds.length;
+        batchStart += batchSize
+      ) {
+
+        const batch = studentIds.slice(
+          batchStart,
+          batchStart + batchSize
+        );
+
+        let offset = 0;
+
+        while (true) {
+
+          const { data, error, count } = await this.supabase
+            .from('reports')
+            .select(`
+              id,
+              student_id,
+              week,
+              period,
+              start_date,
+              end_date,
+              submitted_at,
+              status
+            `, { count: 'exact' })
+            .in('student_id', batch)
+            .in('status', [
+              'pending_review',
+              'approved',
+              'returned'
+            ])
+            .order('id', { ascending: true })
+            .range(offset, offset + fetchSize - 1);
+
+          if (error) throw error;
+
+          if (!this.isCurrentRequest(version, userId)) return;
+
+          const records = data || [];
+
+          for (const record of records) {
+
+            const intern = internMap.get(record.student_id);
+
+            if (!intern) continue;
+
+            const status = record.status as ReportStatus;
+
+            allReports.push({
+              id: record.id,
+              studentId: record.student_id,
+              studentName: intern.name,
+              initials: intern.initials,
+              avatarColor: intern.avatarColor,
+              week: record.week,
+              period: record.period ||
+                this.formatPeriod(
+                  record.start_date,
+                  record.end_date
+                ),
+              submittedDate: this.formatSubmittedDate(
+                record.submitted_at
+              ),
+              submittedAt: record.submitted_at,
+              status,
+              statusLabel: this.getStatusLabel(status)
+            });
           }
-          return sum;
-        }, 0);
 
-        const daysPresent = new Set(weekAttendance.map(att => att.attendance_date)).size;
+          offset += records.length;
 
-        return {
-          weekLabel: `Week ${report.week}`,
-          submittedDate: report.submitted_at ? `Submitted ${new Date(report.submitted_at).toLocaleDateString()}` : 'Not submitted',
-          hoursLogged: hoursLogged.toFixed(1) + 'h',
-          daysPresent: daysPresent.toString(),
-          dtrStatus: weekAttendance.length > 0 ? 'Verified' : 'No records',
-          activities: report.accomplishments || 'No activities recorded',
-          reflection: report.feedback || 'No reflection recorded',
-          status: this.getReportStatus(report.status),
-          rawData: report,
-        };
+          if (
+            records.length === 0 ||
+            (count !== null && offset >= count) ||
+            (count === null && records.length < fetchSize)
+          ) {
+            break;
+          }
+        }
+      }
+
+      // Most recently submitted reports appear first
+
+      this.reports = allReports.sort((a, b) => {
+
+        const dateA = a.submittedAt
+          ? new Date(a.submittedAt).getTime()
+          : 0;
+
+        const dateB = b.submittedAt
+          ? new Date(b.submittedAt).getTime()
+          : 0;
+
+        return dateB - dateA || b.id - a.id;
       });
 
-      // Select latest report
-      if (this.reports.length > 0) {
-        this.report = this.reports[0];
-        this.selectedWeek = this.reports[0].weekLabel;
-      } else {
-        this.report = null;
-        this.selectedWeek = '';
-      }
-
     } catch (error) {
-      console.error('Error loading reports:', error);
+
+      if (version !== this.loadVersion) return;
+
+      console.error('Error loading weekly reports:', error);
+
+      this.interns = [];
+      this.reports = [];
+      this.loadError =
+        'We could not retrieve the weekly reports. Please try again.';
+
+    } finally {
+
+      if (version === this.loadVersion) {
+        this.loading = false;
+        this.cdr.markForCheck();
+      }
     }
   }
 
-  private getWeekStart(weekNum: number): Date {
-    // Assuming OJT started on a Monday, calculate week start
-    const startDate = new Date('2024-01-01'); // Placeholder - should get from student's OJT start date
-    const weekStart = new Date(startDate);
-    weekStart.setDate(weekStart.getDate() + ((weekNum - 1) * 7));
-    return weekStart;
+  private isCurrentRequest(
+    version: number,
+    userId: string
+  ): boolean {
+
+    return version === this.loadVersion &&
+      this.authService.getCurrentUser()?.id === userId;
   }
 
-  private getWeekEnd(weekNum: number): Date {
-    const weekStart = this.getWeekStart(weekNum);
-    const weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekEnd.getDate() + 6);
-    return weekEnd;
+  // Summary counts
+
+  get pendingCount(): number {
+    return this.reports.filter(
+      report => report.status === 'pending_review'
+    ).length;
   }
 
-  private getReportStatus(status: string): string {
-    switch (status) {
-      case 'pending_review': return 'Pending for review';
-      case 'approved': return 'Approved';
-      case 'returned': return 'Returned';
-      case 'draft': return 'Draft';
-      default: return 'Unknown';
-    }
+  get returnedCount(): number {
+    return this.reports.filter(
+      report => report.status === 'returned'
+    ).length;
   }
 
-  get selectedIntern(): Intern | undefined {
-    return this.interns.find(
-      intern => intern.id === this.selectedInternId
+  // Reporting week options
+
+  get weeks(): number[] {
+    return Array.from(
+      new Set(this.reports.map(report => report.week))
+    ).sort((a, b) => b - a);
+  }
+
+  // Search and filters
+
+  get filteredReports(): WeeklyReport[] {
+
+    const query = this.searchQuery.trim().toLowerCase();
+
+    return this.reports.filter(report => {
+
+      const matchesSearch =
+        !query ||
+        report.studentName.toLowerCase().includes(query) ||
+        report.studentId.toLowerCase().includes(query);
+
+      const matchesWeek =
+        this.selectedWeek === 'all' ||
+        String(report.week) === String(this.selectedWeek);
+
+      const matchesStatus =
+        this.selectedStatus === 'all' ||
+        report.status === this.selectedStatus;
+
+      return matchesSearch && matchesWeek && matchesStatus;
+    });
+  }
+
+  resetPage(): void {
+    this.currentPage = 1;
+  }
+
+  clearFilters(): void {
+    this.searchQuery = '';
+    this.selectedWeek = 'all';
+    this.selectedStatus = 'all';
+    this.resetPage();
+  }
+
+  // Pagination
+
+  get totalPages(): number {
+    return Math.max(
+      1,
+      Math.ceil(this.filteredReports.length / this.pageSize)
     );
   }
 
-  get weeks(): string[] {
-    return this.reports.map(r => r.weekLabel);
+  get pageNumbers(): number[] {
+    return Array.from(
+      { length: this.totalPages },
+      (_, index) => index + 1
+    );
   }
 
-  async selectIntern(internId: string): Promise<void> {
-    this.selectedInternId = internId;
-    this.reviewComment = '';
-    await this.loadReportsForIntern(internId);
+  get paginatedReports(): WeeklyReport[] {
+
+    const start = (this.currentPage - 1) * this.pageSize;
+
+    return this.filteredReports.slice(
+      start,
+      start + this.pageSize
+    );
   }
 
-  selectWeek(week: string): void {
-    this.selectedWeek = week;
-    const report = this.reports.find(r => r.weekLabel === week);
-    this.report = report || null;
+  get firstRecord(): number {
+
+    return this.filteredReports.length === 0
+      ? 0
+      : (this.currentPage - 1) * this.pageSize + 1;
   }
 
-  onCommentChange(event: Event): void {
-    const textarea = event.target as HTMLTextAreaElement;
-    this.reviewComment = textarea.value;
+  get lastRecord(): number {
+
+    return Math.min(
+      this.currentPage * this.pageSize,
+      this.filteredReports.length
+    );
   }
 
-  async approveReport(): Promise<void> {
-    if (!this.report) return;
+  goToPage(page: number): void {
 
-    // Security check: ensure report belongs to selected intern
-    if (this.report.rawData.student_id !== this.selectedInternId) {
-      alert('You can only review reports for your assigned interns.');
-      console.error('❌ Security violation: Attempting to review report for non-assigned intern');
-      return;
-    }
+    if (page < 1 || page > this.totalPages) return;
 
-    // Only allow approving pending_review reports
-    if (this.report.rawData.status !== 'pending_review') {
-      alert(`Cannot approve report with status: ${this.report.rawData.status}. Only pending reports can be approved.`);
-      return;
-    }
+    this.currentPage = page;
+  }
 
-    try {
-      const userId = this.authService.getCurrentUser()?.id;
-      const { data: supervisor } = await this.supabase
-        .from('company_supervisors')
-        .select('id')
-        .eq('user_id', userId)
-        .single();
+  // Navigation
 
-      if (!supervisor) {
-        alert('Supervisor profile not found');
-        return;
-      }
+  openReport(reportId: number): void {
 
-      const { data, error } = await this.supabase
-        .from('reports')
-        .update({
-          status: 'approved',
-          feedback: this.reviewComment || this.report.rawData.feedback,
-          reviewed_at: new Date().toISOString(),
-          reviewed_by: supervisor.id
-        })
-        .eq('id', this.report.rawData.id)
-        .select();
+    void this.router.navigate([
+      '/supervisor',
+      'reports',
+      reportId
+    ]);
+  }
 
-      if (!error && data) {
-        this.report.status = 'Approved';
-        this.reviewComment = '';
-        this.cdr.detectChanges();
-        alert('Report approved successfully!');
-      } else {
-        console.error('Error approving report:', error);
-        alert('Failed to approve report. Please try again.');
-      }
-    } catch (error) {
-      console.error('Error approving report:', error);
-      alert('Failed to approve report. Please try again.');
+  // Formatting helpers
+
+  private getStatusLabel(status: ReportStatus): string {
+
+    switch (status) {
+      case 'pending_review':
+        return 'Pending';
+
+      case 'approved':
+        return 'Approved';
+
+      case 'returned':
+        return 'Returned';
     }
   }
 
-  async returnReport(): Promise<void> {
-    if (!this.report) return;
+  private getInitials(name: string): string {
 
-    // Security check: ensure report belongs to selected intern
-    if (this.report.rawData.student_id !== this.selectedInternId) {
-      alert('You can only review reports for your assigned interns.');
-      console.error('❌ Security violation: Attempting to review report for non-assigned intern');
-      return;
-    }
+    const parts = name.trim().split(/\s+/).filter(Boolean);
 
-    // Only allow returning pending_review reports
-    if (this.report.rawData.status !== 'pending_review') {
-      alert(`Cannot return report with status: ${this.report.rawData.status}. Only pending reports can be returned.`);
-      return;
-    }
-
-    // Require comment for returning
-    if (!this.reviewComment.trim()) {
-      alert('Please provide a comment when returning a report for revision.');
-      return;
-    }
-
-    try {
-      const userId = this.authService.getCurrentUser()?.id;
-      const { data: supervisor } = await this.supabase
-        .from('company_supervisors')
-        .select('id')
-        .eq('user_id', userId)
-        .single();
-
-      if (!supervisor) {
-        alert('Supervisor profile not found');
-        return;
-      }
-
-      const { data, error } = await this.supabase
-        .from('reports')
-        .update({
-          status: 'returned',
-          feedback: this.reviewComment,
-          reviewed_at: new Date().toISOString(),
-          reviewed_by: supervisor.id
-        })
-        .eq('id', this.report.rawData.id)
-        .select();
-
-      if (!error && data) {
-        this.report.status = 'Returned';
-        this.reviewComment = '';
-        this.cdr.detectChanges();
-        alert('Report returned for revision successfully!');
-      } else {
-        console.error('Error returning report:', error);
-        alert('Failed to return report. Please try again.');
-      }
-    } catch (error) {
-      console.error('Error returning report:', error);
-      alert('Failed to return report. Please try again.');
-    }
+    return parts.slice(0, 2)
+      .map(part => part[0].toUpperCase())
+      .join('') || '?';
   }
 
+  private getAvatarColor(studentId: string): string {
+
+    const colors = [
+      'blue',
+      'orange',
+      'slate',
+      'green',
+      'purple'
+    ];
+
+    const hash = Array.from(studentId).reduce(
+      (sum, char) => sum + char.charCodeAt(0),
+      0
+    );
+
+    return colors[hash % colors.length];
+  }
+
+  private formatSubmittedDate(value: string | null): string {
+
+    if (!value) return 'Not recorded';
+
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) return 'Not recorded';
+
+    const dateLabel = date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      timeZone: 'Asia/Manila'
+    });
+
+    const timeLabel = date.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+      timeZone: 'Asia/Manila'
+    });
+
+    return `${dateLabel} · ${timeLabel}`;
+  }
+
+  private formatPeriod(
+    start: string | null,
+    end: string | null
+  ): string {
+
+    if (!start || !end) return 'Not provided';
+
+    const startDate = new Date(`${start}T00:00:00Z`);
+    const endDate = new Date(`${end}T00:00:00Z`);
+
+    if (
+      Number.isNaN(startDate.getTime()) ||
+      Number.isNaN(endDate.getTime())
+    ) {
+      return 'Not provided';
+    }
+
+    return startDate.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      timeZone: 'UTC'
+    }) + ' – ' +
+    endDate.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      timeZone: 'UTC'
+    });
+  }
 }

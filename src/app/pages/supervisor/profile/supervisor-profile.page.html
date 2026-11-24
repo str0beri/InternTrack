@@ -1,132 +1,441 @@
-<div class="profile-container">
+<div class="settings-container">
 
-  <!-- Loading State -->
-  <div *ngIf="loading" class="loading-container">
-    <p>Loading profile...</p>
-  </div>
-
-  <!-- Profile Content -->
-  <div *ngIf="!loading" class="profile-content">
-
-    <!-- Profile Header -->
-    <div class="profile-header">
-      <div class="avatar">
-        <ion-icon name="person-outline"></ion-icon>
-      </div>
-      <div class="profile-info">
-        <h1>{{ profile.name }}</h1>
-        <p class="supervisor-id">{{ profile.supervisorId }}</p>
-        <span class="status-badge" [class.active]="profile.accountStatus === 'active'">
-          {{ profile.accountStatus }}
-        </span>
-      </div>
+  <header class="page-header">
+    <div>
+      <h1>Settings</h1>
+      <p>
+        Your supervisor profile, assigned company information
+        and account security.
+      </p>
     </div>
 
-    <!-- Profile Details -->
-    <div class="profile-details">
+    <button
+      type="button"
+      class="button secondary"
+      (click)="openLogoutDialog()"
+      [disabled]="saving || loggingOut">
+      <svg viewBox="0 0 24 24" fill="none">
+        <path d="M10 17l5-5-5-5M15 12H3M14 3h5a2 2 0 012 2v14a2 2 0 01-2 2h-5"
+          stroke="currentColor"
+          stroke-width="1.7"
+          stroke-linecap="round"
+          stroke-linejoin="round"/>
+      </svg>
+      Log Out
+    </button>
+  </header>
 
-      <div class="detail-row">
-        <div class="detail-label">
-          <ion-icon name="mail-outline"></ion-icon>
-          <span>Email</span>
-        </div>
-        <div class="detail-value">
-          {{ profile.email }}
-        </div>
-      </div>
-
-      <div class="detail-row">
-        <div class="detail-label">
-          <ion-icon name="briefcase-outline"></ion-icon>
-          <span>Company</span>
-        </div>
-        <div class="detail-value">
-          {{ profile.company }}
-        </div>
-      </div>
-
-      <div class="detail-row">
-        <div class="detail-label">
-          <ion-icon name="briefcase-outline"></ion-icon>
-          <span>Department</span>
-        </div>
-        <div class="detail-value" *ngIf="!editing">
-          {{ profile.department || 'Not specified' }}
-        </div>
-        <div class="detail-value" *ngIf="editing">
-          <input type="text" [(ngModel)]="editForm.department" class="edit-input">
-        </div>
-      </div>
-
-      <div class="detail-row">
-        <div class="detail-label">
-          <ion-icon name="person-outline"></ion-icon>
-          <span>Position</span>
-        </div>
-        <div class="detail-value" *ngIf="!editing">
-          {{ profile.position || 'Not specified' }}
-        </div>
-        <div class="detail-value" *ngIf="editing">
-          <input type="text" [(ngModel)]="editForm.position" class="edit-input">
-        </div>
-      </div>
-
-      <div class="detail-row">
-        <div class="detail-label">
-          <ion-icon name="person-outline"></ion-icon>
-          <span>Full Name</span>
-        </div>
-        <div class="detail-value" *ngIf="!editing">
-          {{ profile.name }}
-        </div>
-        <div class="detail-value" *ngIf="editing">
-          <input type="text" [(ngModel)]="editForm.name" class="edit-input">
-        </div>
-      </div>
-
+  @if (loading) {
+    <div class="state-card">
+      <div class="spinner"></div>
+      <p>Loading your settings...</p>
     </div>
-
-    <!-- Password Change Section -->
-    <div class="password-section" *ngIf="editingPassword">
-      <h3>Change Password</h3>
-      <div class="password-form">
-        <div class="form-group">
-          <label>New Password:</label>
-          <input type="password" [(ngModel)]="passwordForm.newPassword" class="edit-input">
-        </div>
-        <div class="form-group">
-          <label>Confirm Password:</label>
-          <input type="password" [(ngModel)]="passwordForm.confirmPassword" class="edit-input">
-        </div>
-      </div>
-    </div>
-
-    <!-- Action Buttons -->
-    <div class="action-buttons">
-      <button *ngIf="!editing && !editingPassword" type="button" class="edit-button" (click)="startEdit()">
-        Edit Profile
+  } @else if (loadError) {
+    <div class="state-card">
+      <p>{{ loadError }}</p>
+      <button class="button primary" (click)="loadProfile()">
+        Try again
       </button>
-      <button *ngIf="!editing && !editingPassword" type="button" class="password-button" (click)="startPasswordEdit()">
-        Change Password
+    </div>
+  } @else if (profile) {
+
+    <div class="settings-grid">
+
+      <!-- LEFT COLUMN -->
+      <div class="main-column">
+
+        <!-- Supervisor profile -->
+        <section class="settings-card">
+
+          <div class="card-header">
+            <h2>Supervisor profile</h2>
+          </div>
+
+          <div class="card-body">
+
+            <div class="profile-summary">
+              <div class="profile-avatar">
+                {{ initials }}
+              </div>
+
+              <div class="profile-identity">
+                <h3>{{ profile.full_name }}</h3>
+
+                <p>
+                  Company Supervisor
+                  @if (profile.department) {
+                    · {{ profile.department }}
+                  }
+                </p>
+
+                <p class="supervisor-id">
+                  Supervisor ID
+                  <strong>{{ profile.supervisor_id }}</strong>
+                </p>
+              </div>
+            </div>
+
+            <div class="section-divider"></div>
+
+            <div class="information-grid">
+
+              <div class="information-item">
+                <span>Full name</span>
+                <p>{{ profile.full_name }}</p>
+              </div>
+
+              <div class="information-item">
+                <span>Email address</span>
+                <p>{{ profile.email }}</p>
+              </div>
+
+              <div class="information-item">
+                <span>Position</span>
+                <p>{{ profile.position || 'Not provided' }}</p>
+              </div>
+
+              <div class="information-item">
+                <span>Department</span>
+                <p>{{ profile.department || 'Not provided' }}</p>
+              </div>
+
+              <div class="information-item">
+                <span>Contact number</span>
+                <p>{{ profile.contact_number || 'Not provided' }}</p>
+              </div>
+
+            </div>
+
+            <p class="helper-text profile-note">
+              Profile details are maintained by the OJT Coordinator.
+              Contact your coordinator to correct your personal
+              information or company assignment.
+            </p>
+
+          </div>
+        </section>
+
+        <!-- Company and assignment -->
+        <section class="settings-card">
+
+          <div class="card-header">
+            <h2>Company and assignment</h2>
+            <p>Read-only institutional information.</p>
+          </div>
+
+          <div class="card-body">
+
+            <div class="information-grid">
+
+              <div class="information-item">
+                <span>Company</span>
+                <p>{{ profile.company_name }}</p>
+              </div>
+
+              <div class="information-item">
+                <span>Assigned department</span>
+                <p>{{ profile.department || 'Not provided' }}</p>
+              </div>
+
+              <div class="information-item">
+                <span>Assigned interns</span>
+                <p>
+                  {{ assignedInterns === null
+                    ? 'Unavailable'
+                    : assignedInterns }}
+                </p>
+              </div>
+
+              <div class="information-item">
+                <span>Account status</span>
+
+                <div class="status-badge"
+                  [class.active]="profile.account_status === 'active'">
+                  <span class="status-dot"></span>
+                  {{ profile.account_status
+                    ? (profile.account_status | titlecase)
+                    : 'Not provided' }}
+                </div>
+              </div>
+
+            </div>
+
+            <div class="information-banner">
+              <svg viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="9"
+                  stroke="currentColor" stroke-width="1.7"/>
+                <path d="M12 11v5M12 7.5v.5"
+                  stroke="currentColor"
+                  stroke-width="1.7"
+                  stroke-linecap="round"/>
+              </svg>
+
+              <p>
+                Internship assignments and rendered-hour records
+                cannot be edited here. Changes require the
+                OJT Coordinator.
+              </p>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- Change password -->
+        <section class="settings-card">
+
+          <div class="card-header">
+            <h2>Change password</h2>
+            <p>
+              Use at least 8 characters and avoid reusing
+              an institutional password.
+            </p>
+          </div>
+
+          <div class="card-body">
+
+            <form
+              class="password-form"
+              (ngSubmit)="updatePassword()"
+              autocomplete="off">
+
+              <div class="form-field">
+                <label for="currentPassword">
+                  Current password
+                </label>
+
+                <input
+                  id="currentPassword"
+                  name="currentPassword"
+                  type="password"
+                  autocomplete="current-password"
+                  [(ngModel)]="currentPassword"
+                  [disabled]="saving"
+                  required>
+              </div>
+
+              <div class="form-field">
+                <label for="newPassword">
+                  New password
+                </label>
+
+                <input
+                  id="newPassword"
+                  name="newPassword"
+                  type="password"
+                  autocomplete="new-password"
+                  [(ngModel)]="newPassword"
+                  [disabled]="saving"
+                  minlength="8"
+                  required>
+              </div>
+
+              <div class="form-field">
+                <label for="confirmPassword">
+                  Confirm new password
+                </label>
+
+                <input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type="password"
+                  autocomplete="new-password"
+                  [(ngModel)]="confirmPassword"
+                  [disabled]="saving"
+                  required>
+              </div>
+
+              @if (passwordError) {
+                <div class="feedback error" role="alert">
+                  {{ passwordError }}
+                </div>
+              }
+
+              @if (passwordSuccess) {
+                <div class="feedback success" role="status">
+                  {{ passwordSuccess }}
+                </div>
+              }
+
+              <div class="form-actions">
+                <button
+                  type="submit"
+                  class="button primary"
+                  [disabled]="saving || loggingOut ||
+                    !currentPassword ||
+                    !newPassword ||
+                    !confirmPassword">
+
+                  <svg viewBox="0 0 24 24" fill="none">
+                    <path
+                      d="M15.5 3a5.5 5.5 0 00-5.2 7.3L3 17.6V21h3.4l2-2v-2h2v-2l1.3-1.3A5.5 5.5 0 1015.5 3z"
+                      stroke="currentColor"
+                      stroke-width="1.7"
+                      stroke-linejoin="round"/>
+                    <circle cx="16" cy="8" r="1"
+                      fill="currentColor"/>
+                  </svg>
+
+                  {{ saving ? 'Updating...' : 'Update password' }}
+
+                </button>
+              </div>
+
+            </form>
+
+          </div>
+        </section>
+
+      </div>
+
+      <!-- RIGHT COLUMN -->
+      <aside class="side-column">
+
+        <!-- Account security -->
+        <section class="settings-card">
+
+          <div class="card-header">
+            <h2>Account security</h2>
+          </div>
+
+          <div class="card-body">
+
+            <div class="session-card">
+
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M12 3l8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3z"
+                  stroke="currentColor"
+                  stroke-width="1.7"
+                  stroke-linejoin="round"/>
+                <path d="M9 12l2 2 4-4"
+                  stroke="currentColor"
+                  stroke-width="1.7"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"/>
+              </svg>
+
+              <div>
+                <strong>Signed in</strong>
+                <p>{{ lastSignIn }}</p>
+              </div>
+
+            </div>
+
+            <div class="security-information">
+
+              <div class="security-row">
+                <span>Account email</span>
+                <strong>{{ accountEmail }}</strong>
+              </div>
+
+              <div class="security-row">
+                <span>Role</span>
+                <strong>Company Supervisor</strong>
+              </div>
+
+              <div class="security-row">
+                <span>Access scope</span>
+                <strong>Assigned interns only</strong>
+              </div>
+
+            </div>
+
+            <button
+              type="button"
+              class="button secondary full-width"
+              (click)="openLogoutDialog()"
+              [disabled]="saving || loggingOut">
+
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M10 17l5-5-5-5M15 12H3M14 3h5a2 2 0 012 2v14a2 2 0 01-2 2h-5"
+                  stroke="currentColor"
+                  stroke-width="1.7"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"/>
+              </svg>
+
+              Log out of this device
+
+            </button>
+
+          </div>
+        </section>
+
+        <!-- Need help -->
+        <section class="settings-card">
+
+          <div class="card-header">
+            <h2>Need help?</h2>
+          </div>
+
+          <div class="card-body help-content">
+
+            <p>
+              Account access, company assignments and internship
+              records are managed by your OJT Coordinator.
+            </p>
+
+            <div class="contact-card">
+              <strong>OJT Coordinator</strong>
+              <p>
+                Contact your school's OJT office for assistance
+                with your supervisor account.
+              </p>
+            </div>
+
+            <a
+              class="dashboard-link"
+              routerLink="/supervisor/dashboard">
+              Return to dashboard
+            </a>
+
+          </div>
+        </section>
+
+      </aside>
+
+    </div>
+  }
+
+  <!-- Logout confirmation -->
+  <dialog
+    #logoutDialog
+    class="confirmation-dialog"
+    aria-labelledby="logoutTitle"
+    (cancel)="onDialogCancel($event)">
+
+    <h2 id="logoutTitle">Log out of InternTrack?</h2>
+
+    <p>
+      You will need to sign in again to access your
+      supervisor workspace.
+    </p>
+
+    @if (logoutError) {
+      <div class="feedback error" role="alert">
+        {{ logoutError }}
+      </div>
+    }
+
+    <div class="dialog-actions">
+
+      <button
+        type="button"
+        class="button secondary"
+        (click)="closeLogoutDialog()"
+        [disabled]="loggingOut">
+        Cancel
       </button>
-      <div *ngIf="editing" class="edit-actions">
-        <button type="button" class="save-button" (click)="saveProfile()">
-          Save Changes
-        </button>
-        <button type="button" class="cancel-button" (click)="cancelEdit()">
-          Cancel
-        </button>
-      </div>
-      <div *ngIf="editingPassword" class="edit-actions">
-        <button type="button" class="save-button" (click)="changePassword()">
-          Change Password
-        </button>
-        <button type="button" class="cancel-button" (click)="cancelPasswordEdit()">
-          Cancel
-        </button>
-      </div>
+
+      <button
+        type="button"
+        class="button primary"
+        (click)="logout()"
+        [disabled]="loggingOut">
+        {{ loggingOut ? 'Logging out...' : 'Log out' }}
+      </button>
+
     </div>
 
-  </div>
+  </dialog>
 
 </div>

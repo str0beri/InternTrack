@@ -1,238 +1,497 @@
 <div class="attendance-container">
 
-  <!-- Loading State -->
-  @if (loading) {
-    <div class="loading-container">
-      <p>Loading attendance data...</p>
+  <!-- Page header -->
+
+  <header class="page-header">
+
+    <div class="page-heading">
+
+      <h1>Attendance</h1>
+
+      <p>
+        Review synchronized attendance records from the student app.
+        Each record includes time-in and time-out capture with GPS
+        location; only verified records count toward official
+        rendered hours.
+      </p>
+
     </div>
-  }
 
-  <!-- Attendance Content -->
-  @if (!loading) {
+    @if (!loading && !loadError) {
 
-    <!-- intern selection -->
-    <section class="intern-selector">
+      <div class="attendance-summary">
 
-      <span class="selector-label">Select Intern:</span>
+        <span class="summary-pending">
+          <span class="summary-dot"></span>
+          {{ pendingCount }} pending
+        </span>
 
-      @for (intern of interns; track intern.id) {
-        <button
-          type="button"
-          class="intern-tab"
-          [class.active]="selectedInternId === intern.id"
-          (click)="selectIntern(intern.id)">
+        <span class="summary-separator">·</span>
 
-          {{ intern.name }}
+        <span class="summary-incomplete">
+          {{ incompleteCount }} incomplete
+        </span>
 
-        </button>
+      </div>
+
+    }
+
+  </header>
+
+  <!-- Loading state -->
+
+  @if (loading) {
+
+    <div class="state-panel">
+
+      <div class="loading-spinner"></div>
+
+      <h3>Loading attendance</h3>
+
+      <p>Retrieving synchronized attendance records...</p>
+
+    </div>
+
+  } @else if (loadError) {
+
+    <!-- Error state -->
+
+    <div class="state-panel">
+
+      <h3>Unable to load attendance</h3>
+
+      <p>{{ loadError }}</p>
+
+      <button
+        type="button"
+        class="primary-button"
+        (click)="loadData()">
+
+        Try again
+
+      </button>
+
+    </div>
+
+  } @else {
+
+    <section class="attendance-panel">
+
+      <!-- Filter toolbar -->
+
+      <div class="filter-toolbar">
+
+        <div class="filter-controls">
+
+          <!-- Search -->
+
+          <div class="search-field">
+
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              aria-hidden="true">
+
+              <circle cx="11" cy="11" r="7"></circle>
+              <path d="m20 20-4-4"></path>
+
+            </svg>
+
+            <input
+              type="search"
+              aria-label="Search attendance"
+              placeholder="Search by student name or ID"
+              [(ngModel)]="searchQuery"
+              (ngModelChange)="onFilterChange()">
+
+          </div>
+
+          <!-- Date range -->
+
+          <div class="date-range">
+
+            <input
+              type="date"
+              class="filter-input date-input"
+              aria-label="Start date"
+              [(ngModel)]="dateFrom"
+              (ngModelChange)="onFilterChange()">
+
+            <span class="date-separator">to</span>
+
+            <input
+              type="date"
+              class="filter-input date-input"
+              aria-label="End date"
+              [(ngModel)]="dateTo"
+              (ngModelChange)="onFilterChange()">
+
+          </div>
+
+          <!-- Student filter -->
+
+          <select
+            class="filter-input student-select"
+            aria-label="Filter by student"
+            [(ngModel)]="selectedStudent"
+            (ngModelChange)="onFilterChange()">
+
+            <option value="all">All students</option>
+
+            @for (intern of interns; track intern.id) {
+
+              <option [value]="intern.id">
+                {{ intern.name }}
+              </option>
+
+            }
+
+          </select>
+
+          <!-- Status filter -->
+
+          <select
+            class="filter-input status-select"
+            aria-label="Filter by attendance status"
+            [(ngModel)]="selectedStatus"
+            (ngModelChange)="onFilterChange()">
+
+            <option value="all">All statuses</option>
+            <option value="pending">Pending</option>
+            <option value="verified">Verified</option>
+            <option value="incomplete">Incomplete</option>
+            <option value="rejected">Rejected</option>
+
+          </select>
+
+        </div>
+
+        <!-- Record count -->
+
+        <div class="record-count">
+
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linecap="round"
+            aria-hidden="true">
+
+            <path d="M4 6h16M4 12h16M4 18h16"></path>
+            <path d="M8 3v6M16 9v6M10 15v6"></path>
+
+          </svg>
+
+          {{ totalRecords }}
+          {{ totalRecords === 1 ? 'record' : 'records' }}
+
+        </div>
+
+      </div>
+
+      @if (invalidDateRange) {
+
+        <div class="filter-error">
+          The start date must not be later than the end date.
+        </div>
+
       }
 
-    </section>
+      <!-- Attendance table -->
 
-    <!-- attendance content -->
-    @if (selectedIntern) {
-      <section class="attendance-card">
+      <div class="table-wrapper">
 
-        <!-- intern information -->
-        <div class="intern-header">
+        <table class="attendance-table">
 
-          <div class="intern-details">
-            <h2>{{ selectedIntern.name }}</h2>
+          <thead>
 
-            <p>
-              {{ selectedIntern.id }} · {{ selectedIntern.department }}
-            </p>
-          </div>
+            <tr>
+              <th scope="col">Student</th>
+              <th scope="col">Date</th>
+              <th scope="col">Time in</th>
+              <th scope="col">Time out</th>
+              <th scope="col">Duration</th>
+              <th scope="col">Status</th>
+              <th scope="col" aria-label="Action"></th>
+            </tr>
 
-          <div class="rendered-hours">
-            {{ selectedIntern.totalRendered }} records ·
-            {{ selectedIntern.totalVerified }} verified
-          </div>
+          </thead>
 
-        </div>
+          <tbody>
 
-        <!-- date filter -->
-        <div class="filter-section">
-          <label for="dateFilter">Filter by Date:</label>
-          <button
-            type="button"
-            class="date-picker-button"
-            (click)="isCalendarOpen = true">
-            <ion-icon name="calendar-outline"></ion-icon>
-            @if (selectedDate) {
-              {{ selectedDate }}
-            } @else {
-              Select Date
-            }
-          </button>
-          @if (selectedDate) {
-            <button
-              type="button"
-              class="clear-filter"
-              (click)="clearDateFilter()">
-              Clear
-            </button>
-          }
-        </div>
+            @for (
+              record of paginatedAttendance;
+              track record.id
+            ) {
 
-        <!-- Calendar Modal -->
-        <ion-modal [isOpen]="isCalendarOpen" (didDismiss)="isCalendarOpen = false">
-          <ng-template>
-            <div class="calendar-modal">
-              <ion-datetime
-                presentation="date"
-                [(ngModel)]="selectedDate"
-                (ionChange)="onDateChange($event)">
-              </ion-datetime>
-              <button
-                type="button"
-                class="close-calendar"
-                (click)="isCalendarOpen = false">
-                Done
-              </button>
-            </div>
-          </ng-template>
-        </ion-modal>
-
-        <!-- attendance table -->
-        <div class="table-wrapper">
-
-          <table class="attendance-table">
-
-            <thead>
               <tr>
-                <th>DATE</th>
-                <th>IN</th>
-                <th>OUT</th>
-                <th>HOURS</th>
-                <th>PHOTO</th>
-                <th>LOCATION</th>
-                <th>STATUS</th>
-                <th>REMARKS</th>
-                <th>ACTION</th>
-              </tr>
-            </thead>
 
-            <tbody>
+                <!-- Student -->
 
-              @for (record of filteredAttendance; track record.id) {
-                <tr>
+                <td>
 
-                  <td class="date-cell">
-                    {{ record.date }}
-                    <span>({{ record.day }})</span>
-                  </td>
+                  <div class="student-cell">
 
-                  <td>{{ record.timeIn }}</td>
+                    <div
+                      class="student-avatar"
+                      [attr.data-color]="record.avatarColor">
 
-                  <td>
-                    @if (record.timeOut === 'Active') {
-                      <span class="active-time">Active</span>
-                    } @else {
-                      <span>{{ record.timeOut }}</span>
-                    }
-                  </td>
+                      {{ record.initials }}
 
-                  <td>
-                    <span
-                      class="hours-value"
-                      [class.no-hours]="record.hours === '--'">
-                      {{ record.hours }}
-                    </span>
-                  </td>
-
-                  <td>
-                    <div class="photo-buttons">
-                      @if (record.timeInPhoto) {
-                        <button
-                          type="button"
-                          class="photo-link"
-                          (click)="viewPhoto(record.timeInPhoto)"
-                          title="View Time In Photo">
-
-                          <ion-icon name="camera-outline"></ion-icon>
-                          In
-
-                        </button>
-                      }
-
-                      @if (record.timeOutPhoto) {
-                        <button
-                          type="button"
-                          class="photo-link"
-                          (click)="viewPhoto(record.timeOutPhoto)"
-                          title="View Time Out Photo">
-
-                          <ion-icon name="camera-outline"></ion-icon>
-                          Out
-
-                        </button>
-                      }
                     </div>
-                  </td>
 
-                  <td class="location-cell">
-                    {{ record.location }}
-                  </td>
+                    <div class="student-information">
 
-                  <td>
-                    <span
-                      class="status-badge"
-                      [class.provisional]="record.status === 'PROVISIONAL'"
-                      [class.verified]="record.status === 'VERIFIED'">
+                      <span class="student-name">
+                        {{ record.studentName }}
+                      </span>
 
-                      {{ record.status }}
+                      <span class="student-id">
+                        {{ record.studentId }}
+                      </span>
 
+                    </div>
+
+                  </div>
+
+                </td>
+
+                <!-- Attendance date -->
+
+                <td>
+
+                  <div class="date-cell">
+
+                    <span class="attendance-date">
+                      {{ record.date }}
                     </span>
-                  </td>
 
-                  <td class="remarks-cell">
-                    @if (record.status === 'PROVISIONAL') {
-                      <input
-                        type="text"
-                        [(ngModel)]="verificationRemark"
-                        placeholder="Add remark (optional)"
-                        class="remarks-input">
-                    } @else if (record.remarks) {
-                      <span>{{ record.remarks }}</span>
-                    }
-                  </td>
+                    <span class="attendance-day">
+                      {{ record.day }}
+                    </span>
 
-                  <td class="action-cell">
+                  </div>
 
-                    @if (record.action === 'VERIFY') {
+                </td>
+
+                <!-- Time in -->
+
+                <td class="time-cell">
+                  {{ record.timeIn }}
+                </td>
+
+                <!-- Time out -->
+
+                <td
+                  class="time-cell"
+                  [class.missing-value]="record.timeOut === '—'">
+
+                  {{ record.timeOut }}
+
+                </td>
+
+                <!-- Duration -->
+
+                <td class="duration-cell">
+                  {{ record.duration }}
+                </td>
+
+                <!-- Status -->
+
+                <td>
+
+                  <span
+                    class="status-badge"
+                    [ngClass]="record.status">
+
+                    <span class="status-dot"></span>
+
+                    {{ record.statusLabel }}
+
+                  </span>
+
+                </td>
+
+                <!-- Review action -->
+
+                <td class="action-cell">
+
+                  <button
+                    type="button"
+                    class="review-button"
+                    [attr.aria-label]="'Review attendance of ' + record.studentName"
+                    (click)="openAttendanceDetails(record)">
+
+                    Review
+
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.8"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true">
+
+                      <path d="m9 18 6-6-6-6"></path>
+
+                    </svg>
+
+                  </button>
+
+                </td>
+
+              </tr>
+
+            } @empty {
+
+              <tr>
+
+                <td colspan="7">
+
+                  <div class="empty-state">
+
+                    @if (interns.length === 0) {
+
+                      <h3>No assigned interns</h3>
+
+                      <p>
+                        Attendance records will appear when the
+                        OJT coordinator assigns interns to you.
+                      </p>
+
+                    } @else if (attendanceRecords.length === 0) {
+
+                      <h3>No attendance records yet</h3>
+
+                      <p>
+                        Synchronized attendance records from your
+                        assigned interns will appear here.
+                      </p>
+
+                    } @else {
+
+                      <h3>No matching attendance records</h3>
+
+                      <p>
+                        Try changing your search or filters.
+                      </p>
+
                       <button
                         type="button"
-                        class="verify-button"
-                        (click)="verifyAttendance(record.id)">
+                        class="clear-button"
+                        (click)="clearFilters()">
 
-                        VERIFY
+                        Clear filters
 
                       </button>
-                    } @else {
-                      <span>{{ record.action }}</span>
+
                     }
 
-                  </td>
+                  </div>
 
-                </tr>
-              }
+                </td>
 
-            </tbody>
+              </tr>
 
-          </table>
+            }
 
-        </div>
+          </tbody>
 
-      </section>
-    }
+        </table>
 
-    <!-- Empty State -->
-    @if (!selectedIntern && interns.length === 0) {
-      <div class="empty-state">
-        <p>No interns assigned to you yet.</p>
       </div>
-    }
+
+      <!-- Pagination -->
+
+      <footer class="table-footer">
+
+        <p class="pagination-description">
+
+          Showing
+          <strong>{{ firstRecord }}–{{ lastRecord }}</strong>
+          of
+          <strong>{{ totalRecords }}</strong>
+          attendance records
+
+        </p>
+
+        <nav
+          class="pagination"
+          aria-label="Attendance pagination">
+
+          <!-- Previous -->
+
+          <button
+            type="button"
+            class="pagination-arrow"
+            aria-label="Previous page"
+            [disabled]="currentPage === 1"
+            (click)="goToPage(currentPage - 1)">
+
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round">
+
+              <path d="m15 18-6-6 6-6"></path>
+
+            </svg>
+
+          </button>
+
+          <!-- Page numbers -->
+
+          @for (page of pageNumbers; track page) {
+
+            <button
+              type="button"
+              class="page-number"
+              [class.active]="currentPage === page"
+              [attr.aria-current]="currentPage === page ? 'page' : null"
+              (click)="goToPage(page)">
+
+              {{ page }}
+
+            </button>
+
+          }
+
+          <!-- Next -->
+
+          <button
+            type="button"
+            class="pagination-arrow"
+            aria-label="Next page"
+            [disabled]="currentPage === totalPages"
+            (click)="goToPage(currentPage + 1)">
+
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round">
+
+              <path d="m9 18 6-6-6-6"></path>
+
+            </svg>
+
+          </button>
+
+        </nav>
+
+      </footer>
+
+    </section>
 
   }
 

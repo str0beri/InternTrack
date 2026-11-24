@@ -1,0 +1,471 @@
+
+<div class="student-interns-page">
+
+  <!-- PAGE HEADER -->
+
+  <header class="page-heading">
+
+    <div class="heading-content">
+
+      <h1>Student Interns</h1>
+
+      <p *ngIf="!isLoading && !errorMessage">
+        {{ totalStudents }} registered interns
+        <span class="separator">·</span>
+        {{ activePlacements }} with active placements
+        <span class="separator">·</span>
+        {{ awaitingAssignments }} awaiting assignment.
+      </p>
+
+      <p *ngIf="isLoading">
+        Loading student intern records...
+      </p>
+
+    </div>
+
+    <button
+      type="button"
+      class="primary-button"
+      [disabled]="!canAddStudent"
+      title="Student account creation is not yet available">
+
+      <ion-icon name="add-outline"></ion-icon>
+
+      Add student intern
+
+    </button>
+
+  </header>
+
+  <!-- STUDENT TABLE CARD -->
+
+  <section class="table-card">
+
+    <!-- FILTER TOOLBAR -->
+
+    <div class="filter-toolbar">
+
+      <div class="filters">
+
+        <div class="search-field">
+
+          <ion-icon name="search-outline"></ion-icon>
+
+          <input
+            type="search"
+            placeholder="Search by student name or ID"
+            aria-label="Search student interns"
+            [(ngModel)]="searchTerm"
+            (ngModelChange)="onFilterChange()"
+          />
+
+        </div>
+
+        <div class="select-field">
+
+          <select
+            aria-label="Filter by course"
+            [(ngModel)]="selectedCourse"
+            (ngModelChange)="onFilterChange()">
+
+            <option value="all">All courses</option>
+
+            <option
+              *ngFor="let course of courses"
+              [value]="course">
+
+              {{ course }}
+
+            </option>
+
+          </select>
+
+          <ion-icon name="chevron-down-outline"></ion-icon>
+
+        </div>
+
+        <div class="select-field">
+
+          <select
+            aria-label="Filter by company"
+            [(ngModel)]="selectedCompany"
+            (ngModelChange)="onFilterChange()">
+
+            <option value="all">All companies</option>
+
+            <option
+              *ngFor="let company of companies"
+              [value]="company">
+
+              {{ company }}
+
+            </option>
+
+            <option value="Unassigned">
+              Unassigned
+            </option>
+
+          </select>
+
+          <ion-icon name="chevron-down-outline"></ion-icon>
+
+        </div>
+
+        <div class="select-field status-filter">
+
+          <select
+            aria-label="Filter by status"
+            [(ngModel)]="selectedStatus"
+            (ngModelChange)="onFilterChange()">
+
+            <option value="all">All statuses</option>
+            <option value="ongoing">Ongoing</option>
+            <option value="unassigned">Unassigned</option>
+            <option value="needs_follow_up">Needs follow-up</option>
+            <option value="hours_completed">Hours completed</option>
+            <option value="not_started">Not started</option>
+            <option value="inactive">Inactive</option>
+
+          </select>
+
+          <ion-icon name="chevron-down-outline"></ion-icon>
+
+        </div>
+
+      </div>
+
+      <span class="record-count" *ngIf="!isLoading">
+        {{ filteredStudents.length }} records
+      </span>
+
+    </div>
+
+    <!-- LOADING STATE -->
+
+    <div
+      class="empty-state"
+      *ngIf="isLoading"
+      role="status">
+
+      <div class="loading-spinner"></div>
+
+      <h3>Loading student interns</h3>
+
+      <p>Please wait while we retrieve student records.</p>
+
+    </div>
+
+    <!-- ERROR STATE -->
+
+    <div
+      class="empty-state"
+      *ngIf="!isLoading && errorMessage"
+      role="alert">
+
+      <h3>Unable to load records</h3>
+
+      <p>{{ errorMessage }}</p>
+
+      <button
+        type="button"
+        class="secondary-button"
+        (click)="loadStudents()">
+
+        <ion-icon name="refresh-outline"></ion-icon>
+
+        Try again
+
+      </button>
+
+    </div>
+
+    <!-- STUDENT TABLE -->
+
+    <div
+      class="table-wrapper"
+      *ngIf="!isLoading && !errorMessage && filteredStudents.length">
+
+      <table class="students-table">
+
+        <thead>
+
+          <tr>
+            <th>Student</th>
+            <th>Student ID</th>
+            <th>Course &amp; Year Level</th>
+            <th>Assigned Company</th>
+            <th>Verified Hours</th>
+            <th>Progress</th>
+            <th>Status</th>
+            <th class="action-heading">Action</th>
+          </tr>
+
+        </thead>
+
+        <tbody>
+
+          <tr
+            *ngFor="
+              let student of paginatedStudents;
+              trackBy: trackStudent
+            ">
+
+            <!-- STUDENT NAME -->
+
+            <td>
+
+              <div class="student-profile">
+
+                <div
+                  class="student-avatar"
+                  [ngClass]="student.avatarColor">
+
+                  {{ student.initials }}
+
+                </div>
+
+                <div class="student-information">
+
+                  <span class="student-name">
+                    {{ student.fullName }}
+                  </span>
+
+                  <span
+                    class="student-email"
+                    [title]="student.email">
+
+                    {{ student.email || 'No email provided' }}
+
+                  </span>
+
+                </div>
+
+              </div>
+
+            </td>
+
+            <!-- STUDENT ID -->
+
+            <td class="student-id">
+              {{ student.studentId }}
+            </td>
+
+            <!-- COURSE AND YEAR LEVEL -->
+
+            <td>
+
+              <div class="course-information">
+
+                <span>{{ student.course }}</span>
+
+                <small *ngIf="student.yearLevel">
+                  {{ student.yearLevel }}
+                </small>
+
+              </div>
+
+            </td>
+
+            <!-- COMPANY -->
+
+            <td>
+
+              <span
+                [class.muted-text]="!student.hasAssignment">
+
+                {{ student.companyName }}
+
+              </span>
+
+            </td>
+
+            <!-- VERIFIED HOURS -->
+
+            <td>
+
+              <div class="hours-value">
+
+                <strong>
+                  {{ student.verifiedHours | number:'1.0-2' }}
+                </strong>
+
+                <span>
+                  / {{ student.requiredHours }} h
+                </span>
+
+              </div>
+
+            </td>
+
+            <!-- PROGRESS -->
+
+            <td>
+
+              <div class="progress-container">
+
+                <div
+                  class="progress-track"
+                  role="progressbar"
+                  [attr.aria-label]="student.fullName + ' internship progress'"
+                  [attr.aria-valuenow]="student.progress"
+                  aria-valuemin="0"
+                  aria-valuemax="100">
+
+                  <div
+                    class="progress-fill"
+                    [class.warning]="student.status === 'needs_follow_up'"
+                    [class.completed]="student.status === 'hours_completed'"
+                    [style.width.%]="student.progress">
+
+                  </div>
+
+                </div>
+
+                <span class="progress-label">
+                  {{ student.progress }}% complete
+                </span>
+
+              </div>
+
+            </td>
+
+            <!-- STATUS -->
+
+            <td>
+
+              <span
+                class="status-badge"
+                [ngClass]="student.status">
+
+                <span class="status-dot"></span>
+
+                {{ getStatusLabel(student.status) }}
+
+              </span>
+
+            </td>
+
+            <!-- ACTION -->
+
+            <td class="action-cell">
+
+              <button
+                type="button"
+                class="view-button"
+                [attr.aria-label]="'View ' + student.fullName"
+                (click)="viewStudent(student)">
+
+                <ion-icon name="eye-outline"></ion-icon>
+
+                View
+
+              </button>
+
+            </td>
+
+          </tr>
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+    <!-- EMPTY STATE -->
+
+    <div
+      class="empty-state"
+      *ngIf="!isLoading && !errorMessage && !filteredStudents.length">
+
+      <div class="empty-icon">
+        <ion-icon name="people-outline"></ion-icon>
+      </div>
+
+      <h3>No student interns found</h3>
+
+      <p *ngIf="students.length">
+        Try changing your search or selected filters.
+      </p>
+
+      <p *ngIf="!students.length">
+        No student intern records are currently available.
+      </p>
+
+      <button
+        *ngIf="students.length"
+        type="button"
+        class="secondary-button"
+        (click)="resetFilters()">
+
+        Clear filters
+
+      </button>
+
+    </div>
+
+    <!-- TABLE FOOTER -->
+
+    <footer
+      class="table-footer"
+      *ngIf="!isLoading && !errorMessage">
+
+      <p class="pagination-summary">
+
+        Showing
+
+        <strong>{{ showingFrom }}–{{ showingTo }}</strong>
+
+        of
+
+        <strong>{{ filteredStudents.length }}</strong>
+
+        student interns
+
+      </p>
+
+      <nav
+        class="pagination"
+        aria-label="Student table pagination"
+        *ngIf="filteredStudents.length">
+
+        <button
+          type="button"
+          class="page-button"
+          aria-label="Previous page"
+          [disabled]="currentPage === 1"
+          (click)="goToPage(currentPage - 1)">
+
+          <ion-icon name="chevron-back-outline"></ion-icon>
+
+        </button>
+
+        <button
+          *ngFor="let page of pageNumbers"
+          type="button"
+          class="page-button"
+          [class.active]="currentPage === page"
+          [attr.aria-current]="currentPage === page ? 'page' : null"
+          (click)="goToPage(page)">
+
+          {{ page }}
+
+        </button>
+
+        <button
+          type="button"
+          class="page-button"
+          aria-label="Next page"
+          [disabled]="currentPage === totalPages"
+          (click)="goToPage(currentPage + 1)">
+
+          <ion-icon name="chevron-forward-outline"></ion-icon>
+
+        </button>
+
+      </nav>
+
+    </footer>
+
+  </section>
+
+</div>

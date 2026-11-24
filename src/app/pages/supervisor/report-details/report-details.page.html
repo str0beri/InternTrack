@@ -1,0 +1,404 @@
+<div class="details-container">
+
+  <button class="back-button" (click)="goBack()">
+    <svg viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" stroke-width="1.8">
+      <path d="M19 12H5m7-7-7 7 7 7"></path>
+    </svg>
+    Weekly Reports
+  </button>
+
+  @if (loading) {
+    <div class="state-panel">
+      <div class="spinner"></div>
+      <p>Loading report details...</p>
+    </div>
+  } @else if (loadError) {
+    <div class="state-panel">
+      <h3>Unable to load report</h3>
+      <p>{{ loadError }}</p>
+      <button class="button primary" (click)="loadData()">
+        Try again
+      </button>
+    </div>
+  } @else if (report && student) {
+
+    <header class="page-header">
+
+      <div>
+        <div class="eyebrow">
+          WEEK {{ report.week }} · WEEKLY REPORT
+        </div>
+
+        <h1>{{ student.full_name }}</h1>
+
+        <p>
+          {{ reportingPeriod }} ·
+          Submitted {{ formatDateTime(report.submitted_at) }}
+        </p>
+      </div>
+
+      <div class="header-actions">
+
+        <span class="status-badge" [ngClass]="report.status">
+          <span class="status-dot"></span>
+          {{ statusLabel }}
+        </span>
+
+        <button class="button outline"
+          (click)="openInternProfile()">
+          Intern profile
+        </button>
+
+      </div>
+
+    </header>
+
+    @if (successMessage) {
+      <div class="success-message" role="status">
+        {{ successMessage }}
+      </div>
+    }
+
+    <div class="details-grid">
+
+      <!-- Left column -->
+
+      <div class="main-column">
+
+        <section class="panel">
+
+          <div class="panel-header">
+            <h2>Weekly accomplishments</h2>
+            <p>Submitted work log for the reporting period.</p>
+          </div>
+
+          <div class="student-banner">
+
+            <div class="student-profile">
+              <div class="avatar">{{ initials }}</div>
+
+              <div>
+                <strong>{{ student.full_name }}</strong>
+                <p>
+                  {{ student.student_id }} ·
+                  {{ student.department || student.course }}
+                </p>
+              </div>
+            </div>
+
+            <div class="week-information">
+              <span>REPORTING WEEK</span>
+              <strong>Week {{ report.week }}</strong>
+              <p>{{ reportingPeriod }}</p>
+            </div>
+
+          </div>
+
+          <div class="panel-body">
+            <div class="report-text">
+              {{ report.accomplishments || 'No accomplishments recorded.' }}
+            </div>
+          </div>
+
+        </section>
+
+        <section class="panel">
+
+          <div class="panel-header">
+            <h2>Student reflection</h2>
+            <p>The student's own assessment of the week.</p>
+          </div>
+
+          <div class="panel-body">
+            <div class="reflection-text">
+              {{ report.student_reflection || 'No reflection recorded.' }}
+            </div>
+          </div>
+
+        </section>
+
+        @if (report.feedback) {
+          <section class="panel">
+
+            <div class="panel-header">
+              <h2>Supervisor feedback</h2>
+              <p>Latest recorded feedback for this report.</p>
+            </div>
+
+            <div class="panel-body">
+              <div class="report-text">
+                {{ report.feedback }}
+              </div>
+            </div>
+
+          </section>
+        }
+
+      </div>
+
+      <!-- Right column -->
+
+      <aside class="side-column">
+
+        <section class="panel">
+
+          <div class="panel-header">
+            <h2>Review decision</h2>
+            <p>Choose one outcome for this submission.</p>
+          </div>
+
+          <div class="panel-body decision-body">
+
+            @if (report.status === 'pending_review') {
+
+              <button class="button primary full-width"
+                [disabled]="saving"
+                (click)="openDialog('approve')">
+
+                <svg viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="1.8">
+                  <circle cx="12" cy="12" r="9"></circle>
+                  <path d="m8 12 3 3 5-6"></path>
+                </svg>
+
+                Approve Report
+
+              </button>
+
+              <button class="button outline full-width"
+                [disabled]="saving"
+                (click)="openDialog('return')">
+
+                <svg viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="1.8">
+                  <path d="M4 4v6h6"></path>
+                  <path d="M4 10a8 8 0 1 1 1 7"></path>
+                </svg>
+
+                Return for Revision
+
+              </button>
+
+              <p class="helper-text">
+                Approving makes the report read-only in the app.
+                Returning requires written feedback.
+              </p>
+
+            } @else {
+
+              <span class="status-badge" [ngClass]="report.status">
+                <span class="status-dot"></span>
+                {{ statusLabel }}
+              </span>
+
+              @if (report.status === 'approved') {
+                <p class="helper-text">
+                  This report has been approved and is read-only.
+                </p>
+              } @else {
+                <p class="helper-text">
+                  This report has been returned. The student
+                  can revise and resubmit it through the mobile app.
+                </p>
+              }
+
+            }
+
+          </div>
+
+        </section>
+
+        <section class="panel">
+
+          <div class="panel-header">
+            <h2>Submission details</h2>
+          </div>
+
+          <div class="panel-body information-list">
+
+            <div class="information-item">
+              <span>STUDENT</span>
+              <strong>{{ student.full_name }}</strong>
+            </div>
+
+            <div class="information-item">
+              <span>STUDENT ID</span>
+              <strong>{{ student.student_id }}</strong>
+            </div>
+
+            <div class="information-item">
+              <span>DEPARTMENT</span>
+              <strong>{{ student.department || 'Not provided' }}</strong>
+            </div>
+
+            <div class="information-item">
+              <span>REPORTING WEEK</span>
+              <strong>Week {{ report.week }}</strong>
+            </div>
+
+            <div class="information-item">
+              <span>REPORTING PERIOD</span>
+              <strong>{{ reportingPeriod }}</strong>
+            </div>
+
+            <div class="information-item">
+              <span>SUBMITTED</span>
+              <strong>
+                {{ formatDateTime(report.submitted_at) }}
+              </strong>
+            </div>
+
+          </div>
+
+        </section>
+
+        <section class="panel">
+
+          <div class="panel-header">
+            <h2>Review history</h2>
+          </div>
+
+          <div class="panel-body">
+
+            <div class="timeline">
+
+              @if (report.submitted_at) {
+                <div class="timeline-item">
+                  <span class="timeline-dot"></span>
+                  <strong>Latest submission</strong>
+                  <p>
+                    {{ student.full_name }} ·
+                    {{ formatDateTime(report.submitted_at) }}
+                  </p>
+                </div>
+              }
+
+              @if (report.reviewed_at) {
+                <div class="timeline-item">
+                  <span class="timeline-dot reviewed"></span>
+                  <strong>Latest recorded review</strong>
+                  <p>
+                    {{ report.supervisor_name || 'Company supervisor' }}
+                    · {{ formatDateTime(report.reviewed_at) }}
+                  </p>
+                </div>
+              }
+
+              @if (!report.submitted_at && !report.reviewed_at) {
+                <p class="helper-text">
+                  No review activity recorded.
+                </p>
+              }
+
+            </div>
+
+          </div>
+
+        </section>
+
+        <div class="information-note">
+          <svg viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="1.7">
+            <path d="M6 3h8l4 4v14H6z"></path>
+            <path d="M14 3v5h5M9 12h6M9 16h6"></path>
+          </svg>
+
+          <span>
+            Approved reports are read-only. Concerns regarding
+            approved reports should be referred to the OJT Coordinator.
+          </span>
+        </div>
+
+      </aside>
+
+    </div>
+  }
+
+  <!-- Confirmation dialogs -->
+
+  <dialog #reviewDialog
+    class="review-dialog"
+    (cancel)="onDialogCancel($event)"
+    (close)="onDialogClosed()"
+    aria-labelledby="dialogTitle">
+
+    @if (dialogMode === 'approve') {
+
+      <h2 id="dialogTitle">Approve this weekly report?</h2>
+
+      <p class="dialog-description">
+        Week {{ report?.week }} ({{ reportingPeriod }})
+        will become read-only for {{ student?.full_name }}.
+        You can still view it from the reports list.
+      </p>
+
+    } @else if (dialogMode === 'return') {
+
+      <button class="close-button"
+        aria-label="Close dialog"
+        [disabled]="saving"
+        (click)="closeDialog()">
+        ×
+      </button>
+
+      <h2 id="dialogTitle">Return report for revision</h2>
+
+      <p class="dialog-description">
+        Written feedback is required. The student will see it
+        in the mobile app and can resubmit this report.
+      </p>
+
+      <label for="feedback">
+        Feedback for the student <span class="required">*</span>
+      </label>
+
+      <textarea
+        id="feedback"
+        [(ngModel)]="feedback"
+        [disabled]="saving"
+        placeholder="Specify what is missing or unclear and what to change before resubmitting."
+        rows="6">
+      </textarea>
+
+      <div class="feedback-counter">
+        <span>Minimum 20 characters.</span>
+        <span>{{ feedback.trim().length }} characters</span>
+      </div>
+
+    }
+
+    @if (actionError) {
+      <div class="action-error" role="alert">
+        {{ actionError }}
+      </div>
+    }
+
+    <div class="dialog-actions">
+
+      <button class="button outline"
+        [disabled]="saving"
+        (click)="closeDialog()">
+        Cancel
+      </button>
+
+      <button class="button primary"
+        [disabled]="saving ||
+          (dialogMode === 'return' && feedback.trim().length < 20)"
+        (click)="confirmDecision()">
+
+        @if (saving) {
+          Saving...
+        } @else {
+          {{ dialogMode === 'approve'
+            ? 'Approve report'
+            : 'Return report' }}
+        }
+
+      </button>
+
+    </div>
+
+  </dialog>
+
+</div>

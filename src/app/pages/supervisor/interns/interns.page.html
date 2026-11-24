@@ -1,94 +1,482 @@
 <div class="interns-container">
 
-  <!-- Loading State -->
-  <div *ngIf="loading" class="loading-container">
-    <p>Loading interns...</p>
-  </div>
+  <!-- PAGE HEADER -->
+  <header class="page-header">
+    <h1>My Interns</h1>
 
-  <!-- Interns Grid -->
-  <section class="interns-grid" *ngIf="!loading">
+    @if (!loading && !loadError) {
+      <p>
+        {{ interns.length }} student
+        {{ interns.length === 1 ? 'intern' : 'interns' }}
+        assigned to you.
 
-    <article
-      class="intern-card"
-      *ngFor="let intern of interns">
+        @if (companyName) {
+          You can only access interns assigned to {{ companyName }}.
+        } @else {
+          You can only access interns assigned to your account.
+        }
+      </p>
+    } @else {
+      <p>View and monitor your assigned student interns.</p>
+    }
+  </header>
 
-      <!-- intern header -->
-      <div class="intern-header">
+  <!-- LOADING STATE -->
+  @if (loading) {
 
-        <div class="intern-heading">
-          <h2>{{ intern.name }}</h2>
+    <div class="state-container" role="status">
+      <div class="loading-spinner"></div>
+      <p>Loading interns...</p>
+    </div>
 
-          <p>
-            {{ intern.id }} · BS Information Technology
-          </p>
-        </div>
+  } @else if (loadError) {
 
-        <span
-          class="status-badge"
-          [ngClass]="intern.statusClass">
+    <!-- ERROR STATE -->
+    <div class="state-container" role="alert">
+      <h3>Unable to load interns</h3>
+      <p>{{ loadError }}</p>
 
-          {{ intern.status }}
+      <button
+        type="button"
+        class="primary-button"
+        (click)="loadData()">
+        Try again
+      </button>
+    </div>
 
-        </span>
+  } @else {
 
-      </div>
+    <!-- INTERNS PANEL -->
+    <section class="interns-panel">
 
-      <!-- progress -->
-      <div class="progress-section">
+      <!-- FILTER TOOLBAR -->
+      <div class="table-toolbar">
 
-        <div class="progress-label">
-          <span>Progress:</span>
+        <div class="toolbar-filters">
 
-          <strong>
-            {{ intern.completedHours.toFixed(1) }} /
-            {{ intern.requiredHours }}h
-            ({{ intern.progress.toFixed(1) }}%)
-          </strong>
-        </div>
+          <!-- SEARCH -->
+          <div class="search-field">
 
-        <div class="progress-track">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"
+              aria-hidden="true">
+              <circle cx="11" cy="11" r="7"></circle>
+              <path d="m16 16 4 4"></path>
+            </svg>
 
-          <div
-            class="progress-fill"
-            [style.width.%]="intern.progress">
+            <input
+              type="search"
+              placeholder="Search by name, student ID or course"
+              aria-label="Search interns"
+              [ngModel]="searchQuery"
+              (ngModelChange)="onSearchChange($event)">
+
+          </div>
+
+          <!-- COURSE FILTER -->
+          <div class="select-field">
+
+            <select
+              aria-label="Filter by course"
+              [ngModel]="selectedCourse"
+              (ngModelChange)="onCourseChange($event)">
+
+              <option value="all">All courses</option>
+
+              @for (course of courses; track course) {
+                <option [value]="course">
+                  {{ course }}
+                </option>
+              }
+
+            </select>
+
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true">
+              <path d="m6 9 6 6 6-6"></path>
+            </svg>
+
+          </div>
+
+          <!-- STATUS FILTER -->
+          <div class="select-field">
+
+            <select
+              aria-label="Filter by status"
+              [ngModel]="selectedStatus"
+              (ngModelChange)="onStatusChange($event)">
+
+              <option value="all">All statuses</option>
+              <option value="ongoing">Ongoing</option>
+              <option value="needs-follow-up">
+                Needs follow-up
+              </option>
+              <option value="completed">Completed</option>
+
+            </select>
+
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true">
+              <path d="m6 9 6 6 6-6"></path>
+            </svg>
+
           </div>
 
         </div>
 
-      </div>
+        <!-- INTERN COUNT -->
+        <div class="intern-count" aria-live="polite">
 
-      <!-- intern information -->
-      <div class="intern-information">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7"
+            stroke-linecap="round"
+            aria-hidden="true">
+            <path d="M4 7h16M4 12h16M4 17h16"></path>
+            <path d="M8 4v6M16 9v6M10 14v6"></path>
+          </svg>
 
-        <p>
-          <strong>Division:</strong>
-          {{ intern.division }}
-        </p>
+          <span>
+            {{ filteredInterns.length }}
+            {{ filteredInterns.length === 1 ? 'intern' : 'interns' }}
+          </span>
 
-        <p>
-          <strong>Email:</strong>
-          {{ intern.email }}
-        </p>
-
-        <p>
-          <strong>OJT Start:</strong>
-          {{ intern.startDate }}
-        </p>
-
-        <p>
-          <strong>OJT End:</strong>
-          {{ intern.endDate }}
-        </p>
+        </div>
 
       </div>
 
-    </article>
+      <!-- INTERNS TABLE -->
+      <div class="table-wrapper">
 
-  </section>
+        <table class="interns-table">
 
-  <!-- Empty State -->
-  <div *ngIf="!loading && interns.length === 0" class="empty-state">
-    <p>No interns assigned to you yet.</p>
-  </div>
+          <thead>
+            <tr>
+              <th scope="col">Student</th>
+              <th scope="col">Student ID</th>
+              <th scope="col">Course</th>
+              <th scope="col">Department</th>
+
+              <th scope="col" class="hours-heading">
+                Rendered hours
+              </th>
+
+              <th scope="col">Progress</th>
+              <th scope="col">Status</th>
+              <th scope="col" aria-label="Actions"></th>
+            </tr>
+          </thead>
+
+          <tbody>
+
+            @for (intern of paginatedInterns; track intern.id) {
+
+              <tr>
+
+                <!-- STUDENT -->
+                <td>
+
+                  <div class="student-cell">
+
+                    <div
+                      class="student-avatar"
+                      [attr.data-color]="intern.avatarColor">
+
+                      {{ intern.initials }}
+
+                    </div>
+
+                    <div class="student-information">
+
+                      <span class="student-name">
+                        {{ intern.name }}
+                      </span>
+
+                      <span class="student-email">
+                        {{ intern.email || 'No email provided' }}
+                      </span>
+
+                    </div>
+
+                  </div>
+
+                </td>
+
+                <!-- STUDENT ID -->
+                <td class="secondary-text student-id">
+                  {{ intern.id }}
+                </td>
+
+                <!-- COURSE -->
+                <td class="course-cell">
+                  {{ intern.course }}
+                </td>
+
+                <!-- DEPARTMENT -->
+                <td class="secondary-text department-cell">
+                  {{ intern.department }}
+                </td>
+
+                <!-- RENDERED HOURS -->
+                <td class="hours-cell">
+
+                  <span class="rendered-hours">
+
+                    {{ intern.completedHours | number:'1.0-1' }}
+                    /
+                    {{ intern.requiredHours | number:'1.0-1' }} h
+
+                  </span>
+
+                  <span class="provisional-hours">
+
+                    @if (intern.provisionalHours > 0) {
+
+                      +{{ intern.provisionalHours | number:'1.0-2' }}
+                      h provisional
+
+                    } @else {
+
+                      No provisional hours
+
+                    }
+
+                  </span>
+
+                </td>
+
+                <!-- PROGRESS -->
+                <td>
+
+                  <div class="progress-cell">
+
+                    <div
+                      class="progress-track"
+                      role="progressbar"
+                      [attr.aria-label]="intern.name + ' internship progress'"
+                      [attr.aria-valuenow]="intern.progress"
+                      aria-valuemin="0"
+                      aria-valuemax="100">
+
+                      <div
+                        class="progress-fill"
+                        [attr.data-color]="intern.progressColor"
+                        [style.width.%]="intern.progress">
+                      </div>
+
+                    </div>
+
+                    <span class="progress-percentage">
+                      {{ intern.progress | number:'1.0-0' }}%
+                    </span>
+
+                  </div>
+
+                </td>
+
+                <!-- STATUS -->
+                <td>
+
+                  <span
+                    class="status-badge"
+                    [ngClass]="intern.statusClass">
+
+                    <span class="status-dot"></span>
+
+                    {{ intern.status }}
+
+                  </span>
+
+                </td>
+
+                <!-- VIEW BUTTON -->
+                <td class="action-cell">
+
+                  <button
+                    type="button"
+                    class="view-button"
+                    [attr.aria-label]="'View ' + intern.name"
+                    (click)="openInternDetails(intern)">
+
+                    View
+
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.8"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true">
+
+                      <path d="m9 6 6 6-6 6"></path>
+
+                    </svg>
+
+                  </button>
+
+                </td>
+
+              </tr>
+
+            } @empty {
+
+              <tr>
+
+                <td colspan="8">
+
+                  <div class="empty-state">
+
+                    @if (interns.length === 0) {
+
+                      <h3>No assigned interns</h3>
+
+                      <p>
+                        Your assigned student interns will
+                        appear here.
+                      </p>
+
+                    } @else {
+
+                      <h3>No matching interns</h3>
+
+                      <p>
+                        Try another search or adjust your filters.
+                      </p>
+
+                      <button
+                        type="button"
+                        class="secondary-button"
+                        (click)="clearFilters()">
+
+                        Clear filters
+
+                      </button>
+
+                    }
+
+                  </div>
+
+                </td>
+
+              </tr>
+
+            }
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+      <!-- PAGINATION -->
+      <footer class="table-footer">
+
+        <span class="pagination-description">
+
+          Showing
+
+          <strong>
+            {{ firstVisibleRecord }}–{{ lastVisibleRecord }}
+          </strong>
+
+          of
+
+          <strong>{{ filteredInterns.length }}</strong>
+
+          interns
+
+        </span>
+
+        <div class="pagination-controls">
+
+          <!-- PREVIOUS PAGE -->
+          <button
+            type="button"
+            class="pagination-arrow"
+            aria-label="Previous page"
+            [disabled]="currentPage === 1"
+            (click)="goToPage(currentPage - 1)">
+
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true">
+
+              <path d="m15 6-6 6 6 6"></path>
+
+            </svg>
+
+          </button>
+
+          <!-- PAGE NUMBERS -->
+          @for (page of pageNumbers; track page) {
+
+            <button
+              type="button"
+              class="page-button"
+              [class.active]="currentPage === page"
+              [attr.aria-label]="'Page ' + page"
+              [attr.aria-current]="currentPage === page ? 'page' : null"
+              (click)="goToPage(page)">
+
+              {{ page }}
+
+            </button>
+
+          }
+
+          <!-- NEXT PAGE -->
+          <button
+            type="button"
+            class="pagination-arrow"
+            aria-label="Next page"
+            [disabled]="currentPage === totalPages"
+            (click)="goToPage(currentPage + 1)">
+
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.7"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true">
+
+              <path d="m9 6 6 6-6 6"></path>
+
+            </svg>
+
+          </button>
+
+        </div>
+
+      </footer>
+
+    </section>
+
+  }
 
 </div>

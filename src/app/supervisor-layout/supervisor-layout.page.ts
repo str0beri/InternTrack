@@ -1,171 +1,655 @@
-import { Component, inject, OnInit } from '@angular/core';
+import {
+  Component,
+  inject,
+  OnInit,
+  HostListener,
+  ChangeDetectorRef
+} from '@angular/core';
+
 import { IonIcon } from '@ionic/angular';
+
 import {
   Router,
   RouterOutlet,
   RouterLink,
   RouterLinkActive,
-  NavigationEnd,
+  NavigationEnd
 } from '@angular/router';
 
 import { addIcons } from 'ionicons';
-import { logOutOutline } from 'ionicons/icons';
 
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import {
+  gridOutline,
+  peopleOutline,
+  calendarOutline,
+  documentTextOutline,
+  clipboardOutline,
+  settingsOutline,
+  logOutOutline,
+  chevronDownOutline
+} from 'ionicons/icons';
+
+import {
+  takeUntilDestroyed
+} from '@angular/core/rxjs-interop';
+
 import { filter } from 'rxjs';
 
 import { AuthService } from '../services/auth.service';
 import { SupabaseService } from '../services/supabase.service';
 
-// navigation item interface
+
+// ==========================================
+// NAVIGATION INTERFACE
+// ==========================================
+
 interface SupervisorNavItem {
   label: string;
-  path: string;
+  route: string;
+  icon: string;
 }
 
-// supervisor layout
+
+// ==========================================
+// SUPERVISOR LAYOUT COMPONENT
+// ==========================================
+
 @Component({
   selector: 'app-supervisor-layout',
+
   standalone: true,
+
   imports: [
     RouterOutlet,
     RouterLink,
     RouterLinkActive,
-    IonIcon,
+    IonIcon
   ],
+
   templateUrl: './supervisor-layout.page.html',
+
   styleUrls: ['./supervisor-layout.page.scss'],
+
   host: {
-    class: 'ion-page',
-  },
+    class: 'ion-page'
+  }
 })
 export class SupervisorLayoutComponent implements OnInit {
 
-  // router
+  // ==========================================
+  // SERVICES
+  // ==========================================
+
   private readonly router = inject(Router);
+
   private readonly authService = inject(AuthService);
+
   private readonly supabaseService = inject(SupabaseService);
-  private readonly supabase = this.supabaseService.getClient();
 
-  // sidebar state
-  isSidebarOpen = false;
+  private readonly cdr = inject(ChangeDetectorRef);
 
-  // current page
+  private readonly supabase =
+    this.supabaseService.getClient();
+
+
+  // ==========================================
+  // LAYOUT STATE
+  // ==========================================
+
+  isSidebarCollapsed = false;
+
+  isProfileMenuOpen = false;
+
+  isLoggingOut = false;
+
+  logoutError = '';
+
+
+  // ==========================================
+  // CURRENT PAGE
+  // ==========================================
+
   currentPageTitle = 'Dashboard';
 
-  // supervisor info
-  supervisorName = 'Loading...';
-  supervisorInitials = '??';
 
-  // navigation items
-  readonly navItems: SupervisorNavItem[] = [
+  // ==========================================
+  // SUPERVISOR INFORMATION
+  // ==========================================
+
+  supervisorName = 'Loading...';
+
+  supervisorInitials = '...';
+
+
+  // ==========================================
+  // ACADEMIC INFORMATION
+  // ==========================================
+
+  // These will be connected to the actual
+  // academic period data source once confirmed.
+
+  academicYear = '';
+
+  semester = '';
+
+
+  // ==========================================
+  // SIDEBAR PREFERENCE
+  // ==========================================
+
+  private readonly sidebarStorageKey =
+    'interntrack.supervisor.sidebarCollapsed';
+
+
+  // ==========================================
+  // WORKSPACE NAVIGATION
+  // ==========================================
+
+  readonly workspaceNavigation: SupervisorNavItem[] = [
+
     {
       label: 'Dashboard',
-      path: '/supervisor/dashboard',
+      route: '/supervisor/dashboard',
+      icon: 'grid-outline'
     },
+
     {
-      label: 'DTR & Attendance Verification',
-      path: '/supervisor/attendance',
+      label: 'My Interns',
+      route: '/supervisor/interns',
+      icon: 'people-outline'
     },
+
+    {
+      label: 'Attendance',
+      route: '/supervisor/attendance',
+      icon: 'calendar-outline'
+    },
+
     {
       label: 'Weekly Reports',
-      path: '/supervisor/reports',
-    },
-    {
-      label: 'Intern Roster & Progress',
-      path: '/supervisor/interns',
-    },
-    {
-      label: 'My Profile',
-      path: '/supervisor/profile',
-    },
+      route: '/supervisor/reports',
+      icon: 'document-text-outline'
+    }
+
+    // Evaluations will be added here after
+    // confirming its existing route.
+
   ];
 
-  // initialize routing and icons
+
+  // ==========================================
+  // CONSTRUCTOR
+  // ==========================================
+
   constructor() {
 
+    // Register navigation icons.
+
     addIcons({
+      gridOutline,
+      peopleOutline,
+      calendarOutline,
+      documentTextOutline,
+      clipboardOutline,
+      settingsOutline,
       logOutOutline,
+      chevronDownOutline
     });
+
+
+    // Set the initial breadcrumb.
 
     this.updatePageTitle(this.router.url);
 
+
+    // Listen for navigation changes.
+
     this.router.events
       .pipe(
+
         filter(
           (event): event is NavigationEnd =>
             event instanceof NavigationEnd
         ),
+
         takeUntilDestroyed()
+
       )
       .subscribe(event => {
-        this.updatePageTitle(event.urlAfterRedirects);
-        this.closeSidebar();
+
+        this.updatePageTitle(
+          event.urlAfterRedirects
+        );
+
+        this.closeProfileMenu();
+
+        this.cdr.markForCheck();
+
       });
+
   }
+
+
+  // ==========================================
+  // INITIALIZATION
+  // ==========================================
 
   ngOnInit(): void {
-    this.loadSupervisorInfo();
+
+    this.restoreSidebarState();
+
+    void this.loadSupervisorInfo();
+
   }
+
+
+  // ==========================================
+  // LOAD ACTUAL SUPERVISOR INFORMATION
+  // ==========================================
 
   async loadSupervisorInfo(): Promise<void> {
-    try {
-      const userId = this.authService.getCurrentUser()?.id;
-      if (!userId) return;
 
-      const { data: supervisor } = await this.supabase
+    try {
+
+      // Get the currently authenticated user.
+
+      const userId =
+        this.authService.getCurrentUser()?.id;
+
+      if (!userId) {
+
+        this.supervisorName = 'Supervisor';
+
+        this.supervisorInitials = 'S';
+
+        return;
+
+      }
+
+
+      // Retrieve the actual supervisor account
+      // using the existing Supabase table.
+
+      const {
+        data: supervisor,
+        error
+      } = await this.supabase
+
         .from('company_supervisors')
+
         .select('full_name')
+
         .eq('user_id', userId)
+
         .single();
 
-      if (supervisor) {
-        this.supervisorName = supervisor.full_name || 'Supervisor';
-        this.supervisorInitials = this.getInitials(supervisor.full_name);
+
+      // Ignore results if the authenticated
+      // account changed during the request.
+
+      if (
+        this.authService.getCurrentUser()?.id !== userId
+      ) {
+        return;
       }
+
+
+      // Handle Supabase errors.
+
+      if (error) {
+        throw error;
+      }
+
+
+      // Display the supervisor's actual name.
+
+      if (supervisor) {
+
+        this.supervisorName =
+          supervisor.full_name?.trim() || 'Supervisor';
+
+        this.supervisorInitials =
+          this.getInitials(this.supervisorName);
+
+      } else {
+
+        this.supervisorName = 'Supervisor';
+
+        this.supervisorInitials = 'S';
+
+      }
+
     } catch (error) {
-      console.error('Error loading supervisor info:', error);
+
+      console.error(
+        'Error loading supervisor info:',
+        error
+      );
+
+      this.supervisorName = 'Supervisor';
+
+      this.supervisorInitials = 'S';
+
+    } finally {
+
+      this.cdr.markForCheck();
+
     }
+
   }
+
+
+  // ==========================================
+  // GENERATE SUPERVISOR INITIALS
+  // ==========================================
 
   private getInitials(name: string): string {
-    if (!name) return '??';
-    const parts = name.trim().split(' ');
-    if (parts.length >= 2) {
-      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+
+    const parts = name
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+
+
+    // Empty name.
+
+    if (parts.length === 0) {
+
+      return 'S';
+
     }
-    return name.substring(0, 2).toUpperCase();
+
+
+    // Single name.
+
+    if (parts.length === 1) {
+
+      return parts[0]
+        .substring(0, 2)
+        .toUpperCase();
+
+    }
+
+
+    // First name and last name initials.
+
+    return (
+
+      parts[0][0] +
+
+      parts[parts.length - 1][0]
+
+    ).toUpperCase();
+
   }
 
-  // update page title
+
+  // ==========================================
+  // UPDATE BREADCRUMB PAGE TITLE
+  // ==========================================
+
   private updatePageTitle(url: string): void {
 
     const path = url
+
       .split(/[?#]/)[0]
+
       .replace(/\/+$/, '');
 
-    const activePage = this.navItems.find(
-      item => item.path === path
-    );
 
-    this.currentPageTitle = activePage
-      ? activePage.label
-      : 'Supervisor Workspace';
+    // Find the current workspace page.
+
+    const activePage =
+      this.workspaceNavigation.find(item =>
+
+        path === item.route ||
+
+        path.startsWith(item.route + '/')
+
+      );
+
+
+    // Workspace page title.
+
+    if (activePage) {
+
+      this.currentPageTitle = activePage.label;
+
+      return;
+
+    }
+
+
+    // Existing profile route displayed as Settings.
+
+    if (
+
+      path === '/supervisor/profile' ||
+
+      path.startsWith('/supervisor/profile/')
+
+    ) {
+
+      this.currentPageTitle = 'Settings';
+
+      return;
+
+    }
+
+
+    // Evaluations page title.
+
+    if (
+
+      path === '/supervisor/evaluations' ||
+
+      path.startsWith('/supervisor/evaluations/')
+
+    ) {
+
+      this.currentPageTitle = 'Evaluations';
+
+      return;
+
+    }
+
+
+    // Default supervisor route.
+
+    if (path === '/supervisor') {
+
+      this.currentPageTitle = 'Dashboard';
+
+      return;
+
+    }
+
+
+    // Fallback page title.
+
+    this.currentPageTitle = 'Supervisor Workspace';
+
   }
 
-  // toggle sidebar
+
+  // ==========================================
+  // TOGGLE SIDEBAR
+  // ==========================================
+
   toggleSidebar(): void {
-    this.isSidebarOpen = !this.isSidebarOpen;
+
+    this.isSidebarCollapsed =
+      !this.isSidebarCollapsed;
+
+
+    // Save the sidebar preference.
+
+    try {
+
+      localStorage.setItem(
+
+        this.sidebarStorageKey,
+
+        String(this.isSidebarCollapsed)
+
+      );
+
+    } catch (error) {
+
+      console.warn(
+
+        'Unable to save sidebar preference:',
+
+        error
+
+      );
+
+    }
+
   }
 
-  // close sidebar
-  closeSidebar(): void {
-    this.isSidebarOpen = false;
+
+  // ==========================================
+  // RESTORE SIDEBAR STATE
+  // ==========================================
+
+  private restoreSidebarState(): void {
+
+    try {
+
+      const savedState = localStorage.getItem(
+
+        this.sidebarStorageKey
+
+      );
+
+
+      // Restore the last selected sidebar state.
+
+      if (savedState !== null) {
+
+        this.isSidebarCollapsed =
+          savedState === 'true';
+
+        return;
+
+      }
+
+
+      // Initially collapse on smaller screens.
+
+      this.isSidebarCollapsed =
+        window.innerWidth <= 700;
+
+    } catch {
+
+      this.isSidebarCollapsed = false;
+
+    }
+
   }
 
-  // logout
+
+  // ==========================================
+  // TOGGLE PROFILE DROPDOWN
+  // ==========================================
+
+  toggleProfileMenu(event: MouseEvent): void {
+
+    event.stopPropagation();
+
+    this.isProfileMenuOpen =
+      !this.isProfileMenuOpen;
+
+  }
+
+
+  // ==========================================
+  // CLOSE PROFILE DROPDOWN
+  // ==========================================
+
+  closeProfileMenu(): void {
+
+    this.isProfileMenuOpen = false;
+
+  }
+
+
+  // ==========================================
+  // OUTSIDE CLICK
+  // ==========================================
+
+  @HostListener('document:click')
+  onDocumentClick(): void {
+
+    if (this.isProfileMenuOpen) {
+
+      this.closeProfileMenu();
+
+    }
+
+  }
+
+
+  // ==========================================
+  // ESCAPE KEY
+  // ==========================================
+
+  @HostListener('document:keydown.escape')
+  onEscapeKey(): void {
+
+    if (this.isProfileMenuOpen) {
+
+      this.closeProfileMenu();
+
+    }
+
+  }
+
+
+  // ==========================================
+  // LOGOUT
+  // ==========================================
+
   async logout(): Promise<void> {
-    await this.authService.signOut();
+
+    // Prevent repeated logout requests.
+
+    if (this.isLoggingOut) {
+      return;
+    }
+
+    this.isLoggingOut = true;
+
+    this.logoutError = '';
+
+    this.closeProfileMenu();
+
+    try {
+
+      // Retain the existing authentication
+      // service and logout implementation.
+
+      await this.authService.signOut();
+
+    } catch (error) {
+
+      console.error(
+        'Error signing out:',
+        error
+      );
+
+      this.logoutError =
+        'Unable to log out. Please try again.';
+
+    } finally {
+
+      this.isLoggingOut = false;
+
+      this.cdr.markForCheck();
+
+    }
+
   }
 
 }

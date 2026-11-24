@@ -1,0 +1,348 @@
+<div
+  class="coordinator-layout"
+  [class.sidebar-collapsed]="isSidebarCollapsed">
+
+  <!-- =====================================
+       SIDEBAR
+       ===================================== -->
+
+  <aside class="sidebar">
+
+    <!-- Brand -->
+
+    <div class="sidebar-brand">
+
+      <a
+        class="brand-link"
+        routerLink="/coordinator/dashboard"
+        aria-label="InternTrack Dashboard">
+
+        <div class="brand-logo">
+          <ion-icon name="school-outline"></ion-icon>
+        </div>
+
+        @if (!isSidebarCollapsed) {
+
+          <div class="brand-information">
+            <strong>InternTrack</strong>
+            <span>OJT COORDINATOR</span>
+          </div>
+
+        }
+
+      </a>
+
+      @if (!isSidebarCollapsed) {
+
+        <button
+          type="button"
+          class="collapse-button"
+          title="Collapse sidebar"
+          aria-label="Collapse sidebar"
+          [attr.aria-expanded]="!isSidebarCollapsed"
+          (click)="toggleSidebar()">
+
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true">
+
+            <rect
+              x="3"
+              y="4"
+              width="18"
+              height="16"
+              rx="2">
+            </rect>
+
+            <path d="M9 4v16"></path>
+            <path d="m16 9-3 3 3 3"></path>
+
+          </svg>
+
+        </button>
+
+      }
+
+    </div>
+
+    <!-- Expand sidebar -->
+
+    @if (isSidebarCollapsed) {
+
+      <div class="expand-container">
+
+        <button
+          type="button"
+          class="collapse-button"
+          title="Expand sidebar"
+          aria-label="Expand sidebar"
+          [attr.aria-expanded]="!isSidebarCollapsed"
+          (click)="toggleSidebar()">
+
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true">
+
+            <rect
+              x="3"
+              y="4"
+              width="18"
+              height="16"
+              rx="2">
+            </rect>
+
+            <path d="M9 4v16"></path>
+            <path d="m13 9 3 3-3 3"></path>
+
+          </svg>
+
+        </button>
+
+      </div>
+
+    }
+
+    <!-- Navigation -->
+
+    <nav
+      class="sidebar-navigation"
+      aria-label="Coordinator navigation">
+
+      <div class="navigation-group">
+
+        @if (!isSidebarCollapsed) {
+
+          <p class="navigation-label">
+            WORKSPACE
+          </p>
+
+        }
+
+        @for (item of workspaceNavigation; track item.route) {
+
+          <a
+            class="navigation-item"
+            [routerLink]="item.route"
+            routerLinkActive="active"
+            [routerLinkActiveOptions]="{ exact: false }"
+            ariaCurrentWhenActive="page"
+            [attr.aria-label]="item.label"
+            [attr.title]="isSidebarCollapsed ? item.label : null">
+
+            <ion-icon [name]="item.icon"></ion-icon>
+
+            @if (!isSidebarCollapsed) {
+
+              <span>{{ item.label }}</span>
+
+            }
+
+          </a>
+
+        }
+
+      </div>
+
+      <div class="navigation-divider"></div>
+
+      <!-- Account navigation -->
+
+      <div class="navigation-group">
+
+        @if (!isSidebarCollapsed) {
+
+          <p class="navigation-label">
+            ACCOUNT
+          </p>
+
+        }
+
+        <a
+          class="navigation-item"
+          routerLink="/coordinator/settings"
+          routerLinkActive="active"
+          ariaCurrentWhenActive="page"
+          aria-label="Settings"
+          title="Settings">
+
+          <ion-icon name="settings-outline"></ion-icon>
+
+          @if (!isSidebarCollapsed) {
+
+            <span>Settings</span>
+
+          }
+
+        </a>
+
+        <button
+          type="button"
+          class="navigation-item logout-button"
+          aria-label="Log Out"
+          title="Log Out"
+          [disabled]="isLoggingOut"
+          (click)="logout()">
+
+          <ion-icon name="log-out-outline"></ion-icon>
+
+          @if (!isSidebarCollapsed) {
+
+            <span>
+              {{ isLoggingOut ? 'Logging out...' : 'Log Out' }}
+            </span>
+
+          }
+
+        </button>
+
+      </div>
+
+    </nav>
+
+    <!-- Sidebar profile -->
+
+    <div class="sidebar-footer">
+
+      <div
+        class="sidebar-profile"
+        [attr.title]="coordinatorName">
+
+        <div class="profile-avatar">
+          {{ coordinatorInitials }}
+        </div>
+
+        @if (!isSidebarCollapsed) {
+
+          <div class="profile-information">
+
+            <strong>{{ coordinatorName }}</strong>
+            <span>OJT Coordinator</span>
+
+          </div>
+
+        }
+
+      </div>
+
+    </div>
+
+  </aside>
+
+  <!-- =====================================
+       MAIN WORKSPACE
+       ===================================== -->
+
+  <div class="main-workspace">
+
+    <!-- Header -->
+
+    <header class="workspace-header">
+
+      <div
+        class="breadcrumb"
+        aria-label="Current page">
+
+        <span class="breadcrumb-brand">
+          InternTrack
+        </span>
+
+        <ion-icon
+          name="chevron-forward-outline"
+          aria-hidden="true">
+        </ion-icon>
+
+        <span class="breadcrumb-current">
+          {{ currentPageTitle }}
+        </span>
+
+      </div>
+
+      <div class="header-right">
+
+        <!-- Academic period -->
+
+        @if (academicYear && semester) {
+
+          <div class="academic-period">
+
+            <strong>{{ academicYear }}</strong>
+
+            <span class="period-divider"></span>
+
+            <span>{{ semester }}</span>
+
+          </div>
+
+          <div class="header-divider"></div>
+
+        }
+
+        <!-- Coordinator identity -->
+
+        <div class="header-profile">
+
+          <div class="profile-avatar">
+            {{ coordinatorInitials }}
+          </div>
+
+          <div class="profile-information">
+
+            <strong>{{ coordinatorName }}</strong>
+
+            <span>OJT Coordinator</span>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </header>
+
+    <!-- Main page content -->
+
+    <main class="workspace-content">
+
+      @if (logoutError) {
+
+        <div class="layout-error" role="alert">
+          {{ logoutError }}
+        </div>
+
+      }
+
+      @if (profileError) {
+
+        <div class="layout-error" role="alert">
+
+          <span>{{ profileError }}</span>
+
+          <button
+            type="button"
+            (click)="loadCoordinatorInfo()">
+
+            Retry
+
+          </button>
+
+        </div>
+
+      }
+
+      <router-outlet></router-outlet>
+
+    </main>
+
+  </div>
+
+</div>
