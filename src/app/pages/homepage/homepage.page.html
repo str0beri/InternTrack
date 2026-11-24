@@ -1,200 +1,470 @@
+
 <ion-content class="home-content">
   <main class="home-container">
 
-    <!-- student information -->
+    <!-- =====================================
+         STUDENT INFORMATION
+    ====================================== -->
+
     <header class="home-header">
+
       <div class="greeting-row">
+
         <p class="greeting">Good Morning,</p>
-        <span class="intern-badge">Active Intern</span>
+
+        <span class="intern-badge">
+          Active Intern
+        </span>
+
       </div>
 
-      <h1 class="student-name">{{ studentName }}</h1>
+      <h1 class="student-name">
+        {{ studentName }}
+      </h1>
 
       @if (companyLocation) {
+
         <div class="company-location">
-          <ion-icon name="business-outline"></ion-icon>
+
+          <ion-icon name="business-outline">
+          </ion-icon>
+
           <span>{{ companyLocation }}</span>
+
         </div>
+
       }
+
     </header>
 
-    <!-- today's attendance -->
+
+    <!-- =====================================
+         TODAY'S ATTENDANCE
+    ====================================== -->
+
     <section class="attendance-card">
+
       <div class="attendance-header">
+
         <div class="attendance-info">
+
           <p>Today's Attendance</p>
+
           <h2>{{ todayStatusText }}</h2>
+
         </div>
 
-        <span class="attendance-time">{{ currentLiveTime }}</span>
+        <span class="attendance-time">
+          {{ currentLiveTime }}
+        </span>
+
       </div>
 
-      <!-- time in button -->
+
+      <!-- Attendance button -->
+
       <button
         type="button"
         class="time-in-button"
         routerLink="/tabs/attendance">
-        <ion-icon name="camera-outline"></ion-icon>
-        <span>{{ isTimedInToday ? 'View Attendance Status' : 'Time In' }}</span>
+
+        <ion-icon
+          [name]="isTimedInToday
+            ? 'time-outline'
+            : 'camera-outline'">
+        </ion-icon>
+
+        <span>
+          {{ isTimedInToday
+            ? 'View Attendance Status'
+            : 'Time In' }}
+        </span>
+
       </button>
 
-      <p class="attendance-note">
-        A photo will be captured as supporting evidence.
-      </p>
+
+      <!-- Attendance supporting evidence note -->
+
+      @if (!isTimedInToday) {
+
+        <p class="attendance-note">
+          A photo will be captured as supporting evidence.
+        </p>
+
+      }
+
     </section>
 
-    <!-- ojt hours -->
+
+    <!-- =====================================
+         OJT PROGRESS
+    ====================================== -->
+
     <section class="hours-card">
+
       <div class="hours-header">
-        <h2>OJT Hours</h2>
+
+        <h2>OJT Progress</h2>
 
         <button
           type="button"
           class="view-dtr"
           routerLink="/tabs/dtr">
+
           View DTR
+
         </button>
+
       </div>
 
-      <!-- hours summary -->
+
+      <!-- Official completed hours -->
+
       <div class="hours-summary">
+
         <span class="completed-hours">
-          {{ totalHours | number:'1.1-1' }}
+
+          {{ verifiedHours | number:'1.1-1' }}
+
         </span>
+
         <span class="required-hours">
+
           of {{ requiredHours }} hrs required
+
         </span>
+
+        <span class="completion-percent">
+
+          {{ verifiedPercent | number:'1.1-1' }}%
+
+        </span>
+
       </div>
 
-      <!-- progress bar -->
+
+      <!-- Segmented progress bar -->
+
       <div
         class="hours-progress"
         role="progressbar"
-        aria-label="OJT hours completed"
-        [attr.aria-valuenow]="totalHours"
+        aria-label="Official OJT completion"
+        [attr.aria-valuenow]="verifiedPercent"
         aria-valuemin="0"
-        [attr.aria-valuemax]="requiredHours">
+        aria-valuemax="100">
+
+        <!-- Verified hours segment -->
 
         <div
           class="verified-progress"
           [style.width.%]="verifiedPercent">
         </div>
 
+        <!-- Provisional hours segment -->
+
         <div
           class="provisional-progress"
           [style.width.%]="provisionalPercent">
         </div>
+
       </div>
 
-      <!-- progress legend -->
+
+      <!-- Progress legend -->
+
       <div class="hours-legend">
 
-        <div class="legend-item">
-          <span class="legend-dot verified"></span>
-          <span>Verified: 
-            <strong>{{ verifiedHours | number:'1.1-1' }}h</strong>
-          </span>
-        </div>
+        <!-- Verified hours -->
 
         <div class="legend-item">
-          <span class="legend-dot provisional"></span>
-          <span>Provisional: 
-            <strong>{{ provisionalHours | number:'1.1-1' }}h</strong>
+
+          <span class="legend-dot verified">
           </span>
+
+          <span>
+
+            Verified:
+
+            <strong>
+              {{ verifiedHours | number:'1.1-1' }}h
+            </strong>
+
+          </span>
+
         </div>
 
+
+        <!-- Provisional hours -->
+
         <div class="legend-item">
-          <span class="legend-dot remaining"></span>
-          <span>Remaining: 
-            <strong>{{ remainingHours | number:'1.1-1' }}h</strong>
+
+          <span class="legend-dot provisional">
           </span>
+
+          <span>
+
+            Provisional:
+
+            <strong>
+              {{ provisionalHours | number:'1.1-1' }}h
+            </strong>
+
+          </span>
+
+        </div>
+
+
+        <!-- Remaining official hours -->
+
+        <div class="legend-item">
+
+          <span class="legend-dot remaining">
+          </span>
+
+          <span>
+
+            Remaining:
+
+            <strong>
+              {{ remainingHours | number:'1.1-1' }}h
+            </strong>
+
+          </span>
+
         </div>
 
       </div>
+
     </section>
 
-    <!-- to do section -->
+
+    <!-- =====================================
+         TO DO SECTION
+    ====================================== -->
+
     <section class="todo-section">
-      <h2 class="section-title">To Do</h2>
 
-      @if (currentReportWeek > 0) {
-      <button
-        type="button"
-        class="todo-card"
-        routerLink="/tabs/reports">
+      <h2 class="section-title">
+        To Do
+      </h2>
 
-        <div class="todo-icon">
-          <ion-icon name="document-text-outline"></ion-icon>
+
+      <!-- Reports loading error -->
+
+      @if (reportsLoadError) {
+
+        <div class="todo-empty">
+
+          <h3>Unable to load tasks</h3>
+
+          <p>Please check your connection.</p>
+
         </div>
 
-        <div class="todo-details">
-          <h3>Week {{ currentReportWeek }} Report</h3>
-          <p>{{ currentReportPeriod }}</p>
-        </div>
-
-        <span class="draft-badge">{{ currentReportStatus === 'draft' ? 'Draft' : currentReportStatus }}</span>
-
-        <ion-icon
-          name="chevron-forward-outline"
-          class="todo-arrow">
-        </ion-icon>
-      </button>
-      } @else {
-      <button
-        type="button"
-        class="todo-card"
-        routerLink="/tabs/reports">
-
-        <div class="todo-icon">
-          <ion-icon name="document-text-outline"></ion-icon>
-        </div>
-
-        <div class="todo-details">
-          <h3>No Pending Reports</h3>
-          <p>Create a new weekly report</p>
-        </div>
-
-        <ion-icon
-          name="chevron-forward-outline"
-          class="todo-arrow">
-        </ion-icon>
-      </button>
       }
+
+
+      <!-- Available draft and returned reports -->
+
+      @else if (todoReports.length > 0) {
+
+        @for (report of todoReports; track report.id) {
+
+          <button
+            type="button"
+            class="todo-card"
+            routerLink="/tabs/reports">
+
+            <!-- Report icon -->
+
+            <div class="todo-icon">
+
+              <ion-icon name="document-text-outline">
+              </ion-icon>
+
+            </div>
+
+
+            <!-- Report information -->
+
+            <div class="todo-details">
+
+              <h3>Week {{ report.week }} Report</h3>
+
+              <p>
+
+                {{ report.status === 'returned'
+                  ? 'Revision required'
+                  : report.period }}
+
+              </p>
+
+            </div>
+
+
+            <!-- Report status -->
+
+            <span
+              class="draft-badge"
+              [class.returned-badge]="
+                report.status === 'returned'
+              ">
+
+              {{ report.status === 'returned'
+                ? 'Returned'
+                : 'Draft' }}
+
+            </span>
+
+
+            <!-- Navigation arrow -->
+
+            <ion-icon
+              name="chevron-forward-outline"
+              class="todo-arrow">
+            </ion-icon>
+
+          </button>
+
+        }
+
+      }
+
+
+      <!-- No pending tasks -->
+
+      @else {
+
+        <div class="todo-empty">
+
+          <h3>You're all caught up!</h3>
+
+          <p>No draft or returned reports.</p>
+
+        </div>
+
+      }
+
     </section>
 
-    <!-- recent activities -->
-    <section class="activities-section">
-      <div class="section-header">
-        <h2 class="section-title">Recent Activities</h2>
 
-      @if (activities.length > 3) {
-        <button
-          type="button"
-          class="see-all"
-          (click)="toggleActivities()">
-          {{ showAllActivities ? 'See Less' : 'See All' }}
-        </button>
-      }
+    <!-- =====================================
+         RECENT ACTIVITIES
+    ====================================== -->
+
+    <section class="activities-section">
+
+      <!-- Section header -->
+
+      <div class="section-header">
+
+        <h2 class="section-title">
+          Recent Activities
+        </h2>
+
+
+        <!-- See All / See Less button -->
+
+        @if (activities.length > 3) {
+
+          <button
+            type="button"
+            class="see-all"
+            [attr.aria-expanded]="showAllActivities"
+            (click)="toggleActivities()">
+
+            {{ showAllActivities
+              ? 'See Less'
+              : 'See All' }}
+
+          </button>
+
+        }
+
       </div>
 
-      <!-- activities list -->
-      @if (displayedActivities.length > 0) {
+
+      <!-- Activities loading error -->
+
+      @if (
+        activitiesLoadError &&
+        displayedActivities.length === 0
+      ) {
+
+        <div class="activities-card empty-activities">
+
+          <p>Unable to load recent activities.</p>
+
+          <p>Please check your connection.</p>
+
+        </div>
+
+      }
+
+
+      <!-- Available activities -->
+
+      @else if (displayedActivities.length > 0) {
+
         <div class="activities-card">
-          @for (activity of displayedActivities; track activity.id) {
+
+          @for (
+            activity of displayedActivities;
+            track activity.id
+          ) {
+
             <div class="activity-item">
-              <div class="activity-details">
-                <p>{{ activity.description }}</p>
+
+              <!-- Activity icon -->
+
+              <div class="activity-icon">
+
+                <ion-icon
+                  [name]="activity.icon"
+                  aria-hidden="true">
+                </ion-icon>
+
               </div>
 
-              <span class="activity-day">{{ activity.day }}</span>
+
+              <!-- Activity description -->
+
+              <div class="activity-details">
+
+                <p>{{ activity.description }}</p>
+
+              </div>
+
+
+              <!-- Activity date -->
+
+              <span class="activity-day">
+
+                {{ activity.day }}
+
+              </span>
+
             </div>
+
           }
+
         </div>
-      } @else {
-        <div class="activities-card empty-activities">
-          <p>No recent activities yet.</p>
-        </div>
+
       }
+
+
+      <!-- No recent activities -->
+
+      @else {
+
+        <div class="activities-card empty-activities">
+
+          <p>No recent activities yet.</p>
+
+        </div>
+
+      }
+
     </section>
 
   </main>

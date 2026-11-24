@@ -1,10 +1,14 @@
 import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { IonContent, IonIcon, NavController } from '@ionic/angular';
+import {
+  IonContent,
+  IonIcon,
+  NavController
+} from '@ionic/angular';
+
 import { addIcons } from 'ionicons';
 import { arrowForwardOutline } from 'ionicons/icons';
 
-// all in one page
 @Component({
   selector: 'app-all-in-one',
   standalone: true,
@@ -18,32 +22,39 @@ import { arrowForwardOutline } from 'ionicons/icons';
 })
 export class AllInOnePage {
 
-  // navigation
   private readonly navCtrl = inject(NavController);
 
-  // animation state
   isLeaving = false;
 
-  // register icons
   constructor() {
     addIcons({ arrowForwardOutline });
   }
 
-  // reset animation
   ionViewWillEnter(): void {
     this.isLeaving = false;
   }
 
-  // navigate to login
+  // Complete onboarding and navigate to login.
   next(): void {
-    if (this.isLeaving) return;
+
+    if (this.isLeaving) {
+      return;
+    }
 
     this.isLeaving = true;
 
+    // Persist onboarding completion.
+    localStorage.setItem(
+      'interntrack.onboarded',
+      'true'
+    );
+
     setTimeout(() => {
-      this.navCtrl.navigateForward('/login', {
+
+      this.navCtrl.navigateRoot('/login', {
         animated: false
       });
+
     }, 300);
   }
 }
