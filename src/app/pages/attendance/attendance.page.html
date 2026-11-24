@@ -1,13 +1,13 @@
 <ion-content class="attendance-content">
   <main class="attendance-container">
 
-    <!-- page header -->
+    <!-- Page header -->
     <header class="attendance-header">
       <h1>Attendance</h1>
     </header>
 
-    <!-- offline notification -->
-    @if (offlinePreview) {
+    <!-- Offline notification -->
+    @if (!isOnline) {
       <section class="offline-banner">
 
         <div class="offline-icon">
@@ -16,157 +16,408 @@
 
         <div class="offline-details">
           <h3>You're Offline</h3>
-          <p>Offline preview · Sync not connected</p>
+          <p>Attendance will sync when you're back online.</p>
         </div>
+
+      </section>
+    }
+
+    <!-- Pending synchronization -->
+    @if (isOnline && pendingCount > 0) {
+      <section class="pending-sync-banner">
+
+        <p>
+          {{ pendingCount }}
+          {{ pendingCount === 1 ? 'record' : 'records' }}
+          pending upload
+        </p>
 
         <button
           type="button"
-          class="retry-button"
-          (click)="retrySync()">
-          Retry
+          class="sync-now-button"
+          [disabled]="isSyncing || isProcessing"
+          (click)="syncPendingRecords()">
+
+          {{ isSyncing ? 'Syncing...' : 'Sync Now' }}
+
         </button>
 
       </section>
-
-      @if (syncMessage) {
-        <p class="sync-message" role="status">
-          {{ syncMessage }}
-        </p>
-      }
     }
 
-    <!-- online status indicator -->
-    @if (isOnline && offlineSyncService.getPendingRecords().length > 0) {
-      <section class="pending-sync-banner">
-        <p>{{ offlineSyncService.getPendingRecords().length }} offline record(s) pending sync</p>
-        <button type="button" class="sync-now-button" (click)="syncPendingRecords()">
-          Sync Now
-        </button>
-      </section>
-    }
-
-    <!-- failed records retry -->
-    @if (isOnline && offlineSyncService.getFailedRecords().length > 0) {
+    <!-- Failed synchronization -->
+    @if (isOnline && failedCount > 0) {
       <section class="failed-sync-banner">
-        <p>{{ offlineSyncService.getFailedRecords().length }} record(s) failed to sync</p>
-        <button type="button" class="retry-failed-button" (click)="retryFailedSync()">
-          Retry Failed
+
+        <p>
+          {{ failedCount }}
+          {{ failedCount === 1 ? 'record' : 'records' }}
+          failed to sync
+        </p>
+
+        <button
+          type="button"
+          class="retry-failed-button"
+          [disabled]="isSyncing || isProcessing"
+          (click)="retryFailedSync()">
+
+          {{ isSyncing ? 'Retrying...' : 'Retry' }}
+
         </button>
+
       </section>
     }
 
-    <!-- attendance card -->
+    <!-- Attendance loading error -->
+    @if (attendanceLoadError) {
+      <section class="attendance-error-banner">
+
+        <div class="warning-details">
+          <h3>Unable to refresh attendance</h3>
+          <p>Server records may not be up to date.</p>
+        </div>
+
+        @if (isOnline) {
+          <button
+            type="button"
+            class="retry-button"
+            [disabled]="isLoading || isProcessing"
+            (click)="retrySync()">
+            Retry
+          </button>
+        }
+
+      </section>
+    }
+
+    <!-- Attendance card -->
     <section class="attendance-card">
 
-      <!-- current date -->
-      <p class="current-date">{{ currentDate }}</p>
+      <!-- Current date -->
+      <p class="current-date">
+        {{ currentDate }}
+      </p>
 
-      <!-- live clock -->
+      <!-- Live clock -->
       <div class="clock-container">
-        <h2 class="clock-time">{{ currentTime }}</h2>
-        <span class="clock-period">{{ timePeriod }}</span>
+
+        <h2 class="clock-time">
+          {{ currentTime }}
+        </h2>
+
+        <span class="clock-period">
+          {{ timePeriod }}
+        </span>
+
       </div>
 
-      <!-- attendance status -->
+      <!-- Attendance status -->
       <div class="attendance-status">
+
         <span
           class="status-badge"
           [class.timed-in]="timeIn && !timeOut"
-          [class.timed-out]="timeOut">
+          [class.timed-out]="!!timeOut"
+          role="status">
+
           {{ attendanceStatus }}
+
         </span>
+
       </div>
 
-      <!-- hidden file input for photo capture evidence -->
-      <input 
-        type="file" 
-        accept="image/*" 
-        capture="environment" 
-        style="display: none;" 
-        #fileInput 
-        (change)="handlePhotoCapture($event)" />
+      <!-- Time-In photo input -->
+      <input
+        type="file"
+        accept="image/*"
+        capture="environment"
+        hidden
+        #fileInput
+        (change)="handlePhotoCapture($event)"
+      />
 
-      <!-- hidden file input for time out photo -->
-      <input 
-        type="file" 
-        accept="image/*" 
-        capture="environment" 
-        style="display: none;" 
-        #timeOutFileInput 
-        (change)="handleTimeOutPhotoCapture($event)" />
+      <!-- Time-Out photo input -->
+      <input
+        type="file"
+        accept="image/*"
+        capture="environment"
+        hidden
+        #timeOutFileInput
+        (change)="handleTimeOutPhotoCapture($event)"
+      />
 
-      <!-- attendance actions -->
+      <!-- Attendance actions -->
       <div class="attendance-actions">
 
+        <!-- Time In -->
         <button
           type="button"
           class="time-in-button"
-          [disabled]="!!timeIn"
+          [disabled]="!canTimeIn"
           (click)="fileInput.click()">
+
           <ion-icon name="camera-outline"></ion-icon>
+
           <span>Time In</span>
+
         </button>
 
+        <!-- Time Out -->
         <button
           type="button"
           class="time-out-button"
-          [disabled]="!timeIn || !!timeOut"
+          [disabled]="!canTimeOut"
           (click)="timeOutFileInput.click()">
+
           <ion-icon name="log-out-outline"></ion-icon>
+
           <span>Time Out</span>
+
         </button>
 
       </div>
 
+      <!-- Today's recorded attendance -->
+      @if (timeIn || timeOut) {
+        <div class="recorded-attendance">
+
+          <div class="recorded-time">
+            <span>Time In</span>
+            <strong>{{ timeIn || '--' }}</strong>
+          </div>
+
+          <div class="recorded-time">
+            <span>Time Out</span>
+            <strong>{{ timeOut || '--' }}</strong>
+          </div>
+
+        </div>
+      }
+
+      <!-- Photo and location information -->
+      @if (!timeOut) {
+        <p class="attendance-note">
+          Photo and location are required to record attendance.
+        </p>
+      }
+
+      <!-- Today's synchronization status -->
+      @if (todaySyncStatus === 'pending') {
+        <p class="attendance-sync-note pending">
+          <ion-icon name="cloud-offline-outline"></ion-icon>
+          Saved locally. Pending upload.
+        </p>
+      }
+
+      @if (todaySyncStatus === 'failed') {
+        <p class="attendance-sync-note failed">
+          <ion-icon name="alert-circle-outline"></ion-icon>
+          Saved locally. Upload failed.
+        </p>
+      }
+
+      @if (todaySyncStatus === 'synced') {
+        <p class="attendance-sync-note synced">
+          <ion-icon name="checkmark-outline"></ion-icon>
+          Attendance synced
+        </p>
+      }
+
     </section>
 
-    <!-- recent logs -->
+    <!-- Attendance feedback -->
+    @if (syncMessage) {
+      <p
+        class="sync-message"
+        role="status"
+        aria-live="polite">
+
+        {{ syncMessage }}
+
+      </p>
+    }
+
+    <!-- Previous incomplete attendance -->
+    @if (incompleteAttendanceCount > 0) {
+      <section class="incomplete-banner">
+
+        <div class="incomplete-icon">
+          <ion-icon name="alert-circle-outline"></ion-icon>
+        </div>
+
+        <div class="warning-details">
+
+          <h3>Incomplete Attendance</h3>
+
+          <p>
+            You have {{ incompleteAttendanceCount }}
+            previous attendance
+            {{ incompleteAttendanceCount === 1 ? 'record' : 'records' }}
+            without a Time-Out. Contact your supervisor
+            for assistance.
+          </p>
+
+        </div>
+
+      </section>
+    }
+
+    <!-- Recent logs -->
     <section class="recent-logs-section">
 
-      <!-- section header -->
+      <!-- Section header -->
       <div class="logs-header">
+
         <h2>Recent Logs</h2>
-        <a class="full-dtr" routerLink="/tabs/dtr">
+
+        <a
+          class="full-dtr"
+          routerLink="/tabs/dtr">
+
           Full DTR
+
         </a>
+
       </div>
 
-      <!-- logs list -->
+      <!-- Attendance logs -->
       <div class="logs-card">
 
-        @for (log of recentLogs; track log.id) {
-          <div class="log-item">
+        @if (isLoading && recentLogs.length === 0) {
 
-            <!-- log details -->
-            <div class="log-details">
-              <h3>{{ log.date }}</h3>
-              <p>{{ log.hours }}</p>
+          <div class="empty-logs">
+            <p>Loading attendance records...</p>
+          </div>
+
+        } @else if (recentLogs.length > 0) {
+
+          @for (log of recentLogs; track log.id) {
+
+            <div class="log-item">
+
+              <!-- Attendance details -->
+              <div class="log-details">
+
+                <h3>{{ log.date }}</h3>
+
+                <p>{{ log.hours }}</p>
+
+                @if (log.condition === 'incomplete') {
+                  <span class="log-condition incomplete">
+                    Incomplete
+                  </span>
+                }
+
+                @if (log.condition === 'timed_in') {
+                  <span class="log-condition ongoing">
+                    In Progress
+                  </span>
+                }
+
+              </div>
+
+              <!-- Record statuses -->
+              <div class="log-status-group">
+
+                <!-- Synchronization status -->
+                <span
+                  class="log-status"
+                  [class.pending]="log.status === 'pending'"
+                  [class.synced]="log.status === 'synced'"
+                  [class.failed]="log.status === 'failed'">
+
+                  @if (log.status === 'pending') {
+
+                    <ion-icon name="cloud-offline-outline"></ion-icon>
+                    Pending Upload
+
+                  } @else if (log.status === 'failed') {
+
+                    <ion-icon name="alert-circle-outline"></ion-icon>
+                    Sync Failed
+
+                  } @else {
+
+                    <ion-icon name="checkmark-outline"></ion-icon>
+                    Synced
+
+                  }
+
+                </span>
+
+                <!-- Verification status -->
+                @if (log.condition === 'completed') {
+
+                  <span
+                    class="verification-label"
+                    [class.verified]="log.verificationStatus === 'verified'"
+                    [class.provisional]="log.verificationStatus === 'provisional'">
+
+                    {{ log.verificationStatus === 'verified'
+                      ? 'Verified'
+                      : 'Provisional' }}
+
+                  </span>
+
+                }
+
+              </div>
+
             </div>
 
-            <!-- log status -->
-            <span
-              class="log-status"
-              [class.pending]="log.status === 'pending'"
-              [class.synced]="log.status === 'synced'">
+          }
 
-              @if (log.status === 'pending') {
-                <ion-icon name="cloud-offline-outline"></ion-icon>
-                Pending Upload
-              } @else {
-                <ion-icon name="checkmark-outline"></ion-icon>
-                Synced
-              }
+        } @else if (attendanceLoadError) {
 
-            </span>
-
+          <div class="empty-logs">
+            <h3>Attendance unavailable</h3>
+            <p>Unable to retrieve attendance records.</p>
           </div>
+
+        } @else {
+
+          <div class="empty-logs">
+            <h3>No attendance records yet</h3>
+            <p>Your recorded attendance will appear here.</p>
+          </div>
+
         }
 
       </div>
 
-      <!-- sync information -->
+      <!-- Connection information -->
       <p class="last-synced">
-        Live Supabase Database Synchronization Active
+
+        @if (!isOnline) {
+
+          Offline mode · Showing locally saved records
+
+        } @else if (isSyncing) {
+
+          Synchronizing attendance records...
+
+        } @else if (attendanceLoadError) {
+
+          Unable to refresh server records
+
+        } @else if (failedCount > 0) {
+
+          Some attendance records failed to sync
+
+        } @else if (pendingCount > 0) {
+
+          Attendance records pending synchronization
+
+        } @else if (isLoading) {
+
+          Refreshing attendance records...
+
+        } @else {
+
+          All attendance records are up to date
+
+        }
+
       </p>
 
     </section>

@@ -1,46 +1,66 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
+
 import { AuthService } from '../services/auth.service';
 
-export const authGuard: CanActivateFn = (route, state) => {
+export const authGuard: CanActivateFn = async (route, state) => {
+
   const authService = inject(AuthService);
   const router = inject(Router);
 
-  // Check if authenticated via Supabase Auth OR legacy student login (localStorage)
-  const isAuth = authService.isAuthenticated() || localStorage.getItem('studentId');
+  // Wait for authentication initialization
+  await authService.waitForInitialization();
 
-  if (!isAuth) {
-    router.navigate(['/login']);
-    return false;
+  // Check authenticated session
+  if (!authService.isAuthenticated()) {
+    return router.createUrlTree(['/login']);
   }
 
-  // Check role-based access
+  // Retrieve identity from AuthService
+  const userRole = authService.getUserRole();
   const url = state.url;
-  const userRole = authService.getUserRole() || localStorage.getItem('userRole');
+
+  // Reject missing or invalid roles
+  if (
+    userRole !== 'student_intern' &&
+    userRole !== 'company_supervisor' &&
+    userRole !== 'ojt_coordinator'
+  ) {
+    return router.createUrlTree(['/login']);
+  }
+
+  // Restrict offline access to student interns
+  if (!authService.isOnline() || authService.isOfflineSession()) {
+
+    if (userRole !== 'student_intern') {
+      return router.createUrlTree(['/login']);
+    }
+  }
 
   // Student routes
   if (url.startsWith('/tabs')) {
+
     if (userRole !== 'student_intern') {
-      router.navigate(['/login']);
-      return false;
+      return router.createUrlTree(['/login']);
     }
   }
 
   // Supervisor routes
   if (url.startsWith('/supervisor')) {
+
     if (userRole !== 'company_supervisor') {
-      router.navigate(['/login']);
-      return false;
+      return router.createUrlTree(['/login']);
     }
   }
 
   // Coordinator routes
   if (url.startsWith('/coordinator')) {
+
     if (userRole !== 'ojt_coordinator') {
-      router.navigate(['/login']);
-      return false;
+      return router.createUrlTree(['/login']);
     }
   }
 
+  // Allow authorized access
   return true;
 };

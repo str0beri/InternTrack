@@ -175,19 +175,22 @@
   color: #e7ecff;
 }
 
+
 /* =========================================
-   OJT HOURS CARD
-   ========================================= */
+   OJT PROGRESS CARD
+========================================= */
 
 .hours-card {
   width: 100%;
   margin-top: 20px;
-  padding: 18px 16px;
+  padding: 14px 16px 16px;
   box-sizing: border-box;
   border-radius: 14px;
   background: #ffffff;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.035);
 }
+
+/* Card header */
 
 .hours-header {
   display: flex;
@@ -200,6 +203,7 @@
   margin: 0;
   font-size: 14px;
   font-weight: 600;
+  line-height: 1.4;
   color: #252525;
 }
 
@@ -217,12 +221,13 @@
 }
 
 /* Hours summary */
+
 .hours-summary {
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
   gap: 5px 8px;
-  margin-top: 14px;
+  margin-top: 4px;
 }
 
 .completed-hours {
@@ -239,13 +244,22 @@
   color: #858585;
 }
 
-/* Progress bar */
+.completion-percent {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 600;
+  color: #3157d5;
+  white-space: nowrap;
+}
+
+/* Segmented progress bar */
+
 .hours-progress {
   display: flex;
   overflow: hidden;
   width: 100%;
   height: 8px;
-  margin-top: 15px;
+  margin-top: 12px;
   border-radius: 100px;
   background: #e6e7eb;
 }
@@ -259,17 +273,18 @@
 .provisional-progress {
   height: 100%;
   flex-shrink: 0;
-  background: #a568ff;
+  background: #7556d9;
 }
 
 /* Progress legend */
+
 .hours-legend {
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: nowrap;
   gap: 4px;
-  margin-top: 17px;
+  margin-top: 12px;
 }
 
 .legend-item {
@@ -300,7 +315,7 @@
 }
 
 .legend-dot.provisional {
-  background: #a568ff;
+  background: #7556d9;
 }
 
 .legend-dot.remaining {
@@ -558,6 +573,16 @@
   }
 
   .legend-item {
+    font-size: 9px;
+    gap: 2px;
+  }
+
+  .hours-legend {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+
+  .completion-percent {
     font-size: 11px;
   }
 
@@ -572,4 +597,36 @@
   .time-in-button {
     transition: none;
   }
+}
+
+/* =========================================
+   TO DO REPORT STATES
+========================================= */
+
+.returned-badge {
+  background: #fff0e2;
+  color: #b86217;
+}
+
+.todo-empty {
+  margin-top: 11px;
+  padding: 20px 16px;
+  border-radius: 13px;
+  background: #ffffff;
+  text-align: center;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.035);
+}
+
+.todo-empty h3 {
+  margin: 0 0 5px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #252525;
+}
+
+.todo-empty p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #858585;
 }

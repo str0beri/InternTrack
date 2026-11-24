@@ -1,13 +1,17 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './guards/auth.guard';
+import { startupGuard } from './guards/startup.guard';
 
 export const routes: Routes = [
 
   // default route
   {
     path: '',
-    redirectTo: 'onboarding/welcome',
-    pathMatch: 'full'
+    pathMatch: 'full',
+    canActivate: [startupGuard],
+    loadComponent: () =>
+      import('./pages/onboarding/welcome/welcome.page')
+        .then(m => m.WelcomePage)
   },
 
 

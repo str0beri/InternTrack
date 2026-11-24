@@ -1,142 +1,732 @@
+
 <ion-content class="reports-content">
+
   <main class="reports-container">
 
-    <!-- page header -->
+    <!-- PAGE HEADER -->
     <header class="reports-header">
-      <h1>Reports</h1>
 
-      <!-- create report button -->
-      <button
-        type="button"
-        class="create-report-button"
-        (click)="createReport()">
-        <ion-icon name="add-outline"></ion-icon>
-        <span>Create Report</span>
-      </button>
-    </header>
-
-    <!-- current week report -->
-    <section class="current-report-card">
-
-      <!-- report information -->
-      <div class="report-top">
-        <div class="report-info">
-          <span class="report-label">THIS WEEK</span>
-
-          <h2>
-            Week {{ currentReport.week }} · {{ currentReport.period }}
-          </h2>
-
-          <p class="edited-date">
-            {{ currentReport.editedLabel }}
-          </p>
-        </div>
-
-        <!-- status badge -->
-        <span
-          class="status-badge"
-          [class.draft]="currentReport.status === 'draft'"
-          [class.pending-review]="currentReport.status === 'pending_review'"
-          [class.approved]="currentReport.status === 'approved'"
-          [class.returned]="currentReport.status === 'returned'">
-          <ion-icon [name]="getStatusIcon(currentReport.status)"></ion-icon>
-          {{ getStatusLabel(currentReport.status) }}
-        </span>
+      <div class="header-text">
+        <h1>Reports</h1>
       </div>
 
-      <!-- supervisor feedback for returned reports -->
-      @if (currentReport.status === 'returned' && currentReport.feedback) {
-        <div class="feedback-section">
-          <h4>Supervisor Feedback:</h4>
-          <p>{{ currentReport.feedback }}</p>
-        </div>
+      @if (canCreateReport && !isLoading) {
+        <button
+          type="button"
+          class="create-report-button"
+          [disabled]="isSaving || isSubmitting"
+          (click)="createReport()">
+
+          <ion-icon
+            name="add-outline"
+            aria-hidden="true">
+          </ion-icon>
+
+          <span>Create Report</span>
+
+        </button>
       }
 
-      <!-- action buttons -->
-      <div class="action-buttons">
-        @if (currentReport.status === 'draft' || currentReport.status === 'returned') {
-          <button
-            type="button"
-            class="edit-button"
-            (click)="editCurrentReport()">
-            {{ currentReport.status === 'returned' ? 'Revise & Edit' : 'Continue Editing' }}
-          </button>
-          <button
-            type="button"
-            class="submit-button"
-            (click)="submitReport()">
-            Submit for Review
-          </button>
-        } @else if (currentReport.status === 'pending_review') {
-          <button
-            type="button"
-            class="disabled-button"
-            disabled>
-            Pending Supervisor Review
-          </button>
-        } @else if (currentReport.status === 'approved') {
-          <button
-            type="button"
-            class="disabled-button"
-            disabled>
-            Report Approved
-          </button>
-        }
+    </header>
+
+    <p class="page-description">
+      Manage your weekly internship reports.
+    </p>
+
+    <!-- OFFLINE NOTICE -->
+    @if (!isOnline && !isLoading) {
+
+      <div
+        class="notice-banner offline-banner"
+        role="status">
+
+        <ion-icon
+          name="cloud-offline-outline"
+          aria-hidden="true">
+        </ion-icon>
+
+        <div class="notice-content">
+
+          <h3>You're Offline</h3>
+
+          <p>
+            You can view saved reports and edit drafts.
+            Internet is required to submit reports.
+          </p>
+
+        </div>
+
       </div>
 
-    </section>
+    }
 
-    <!-- previous reports -->
-    <section class="previews-section">
-      <h2 class="section-title">Previews</h2>
+    <!-- SERVER ERROR -->
+    @if (reportsLoadError && isOnline) {
 
-      <!-- reports list -->
-      <div class="previews-card">
+      <div
+        class="notice-banner error-banner"
+        role="alert">
 
-        @for (report of previousReports; track report.id) {
-          <button
-            type="button"
-            class="report-row"
-            [attr.aria-label]="'View Week ' + report.week + ' report'"
-            (click)="openReport(report)">
+        <div class="notice-content">
 
-            <!-- report information -->
-            <div class="previous-report-info">
-              <h3>Week {{ report.week }}</h3>
+          <h3>Unable to Refresh Reports</h3>
 
-              <p>
-                {{ report.period }}
+          <p>
+            {{ reportsMessage }}
+          </p>
 
-                @if (report.commentCount) {
-                  <span class="comment-separator">·</span>
-                  {{ report.commentCount }}
-                  {{ report.commentCount === 1 ? 'comment' : 'comments' }}
-                }
-              </p>
+        </div>
+
+        <button
+          type="button"
+          class="retry-button"
+          [disabled]="isLoading"
+          (click)="retryReports()">
+
+          Retry
+
+        </button>
+
+      </div>
+
+    }
+
+    <!-- RECONNECTION NOTICE -->
+    @if (
+      isOnline &&
+      isCachedData &&
+      !reportsLoadError &&
+      !isLoading
+    ) {
+
+      <div
+        class="notice-banner information-banner"
+        role="status">
+
+        <div class="notice-content">
+
+          <h3>Showing Saved Reports</h3>
+
+          <p>
+            {{ reportsMessage }}
+          </p>
+
+        </div>
+
+      </div>
+
+    }
+
+    <!-- LOCAL DRAFT NOTICE -->
+    @if (unsavedDraftCount > 0) {
+
+      <div
+        class="notice-banner local-draft-banner"
+        role="status">
+
+        <div class="notice-content">
+
+          <h3>Changes Saved on This Device</h3>
+
+          <p>
+            {{ unsavedDraftCount }}
+            {{ unsavedDraftCount === 1 ? 'report has' : 'reports have' }}
+            local changes.
+
+            @if (isOnline) {
+              Open the report to save your changes online.
+            } @else {
+              Connect to the internet to save your changes online.
+            }
+          </p>
+
+        </div>
+
+      </div>
+
+    }
+
+    <!-- INITIAL LOADING STATE -->
+    @if (isLoading && allReports.length === 0) {
+
+      <section
+        class="current-report-card loading-card"
+        aria-busy="true"
+        aria-label="Loading reports">
+
+        <div class="skeleton skeleton-label"></div>
+
+        <div class="skeleton skeleton-heading"></div>
+
+        <div class="skeleton skeleton-text"></div>
+
+        <div class="skeleton skeleton-button"></div>
+
+      </section>
+
+      <section class="history-section">
+
+        <h2 class="section-title">
+          Report History
+        </h2>
+
+        <div class="history-card">
+
+          @for (item of [1, 2, 3]; track item) {
+
+            <div class="skeleton-row">
+
+              <div class="skeleton-info">
+
+                <div class="skeleton skeleton-heading"></div>
+
+                <div class="skeleton skeleton-text"></div>
+
+              </div>
+
+              <div class="skeleton skeleton-badge"></div>
+
             </div>
 
-            <!-- report status -->
-            <span
-              class="report-status"
-              [class.approved]="report.status === 'approved'"
-              [class.returned]="report.status === 'returned'"
-              [class.draft]="report.status === 'draft'">
+          }
 
-              <ion-icon [name]="getStatusIcon(report.status)"></ion-icon>
-              {{ getStatusLabel(report.status) }}
+        </div>
+
+      </section>
+
+    } @else {
+
+      <!-- CURRENT WEEK REPORT -->
+      <section
+        class="current-report-card"
+        aria-label="Current week report">
+
+        <!-- EXISTING CURRENT REPORT -->
+        @if (currentReport.week > 0) {
+
+          <div class="report-top">
+
+            <span class="report-label">
+              CURRENT WEEK
             </span>
 
-            <!-- report arrow -->
-            <ion-icon
-              name="chevron-forward-outline"
-              class="report-arrow">
-            </ion-icon>
+            <span
+              class="status-badge"
+              [class.draft]="currentReport.status === 'draft'"
+              [class.pending-review]="currentReport.status === 'pending_review'"
+              [class.approved]="currentReport.status === 'approved'"
+              [class.returned]="currentReport.status === 'returned'">
 
-          </button>
+              {{ getStatusLabel(currentReport.status) }}
+
+            </span>
+
+          </div>
+
+          <div class="report-info">
+
+            <h2>
+              Week {{ currentReport.week }}
+            </h2>
+
+            <p class="report-period">
+              {{ currentReport.period }}
+            </p>
+
+            <p class="edited-date">
+
+              @if (currentReport.hasLocalChanges) {
+
+                Saved on this device
+
+              } @else {
+
+                {{ currentReport.editedLabel }}
+
+              }
+
+            </p>
+
+          </div>
+
+          <!-- RETURNED REPORT FEEDBACK -->
+          @if (
+            currentReport.status === 'returned' &&
+            currentReport.feedback
+          ) {
+
+            <div class="feedback-section">
+
+              <h3>Supervisor Feedback</h3>
+
+              <p>
+                {{ currentReport.feedback }}
+              </p>
+
+            </div>
+
+          }
+
+          <!-- STATUS DESCRIPTION -->
+          <div class="report-description">
+
+            @switch (currentReport.status) {
+
+              @case ('draft') {
+
+                <p>
+                  Complete your weekly accomplishments
+                  and reflection before submitting for review.
+                </p>
+
+              }
+
+              @case ('returned') {
+
+                <p>
+                  Review your supervisor's feedback,
+                  revise your report, and resubmit it.
+                </p>
+
+              }
+
+              @case ('pending_review') {
+
+                <p>
+                  Your report has been submitted and is
+                  awaiting supervisor review.
+                </p>
+
+              }
+
+              @case ('approved') {
+
+                <p>
+                  Your supervisor has approved
+                  this weekly report.
+                </p>
+
+              }
+
+            }
+
+          </div>
+
+          <!-- CURRENT REPORT ACTION -->
+          <div class="action-buttons">
+
+            @if (canEditReport(currentReport)) {
+
+              <button
+                type="button"
+                class="primary-button"
+                [disabled]="isSaving || isSubmitting || isLoading"
+                (click)="editCurrentReport()">
+
+                @if (isSaving) {
+
+                  Saving...
+
+                } @else if (isSubmitting) {
+
+                  Submitting...
+
+                } @else if (currentReport.status === 'returned') {
+
+                  Revise Report
+
+                } @else {
+
+                  Continue Editing
+
+                }
+
+              </button>
+
+            } @else {
+
+              <button
+                type="button"
+                class="secondary-button"
+                (click)="openReport(currentReport)">
+
+                View Report
+
+              </button>
+
+            }
+
+          </div>
+
+        } @else {
+
+          <!-- NO CURRENT WEEK REPORT -->
+          <div class="report-top">
+
+            <span class="report-label">
+              CURRENT WEEK
+            </span>
+
+          </div>
+
+          @if (currentWeek > 0) {
+
+            <div class="report-info">
+
+              <h2>
+                Week {{ currentWeek }}
+              </h2>
+
+              <p class="report-period">
+                {{ currentPeriod }}
+              </p>
+
+            </div>
+
+            <div class="empty-current-report">
+
+              <h3>No report created yet</h3>
+
+              <p>
+                Start your weekly report by recording
+                your accomplishments and learning experiences.
+              </p>
+
+            </div>
+
+            <button
+              type="button"
+              class="primary-button"
+              [disabled]="!canCreateReport || isLoading"
+              (click)="createReport()">
+
+              Create Weekly Report
+
+            </button>
+
+          } @else if (reportsLoadError) {
+
+            <div class="empty-current-report">
+
+              <h3>Reporting Period Unavailable</h3>
+
+              <p>
+                We couldn't retrieve your internship schedule.
+                Please refresh your reports.
+              </p>
+
+            </div>
+
+            @if (isOnline) {
+
+              <button
+                type="button"
+                class="secondary-button"
+                (click)="retryReports()">
+
+                Refresh Reports
+
+              </button>
+
+            }
+
+          } @else if (!isOnline && !isCachedData) {
+
+            <div class="empty-current-report">
+
+              <h3>No Saved Reporting Schedule</h3>
+
+              <p>
+                Connect to the internet to retrieve
+                your internship schedule.
+              </p>
+
+            </div>
+
+          } @else if (!ojtStartDate) {
+
+            <div class="empty-current-report">
+
+              <h3>OJT Start Date Required</h3>
+
+              <p>
+                Your internship start date has not been assigned.
+                Please contact your OJT coordinator.
+              </p>
+
+            </div>
+
+          } @else {
+
+            <div class="empty-current-report">
+
+              <h3>Internship Not Yet Started</h3>
+
+              <p>
+                You can create your first weekly report
+                once your internship begins.
+              </p>
+
+            </div>
+
+          }
+
         }
 
-      </div>
-    </section>
+      </section>
+
+      <!-- REPORT HISTORY -->
+      <section class="history-section">
+
+        <div class="section-header">
+
+          <h2 class="section-title">
+            Report History
+          </h2>
+
+          <span class="report-count">
+
+            {{ previousReports.length }}
+
+            {{ previousReports.length === 1 ? 'report' : 'reports' }}
+
+          </span>
+
+        </div>
+
+        <!-- STATUS FILTERS -->
+        @if (previousReports.length > 0) {
+
+          <div
+            class="report-filters"
+            role="group"
+            aria-label="Filter report history">
+
+            <button
+              type="button"
+              class="filter-button"
+              [class.active]="selectedFilter === 'all'"
+              [attr.aria-pressed]="selectedFilter === 'all'"
+              (click)="setFilter('all')">
+
+              All
+
+            </button>
+
+            <button
+              type="button"
+              class="filter-button"
+              [class.active]="selectedFilter === 'draft'"
+              [attr.aria-pressed]="selectedFilter === 'draft'"
+              (click)="setFilter('draft')">
+
+              Draft
+
+            </button>
+
+            <button
+              type="button"
+              class="filter-button"
+              [class.active]="selectedFilter === 'pending_review'"
+              [attr.aria-pressed]="selectedFilter === 'pending_review'"
+              (click)="setFilter('pending_review')">
+
+              Pending
+
+            </button>
+
+            <button
+              type="button"
+              class="filter-button"
+              [class.active]="selectedFilter === 'approved'"
+              [attr.aria-pressed]="selectedFilter === 'approved'"
+              (click)="setFilter('approved')">
+
+              Approved
+
+            </button>
+
+            <button
+              type="button"
+              class="filter-button"
+              [class.active]="selectedFilter === 'returned'"
+              [attr.aria-pressed]="selectedFilter === 'returned'"
+              (click)="setFilter('returned')">
+
+              Returned
+
+            </button>
+
+          </div>
+
+        }
+
+        <!-- HISTORY LIST -->
+        <div class="history-card">
+
+          @for (report of filteredReports; track report.id) {
+
+            <button
+              type="button"
+              class="report-row"
+              [disabled]="isSaving || isSubmitting"
+              [attr.aria-label]="
+                'Open Week ' +
+                report.week +
+                ' report, ' +
+                getStatusLabel(report.status)
+              "
+              (click)="openReport(report)">
+
+              <div class="previous-report-info">
+
+                <h3>
+                  Week {{ report.week }}
+                </h3>
+
+                <p class="history-period">
+                  {{ report.period }}
+                </p>
+
+                @if (report.status === 'returned') {
+
+                  <p class="revision-label">
+                    Revision required
+                  </p>
+
+                }
+
+                @if (report.hasLocalChanges) {
+
+                  <p class="local-changes-label">
+                    Saved on this device
+                  </p>
+
+                }
+
+                @if (report.commentCount) {
+
+                  <p class="comment-label">
+
+                    {{ report.commentCount }}
+
+                    {{ report.commentCount === 1 ? 'comment' : 'comments' }}
+
+                  </p>
+
+                }
+
+              </div>
+
+              <span
+                class="status-badge history-status"
+                [class.draft]="report.status === 'draft'"
+                [class.pending-review]="report.status === 'pending_review'"
+                [class.approved]="report.status === 'approved'"
+                [class.returned]="report.status === 'returned'">
+
+                {{ getStatusLabel(report.status) }}
+
+              </span>
+
+              <ion-icon
+                name="chevron-forward-outline"
+                class="report-arrow"
+                aria-hidden="true">
+              </ion-icon>
+
+            </button>
+
+          } @empty {
+
+            <div class="empty-history">
+
+              @if (previousReports.length > 0) {
+
+                <h3>No matching reports</h3>
+
+                <p>
+                  There are no reports with this status.
+                </p>
+
+                <button
+                  type="button"
+                  class="text-button"
+                  (click)="setFilter('all')">
+
+                  View All Reports
+
+                </button>
+
+              } @else if (reportsLoadError) {
+
+                <h3>Report history unavailable</h3>
+
+                <p>
+                  Your reports could not be retrieved.
+                </p>
+
+              } @else if (!isOnline && !isCachedData) {
+
+                <h3>No saved reports</h3>
+
+                <p>
+                  Connect to the internet to download
+                  your report history.
+                </p>
+
+              } @else {
+
+                <h3>No previous reports</h3>
+
+                <p>
+                  Your previous weekly reports
+                  will appear here.
+                </p>
+
+              }
+
+            </div>
+
+          }
+
+        </div>
+
+      </section>
+
+    }
+
+    <!-- FOOTER STATUS -->
+    @if (!isLoading) {
+
+      <footer class="reports-footer">
+
+        @if (!isOnline) {
+
+          Offline mode · Showing locally saved information
+
+        } @else if (reportsLoadError) {
+
+          Unable to refresh server records
+
+        } @else if (isCachedData) {
+
+          Showing previously saved reports
+
+        } @else if (unsavedDraftCount > 0) {
+
+          Local report changes are awaiting online saving
+
+        } @else {
+
+          Weekly reports are up to date
+
+        }
+
+      </footer>
+
+    }
 
   </main>
+
 </ion-content>
