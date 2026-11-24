@@ -1,21 +1,15 @@
 import { Component, inject } from '@angular/core';
-import { RouterLink } from '@angular/router';
+
 import {
   IonContent,
-  IonIcon,
   NavController
 } from '@ionic/angular';
-
-import { addIcons } from 'ionicons';
-import { arrowForwardOutline } from 'ionicons/icons';
 
 @Component({
   selector: 'app-all-in-one',
   standalone: true,
   imports: [
-    IonContent,
-    IonIcon,
-    RouterLink
+    IonContent
   ],
   templateUrl: './all-in-one.page.html',
   styleUrls: ['./all-in-one.page.scss']
@@ -26,16 +20,12 @@ export class AllInOnePage {
 
   isLeaving = false;
 
-  constructor() {
-    addIcons({ arrowForwardOutline });
-  }
-
   ionViewWillEnter(): void {
     this.isLeaving = false;
   }
 
   // Complete onboarding and navigate to login.
-  next(): void {
+  getStarted(): void {
 
     if (this.isLeaving) {
       return;
