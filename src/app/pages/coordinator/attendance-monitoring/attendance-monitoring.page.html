@@ -1,13 +1,619 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-title>attendance-monitoring</ion-title>
-  </ion-toolbar>
-</ion-header>
+<div class="attendance-monitoring-page">
 
-<ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">attendance-monitoring</ion-title>
-    </ion-toolbar>
-  </ion-header>
-</ion-content>
+  <!-- PAGE HEADER -->
+  <header class="page-header">
+    <div class="page-heading">
+      <h1>Attendance Monitoring</h1>
+
+      <p *ngIf="!isLoading && !errorMessage">
+        Monitor student attendance and verification records.
+      </p>
+
+      <p *ngIf="isLoading">
+        Loading attendance records...
+      </p>
+
+      <p *ngIf="!isLoading && errorMessage">
+        Monitor student attendance and verification records.
+      </p>
+    </div>
+  </header>
+
+  <!-- LOADING STATE -->
+  <div
+    class="state-card"
+    *ngIf="isLoading"
+    role="status">
+
+    <div class="loading-spinner"></div>
+    <p>Loading attendance records...</p>
+
+  </div>
+
+  <!-- ERROR STATE -->
+  <div
+    class="state-card error-state"
+    *ngIf="!isLoading && errorMessage"
+    role="alert">
+
+    <h3>Unable to load attendance</h3>
+
+    <p>{{ errorMessage }}</p>
+
+    <button
+      type="button"
+      class="btn btn-secondary"
+      (click)="retryLoad()">
+
+      Try again
+
+    </button>
+
+  </div>
+
+  <!-- ATTENDANCE CARD -->
+  <section
+    class="attendance-card"
+    *ngIf="!isLoading && !errorMessage">
+
+    <!-- FILTER TOOLBAR -->
+    <div class="table-toolbar">
+
+      <div class="primary-filters">
+
+        <!-- SEARCH -->
+        <div class="search-field">
+
+          <ion-icon
+            name="search-outline"
+            class="search-icon"
+            aria-hidden="true">
+          </ion-icon>
+
+          <input
+            type="search"
+            placeholder="Search by name or student ID"
+            aria-label="Search by student name or ID"
+            [(ngModel)]="searchQuery"
+            (ngModelChange)="onSearchChange()"
+          />
+
+          <button
+            *ngIf="searchQuery"
+            type="button"
+            class="clear-search"
+            aria-label="Clear search"
+            (click)="clearSearch()">
+
+            <ion-icon
+              name="close-outline"
+              aria-hidden="true">
+            </ion-icon>
+
+          </button>
+
+        </div>
+
+        <!-- COMPANY FILTER -->
+        <div class="filter-select company-filter">
+
+          <select
+            aria-label="Filter by company"
+            [(ngModel)]="selectedCompany"
+            (ngModelChange)="onCompanyChange()">
+
+            <option value="all">
+              All companies
+            </option>
+
+            <option
+              *ngFor="let company of companyOptions"
+              [value]="company">
+
+              {{ company }}
+
+            </option>
+
+          </select>
+
+          <ion-icon
+            name="chevron-down-outline"
+            aria-hidden="true">
+          </ion-icon>
+
+        </div>
+
+        <!-- SUPERVISOR FILTER -->
+        <div class="filter-select supervisor-filter">
+
+          <select
+            aria-label="Filter by supervisor"
+            [(ngModel)]="selectedSupervisor"
+            (ngModelChange)="onFilterChange()">
+
+            <option value="all">
+              All supervisors
+            </option>
+
+            <option
+              *ngFor="
+                let supervisor of supervisorOptions;
+                trackBy: trackBySupervisor
+              "
+              [value]="supervisor.id">
+
+              {{ supervisor.name }}
+
+            </option>
+
+          </select>
+
+          <ion-icon
+            name="chevron-down-outline"
+            aria-hidden="true">
+          </ion-icon>
+
+        </div>
+
+        <!-- STATUS FILTER -->
+        <div class="filter-select status-filter">
+
+          <select
+            aria-label="Filter by verification status"
+            [(ngModel)]="selectedStatus"
+            (ngModelChange)="onFilterChange()">
+
+            <option value="all">
+              All statuses
+            </option>
+
+            <option value="verified">
+              Verified
+            </option>
+
+            <option value="pending">
+              Pending
+            </option>
+
+            <option value="incomplete">
+              Incomplete
+            </option>
+
+            <option value="rejected">
+              Rejected
+            </option>
+
+            <option value="unknown">
+              Unknown
+            </option>
+
+          </select>
+
+          <ion-icon
+            name="chevron-down-outline"
+            aria-hidden="true">
+          </ion-icon>
+
+        </div>
+
+      </div>
+
+      <!-- SECOND FILTER ROW -->
+      <div class="secondary-filters">
+
+        <div class="date-range">
+
+          <span class="date-range-label">
+            Date range
+          </span>
+
+          <input
+            type="date"
+            class="date-input"
+            aria-label="Attendance start date"
+            [(ngModel)]="startDate"
+            [attr.max]="endDate || null"
+            (ngModelChange)="onDateChange()"
+          />
+
+          <span class="date-separator">
+            to
+          </span>
+
+          <input
+            type="date"
+            class="date-input"
+            aria-label="Attendance end date"
+            [(ngModel)]="endDate"
+            [attr.min]="startDate || null"
+            (ngModelChange)="onDateChange()"
+          />
+
+          <button
+            type="button"
+            class="clear-date-button"
+            *ngIf="startDate || endDate"
+            aria-label="Clear date range"
+            title="Clear date range"
+            (click)="clearDateRange()">
+
+            <ion-icon
+              name="close-outline"
+              aria-hidden="true">
+            </ion-icon>
+
+          </button>
+
+        </div>
+
+        <!-- RECORD COUNT -->
+        <div class="toolbar-right">
+
+          <button
+            type="button"
+            class="clear-filters-button"
+            *ngIf="hasActiveFilters"
+            (click)="clearFilters()">
+
+            Clear filters
+
+          </button>
+
+          <span class="record-count">
+
+            {{ filteredCount }}
+            {{ filteredCount === 1 ? 'record' : 'records' }}
+
+          </span>
+
+        </div>
+
+      </div>
+
+      <!-- INVALID DATE RANGE -->
+      <p
+        class="date-error"
+        *ngIf="!isDateRangeValid"
+        role="alert">
+
+        End date cannot be earlier than the start date.
+
+      </p>
+
+    </div>
+
+    <!-- ATTENDANCE TABLE -->
+    <div
+      class="table-scroll"
+      *ngIf="filteredCount > 0">
+
+      <table class="attendance-table">
+
+        <colgroup>
+          <col class="col-student" />
+          <col class="col-company" />
+          <col class="col-date" />
+          <col class="col-time-in" />
+          <col class="col-time-out" />
+          <col class="col-rendered" />
+          <col class="col-verification" />
+          <col class="col-action" />
+        </colgroup>
+
+        <thead>
+
+          <tr>
+
+            <th scope="col">Student</th>
+
+            <th scope="col">Company</th>
+
+            <th scope="col">Attendance date</th>
+
+            <th scope="col">Time in</th>
+
+            <th scope="col">Time out</th>
+
+            <th scope="col">Rendered</th>
+
+            <th scope="col">Verification</th>
+
+            <th
+              scope="col"
+              class="action-heading"
+              aria-label="Record actions">
+            </th>
+
+          </tr>
+
+        </thead>
+
+        <tbody>
+
+          <tr
+            *ngFor="
+              let record of paginatedRecords;
+              trackBy: trackByRecord
+            ">
+
+            <!-- STUDENT -->
+            <td>
+
+              <div class="student-cell">
+
+                <div
+                  class="student-avatar"
+                  [ngClass]="'avatar-' + record.avatarColor"
+                  aria-hidden="true">
+
+                  {{ record.initials }}
+
+                </div>
+
+                <div class="student-info">
+
+                  <span class="student-name">
+                    {{ record.studentName }}
+                  </span>
+
+                  <span class="student-number">
+                    {{ record.studentId }}
+                  </span>
+
+                </div>
+
+              </div>
+
+            </td>
+
+            <!-- COMPANY -->
+            <td>
+
+              <span
+                class="company-name"
+                [class.missing-value]="
+                  record.companyName === 'Not recorded'
+                ">
+
+                {{ record.companyName }}
+
+              </span>
+
+            </td>
+
+            <!-- ATTENDANCE DATE -->
+            <td>
+
+              <span class="attendance-date">
+
+                {{ formatAttendanceDate(record.attendanceDate) }}
+
+              </span>
+
+            </td>
+
+            <!-- TIME IN -->
+            <td>
+
+              <span
+                class="time-text"
+                [class.missing-value]="!record.timeIn">
+
+                {{ formatTime(record.timeIn) }}
+
+              </span>
+
+            </td>
+
+            <!-- TIME OUT -->
+            <td>
+
+              <span
+                class="time-text"
+                [class.missing-value]="!record.timeOut">
+
+                {{ formatTime(record.timeOut) }}
+
+              </span>
+
+            </td>
+
+            <!-- RENDERED HOURS -->
+            <td>
+
+              <span
+                class="hours-text"
+                [class.missing-value]="record.renderedHours === null">
+
+                {{ formatHours(record.renderedHours) }}
+
+              </span>
+
+            </td>
+
+            <!-- VERIFICATION STATUS -->
+            <td>
+
+              <span
+                class="status-text"
+                [ngClass]="getStatusClass(record.status)">
+
+                {{ getStatusLabel(record.status) }}
+
+              </span>
+
+            </td>
+
+            <!-- VIEW ACTION -->
+            <td class="action-cell">
+
+              <button
+                type="button"
+                class="table-action"
+                [attr.aria-label]="
+                  'View attendance record for ' +
+                  record.studentName
+                "
+                (click)="viewAttendance(record)">
+
+                <span>View</span>
+
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true">
+
+                  <path d="m9 18 6-6-6-6"/>
+
+                </svg>
+
+              </button>
+
+            </td>
+
+          </tr>
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+    <!-- EMPTY STATE -->
+    <div
+      class="empty-state"
+      *ngIf="filteredCount === 0">
+
+      <h3>
+        {{
+          !isDateRangeValid
+            ? 'Invalid date range'
+            : hasActiveFilters
+              ? 'No matching records'
+              : 'No attendance records yet'
+        }}
+      </h3>
+
+      <p>
+        {{
+          !isDateRangeValid
+            ? 'Select a valid start and end date.'
+            : hasActiveFilters
+              ? 'Try changing your search or filters.'
+              : 'Student attendance records will appear here.'
+        }}
+      </p>
+
+      <button
+        *ngIf="hasActiveFilters"
+        type="button"
+        class="btn btn-secondary"
+        (click)="clearFilters()">
+
+        Clear filters
+
+      </button>
+
+    </div>
+
+    <!-- PAGINATION -->
+    <footer
+      class="table-footer"
+      *ngIf="filteredCount > 0">
+
+      <p class="pagination-summary">
+
+        Showing
+
+        <strong>
+          {{ showingFrom }}–{{ showingTo }}
+        </strong>
+
+        of
+
+        <strong>
+          {{ filteredCount }}
+        </strong>
+
+        {{ filteredCount === 1 ? 'record' : 'records' }}
+
+      </p>
+
+      <nav
+        class="pagination"
+        aria-label="Attendance pagination">
+
+        <!-- PREVIOUS PAGE -->
+        <button
+          type="button"
+          class="pagination-button"
+          aria-label="Previous page"
+          [disabled]="currentPage === 1"
+          (click)="previousPage()">
+
+          <ion-icon
+            name="chevron-back-outline"
+            aria-hidden="true">
+          </ion-icon>
+
+        </button>
+
+        <!-- PAGE NUMBERS -->
+        <ng-container
+          *ngFor="
+            let page of pageNumbers;
+            trackBy: trackByPage
+          ">
+
+          <button
+            *ngIf="isPageNumber(page)"
+            type="button"
+            class="pagination-button"
+            [class.active-page]="currentPage === page"
+            [attr.aria-current]="
+              currentPage === page ? 'page' : null
+            "
+            [attr.aria-label]="'Page ' + page"
+            (click)="goToPage(page)">
+
+            {{ page }}
+
+          </button>
+
+          <span
+            *ngIf="!isPageNumber(page)"
+            class="pagination-ellipsis"
+            aria-hidden="true">
+
+            ...
+
+          </span>
+
+        </ng-container>
+
+        <!-- NEXT PAGE -->
+        <button
+          type="button"
+          class="pagination-button"
+          aria-label="Next page"
+          [disabled]="currentPage === totalPages"
+          (click)="nextPage()">
+
+          <ion-icon
+            name="chevron-forward-outline"
+            aria-hidden="true">
+          </ion-icon>
+
+        </button>
+
+      </nav>
+
+    </footer>
+
+  </section>
+
+</div>

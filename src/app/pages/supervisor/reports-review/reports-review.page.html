@@ -3,47 +3,51 @@
   <header class="page-header">
     <div>
       <h1>Weekly Reports</h1>
-      <p>
-        Review weekly accomplishment reports submitted through
-        the student mobile app. Returned reports can be revised
-        and resubmitted by the student.
-      </p>
+      <p>Review weekly reports submitted by your assigned interns.</p>
     </div>
-
-    @if (!loading && !loadError) {
-      <div class="summary-badge">
-        <span class="pending-dot"></span>
-        <strong>{{ pendingCount }} pending</strong>
-        <span>·</span>
-        <span>{{ returnedCount }} returned</span>
-      </div>
-    }
   </header>
 
   @if (loading) {
+
     <div class="state-panel">
       <div class="spinner"></div>
       <p>Loading weekly reports...</p>
     </div>
+
   } @else if (loadError) {
+
     <div class="state-panel">
       <h3>Unable to load reports</h3>
       <p>{{ loadError }}</p>
-      <button class="primary-button" (click)="loadData()">
+
+      <button
+        type="button"
+        class="primary-button"
+        (click)="loadData()">
         Try again
       </button>
     </div>
+
   } @else {
 
     <section class="reports-panel">
 
+      <!-- Toolbar -->
+
       <div class="toolbar">
 
         <div class="search-field">
-          <svg viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="1.8">
+
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            aria-hidden="true">
+
             <circle cx="11" cy="11" r="7"></circle>
             <path d="m16 16 4 4"></path>
+
           </svg>
 
           <input
@@ -52,6 +56,7 @@
             placeholder="Search by student name or ID"
             [(ngModel)]="searchQuery"
             (ngModelChange)="resetPage()">
+
         </div>
 
         <select
@@ -62,8 +67,13 @@
           <option value="all">All reporting weeks</option>
 
           @for (week of weeks; track week) {
-            <option [value]="week">Week {{ week }}</option>
+
+            <option [value]="week">
+              Week {{ week }}
+            </option>
+
           }
+
         </select>
 
         <select
@@ -79,17 +89,16 @@
         </select>
 
         <div class="record-count">
-          <svg viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="1.6">
-            <path d="M4 6h16M4 12h16M4 18h16"></path>
-            <path d="M9 3v6M15 9v6M8 15v6"></path>
-          </svg>
-          {{ filteredReports.length }} reports
+          {{ filteredReports.length }}
+          {{ filteredReports.length === 1 ? 'report' : 'reports' }}
         </div>
 
       </div>
 
+      <!-- Reports table -->
+
       <div class="table-wrapper">
+
         <table class="reports-table">
 
           <thead>
@@ -99,126 +108,207 @@
               <th>Reporting period</th>
               <th>Submitted</th>
               <th>Status</th>
-              <th><span class="sr-only">Action</span></th>
+              <th>
+                <span class="sr-only">Action</span>
+              </th>
             </tr>
           </thead>
 
           <tbody>
 
             @for (report of paginatedReports; track report.id) {
+
               <tr>
 
                 <td>
+
                   <div class="student-cell">
-                    <div class="avatar"
+
+                    <div
+                      class="avatar"
                       [attr.data-color]="report.avatarColor">
+
                       {{ report.initials }}
+
                     </div>
 
                     <div class="student-info">
-                      <strong>{{ report.studentName }}</strong>
-                      <span>{{ report.studentId }}</span>
+
+                      <strong>
+                        {{ report.studentName }}
+                      </strong>
+
+                      <span>
+                        {{ report.studentId }}
+                      </span>
+
                     </div>
+
                   </div>
+
                 </td>
 
-                <td>Week {{ report.week }}</td>
+                <td>
+                  Week {{ report.week }}
+                </td>
 
-                <td class="muted">{{ report.period }}</td>
-
-                <td>{{ report.submittedDate }}</td>
+                <td class="muted">
+                  {{ report.period }}
+                </td>
 
                 <td>
-                  <span class="status-badge"
+                  {{ report.submittedDate }}
+                </td>
+
+                <td>
+
+                  <span
+                    class="status-text"
                     [ngClass]="report.status">
-                    <span class="status-dot"></span>
+
                     {{ report.statusLabel }}
+
                   </span>
+
                 </td>
 
                 <td class="action-cell">
+
                   <button
+                    type="button"
                     class="review-button"
                     [class.primary]="report.status === 'pending_review'"
                     (click)="openReport(report.id)">
 
                     {{ report.status === 'pending_review'
-                      ? 'Review' : 'View report' }}
+                      ? 'Review'
+                      : 'View report' }}
 
-                    <svg viewBox="0 0 24 24" fill="none"
-                      stroke="currentColor" stroke-width="2">
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      aria-hidden="true">
+
                       <path d="m9 6 6 6-6 6"></path>
+
                     </svg>
 
                   </button>
+
                 </td>
 
               </tr>
+
             } @empty {
+
               <tr>
+
                 <td colspan="6">
+
                   <div class="empty-state">
+
                     <h3>No weekly reports found</h3>
+
                     <p>
+
                       @if (reports.length === 0) {
-                        Submitted reports from your assigned
-                        interns will appear here.
+
+                        No reports have been submitted yet.
+
                       } @else {
-                        No reports match your selected filters.
+
+                        No reports match your filters.
+
                       }
+
                     </p>
 
                     @if (reports.length > 0) {
-                      <button class="outline-button"
+
+                      <button
+                        type="button"
+                        class="outline-button"
                         (click)="clearFilters()">
+
                         Clear filters
+
                       </button>
+
                     }
+
                   </div>
+
                 </td>
+
               </tr>
+
             }
 
           </tbody>
+
         </table>
+
       </div>
+
+      <!-- Pagination -->
 
       <footer class="table-footer">
 
         <span>
-          Showing <strong>{{ firstRecord }}–{{ lastRecord }}</strong>
-          of <strong>{{ filteredReports.length }}</strong> reports
+
+          Showing
+          <strong>{{ firstRecord }}–{{ lastRecord }}</strong>
+          of
+          <strong>{{ filteredReports.length }}</strong>
+
+          {{ filteredReports.length === 1 ? 'report' : 'reports' }}
+
         </span>
 
         <div class="pagination">
 
           <button
+            type="button"
             aria-label="Previous page"
             [disabled]="currentPage === 1"
             (click)="goToPage(currentPage - 1)">
+
             ‹
+
           </button>
 
           @for (page of pageNumbers; track page) {
+
             <button
+              type="button"
               [class.active]="currentPage === page"
               [attr.aria-current]="currentPage === page ? 'page' : null"
               (click)="goToPage(page)">
+
               {{ page }}
+
             </button>
+
           }
 
           <button
+            type="button"
             aria-label="Next page"
             [disabled]="currentPage >= totalPages"
             (click)="goToPage(currentPage + 1)">
+
             ›
+
           </button>
 
         </div>
+
       </footer>
 
     </section>
+
   }
 
 </div>

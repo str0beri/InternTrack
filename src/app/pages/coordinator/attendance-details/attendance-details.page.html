@@ -1,13 +1,659 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-title>attendance-details</ion-title>
-  </ion-toolbar>
-</ion-header>
+<div class="attendance-details-page">
 
-<ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">attendance-details</ion-title>
-    </ion-toolbar>
-  </ion-header>
-</ion-content>
+  <!-- BACK NAVIGATION -->
+
+  <div class="back-navigation">
+    <button
+      type="button"
+      class="back-button"
+      (click)="goBack()"
+    >
+      <ion-icon name="arrow-back-outline"></ion-icon>
+      Attendance monitoring
+    </button>
+  </div>
+
+  <!-- LOADING STATE -->
+
+  <div
+    class="state-card"
+    *ngIf="isLoading"
+    role="status"
+  >
+    <div class="loading-spinner"></div>
+    <h3>Loading attendance record</h3>
+  </div>
+
+  <!-- ERROR STATE -->
+
+  <div
+    class="state-card"
+    *ngIf="!isLoading && errorMessage"
+    role="alert"
+  >
+    <h3>Unable to load attendance record</h3>
+
+    <p>{{ errorMessage }}</p>
+
+    <button
+      type="button"
+      class="btn btn-secondary"
+      (click)="retryLoad()"
+    >
+      Try again
+    </button>
+  </div>
+
+  <!-- MAIN CONTENT -->
+
+  <ng-container *ngIf="!isLoading && !errorMessage">
+    <ng-container *ngIf="attendance as record">
+
+      <!-- SUCCESS MESSAGE -->
+
+      <div
+        class="message-banner success-banner"
+        *ngIf="dtrSuccessMessage"
+        role="status"
+      >
+        <span>{{ dtrSuccessMessage }}</span>
+
+        <button
+          type="button"
+          class="dismiss-button"
+          aria-label="Dismiss message"
+          (click)="dismissDtrSuccess()"
+        >
+          <ion-icon name="close-outline"></ion-icon>
+        </button>
+      </div>
+
+      <!-- ERROR MESSAGE -->
+
+      <div
+        class="message-banner error-banner"
+        *ngIf="dtrErrorMessage"
+        role="alert"
+      >
+        <span>{{ dtrErrorMessage }}</span>
+
+        <button
+          type="button"
+          class="dismiss-button"
+          aria-label="Dismiss error"
+          (click)="dismissDtrError()"
+        >
+          <ion-icon name="close-outline"></ion-icon>
+        </button>
+      </div>
+
+      <!-- STUDENT PROFILE -->
+
+      <section class="profile-card">
+
+        <div class="profile-main">
+
+          <div
+            class="profile-avatar"
+            [ngClass]="'avatar-' + studentAvatarColor"
+            aria-hidden="true"
+          >
+            {{ studentInitials }}
+          </div>
+
+          <div class="profile-info">
+
+            <div class="profile-title">
+              <h1>{{ studentName }}</h1>
+
+              <span
+                class="status-badge"
+                [ngClass]="verificationClass"
+              >
+                {{ verificationLabel }}
+              </span>
+            </div>
+
+            <p class="profile-meta">
+              {{ studentId }}
+
+              <span class="meta-separator">·</span>
+
+              {{ studentCourse }}
+
+              <ng-container *ngIf="studentYearLevel">
+                <span class="meta-separator">·</span>
+                {{ studentYearLevel }}
+              </ng-container>
+            </p>
+
+            <p class="profile-meta">
+              {{ companyName }}
+
+              <span class="meta-separator">·</span>
+
+              {{ formatLongDate(record.attendance_date) }}
+            </p>
+
+          </div>
+        </div>
+
+        <!-- DTR ACTIONS -->
+
+        <div class="profile-actions">
+
+          <button
+            type="button"
+            class="btn btn-secondary"
+            [disabled]="!canGenerateDtr || isGeneratingDtr"
+            (click)="openDtr()"
+          >
+            Open DTR
+          </button>
+
+          <button
+            type="button"
+            class="btn btn-secondary"
+            [disabled]="!canGenerateDtr || isGeneratingDtr"
+            (click)="printDtr()"
+          >
+            Print
+          </button>
+
+          <button
+            type="button"
+            class="btn btn-primary"
+            [disabled]="!canGenerateDtr || isGeneratingDtr"
+            (click)="exportDtr()"
+          >
+            <ion-icon name="download-outline"></ion-icon>
+            Download DTR
+          </button>
+
+          <div
+            class="dtr-processing"
+            *ngIf="isGeneratingDtr"
+            role="status"
+          >
+            <span class="small-spinner"></span>
+            Preparing DTR...
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- DETAILS LAYOUT -->
+
+      <div class="details-grid">
+
+        <!-- MAIN COLUMN -->
+
+        <div class="main-column">
+
+          <!-- ATTENDANCE SUMMARY -->
+
+          <section class="content-card">
+
+            <header class="card-header">
+              <h2>Attendance summary</h2>
+            </header>
+
+            <div class="summary-body">
+
+              <div class="summary-grid">
+
+                <div class="summary-item summary-time-in">
+                  <span class="summary-label">
+                    Time in
+                  </span>
+
+                  <strong
+                    [class.missing-value]="!record.time_in"
+                  >
+                    {{ formatTime(record.time_in) }}
+                  </strong>
+                </div>
+
+                <div class="summary-item summary-time-out">
+                  <span class="summary-label">
+                    Time out
+                  </span>
+
+                  <strong
+                    [class.missing-value]="!record.time_out"
+                  >
+                    {{ formatTime(record.time_out) }}
+                  </strong>
+                </div>
+
+                <div class="summary-item summary-hours">
+                  <span class="summary-label">
+                    Rendered hours
+                  </span>
+
+                  <strong>
+                    {{ renderedHours }}
+                  </strong>
+                </div>
+
+              </div>
+
+            </div>
+
+          </section>
+
+          <!-- ATTENDANCE EVIDENCE -->
+
+          <section class="content-card evidence-card">
+
+            <header class="card-header">
+              <h2>Attendance evidence</h2>
+            </header>
+
+            <!-- PHOTO EVIDENCE -->
+
+            <div class="photo-section">
+
+              <div class="photo-grid">
+
+                <!-- TIME-IN PHOTO -->
+
+                <div class="photo-card">
+
+                  <button
+                    type="button"
+                    class="photo-preview"
+                    *ngIf="hasTimeInPhoto"
+                    aria-label="Enlarge time-in photo"
+                    (click)="openPhoto('in')"
+                  >
+                    <img
+                      [src]="timeInPhotoUrl"
+                      alt="Submitted time-in attendance photo"
+                      referrerpolicy="no-referrer"
+                      (error)="onPhotoError('in')"
+                    />
+
+                    <span class="photo-expand">
+                      <ion-icon name="open-outline"></ion-icon>
+                    </span>
+                  </button>
+
+                  <div
+                    class="photo-placeholder"
+                    *ngIf="!hasTimeInPhoto"
+                  >
+                    <ion-icon name="image-outline"></ion-icon>
+
+                    <strong>
+                      {{
+                        record.time_in_photo
+                          ? 'Photo unavailable'
+                          : 'No time-in photo'
+                      }}
+                    </strong>
+
+                    <span *ngIf="record.time_in_photo">
+                      The stored photo could not be displayed.
+                    </span>
+                  </div>
+
+                  <div class="photo-caption">
+
+                    <div class="photo-caption-info">
+                      <span class="photo-label">
+                        Time-in photo
+                      </span>
+                    </div>
+
+                    <span class="photo-time">
+                      {{ formatTime(record.time_in) }}
+                    </span>
+
+                  </div>
+
+                </div>
+
+                <!-- TIME-OUT PHOTO -->
+
+                <div class="photo-card">
+
+                  <button
+                    type="button"
+                    class="photo-preview"
+                    *ngIf="hasTimeOutPhoto"
+                    aria-label="Enlarge time-out photo"
+                    (click)="openPhoto('out')"
+                  >
+                    <img
+                      [src]="timeOutPhotoUrl"
+                      alt="Submitted time-out attendance photo"
+                      referrerpolicy="no-referrer"
+                      (error)="onPhotoError('out')"
+                    />
+
+                    <span class="photo-expand">
+                      <ion-icon name="open-outline"></ion-icon>
+                    </span>
+                  </button>
+
+                  <div
+                    class="photo-placeholder"
+                    *ngIf="!hasTimeOutPhoto"
+                  >
+                    <ion-icon name="image-outline"></ion-icon>
+
+                    <strong>
+                      {{
+                        record.time_out_photo
+                          ? 'Photo unavailable'
+                          : 'No time-out photo'
+                      }}
+                    </strong>
+
+                    <span *ngIf="record.time_out_photo">
+                      The stored photo could not be displayed.
+                    </span>
+                  </div>
+
+                  <div class="photo-caption">
+
+                    <div class="photo-caption-info">
+                      <span class="photo-label">
+                        Time-out photo
+                      </span>
+                    </div>
+
+                    <span class="photo-time">
+                      {{ formatTime(record.time_out) }}
+                    </span>
+
+                  </div>
+
+                </div>
+
+              </div>
+
+            </div>
+
+            <!-- LOCATION EVIDENCE -->
+
+            <div class="location-section">
+
+              <div class="section-heading">
+                <h3>Recorded locations</h3>
+              </div>
+
+              <div class="location-grid">
+
+                <!-- TIME-IN LOCATION -->
+
+                <div class="location-card">
+
+                  <div class="location-card-header">
+                    <span>Time-in location</span>
+
+                    <span class="location-time">
+                      {{ formatTime(record.time_in) }}
+                    </span>
+                  </div>
+
+                  <div
+                    class="location-details"
+                    *ngIf="hasTimeInLocation"
+                  >
+                    <span class="coordinate-label">
+                      GPS coordinates
+                    </span>
+
+                    <strong class="coordinates">
+                      {{ timeInCoordinates }}
+                    </strong>
+
+                    <button
+                      type="button"
+                      class="map-link"
+                      (click)="openLocation('in')"
+                    >
+                      View map
+                      <ion-icon name="open-outline"></ion-icon>
+                    </button>
+                  </div>
+
+                  <div
+                    class="location-placeholder"
+                    *ngIf="!hasTimeInLocation"
+                  >
+                    <span>Location not recorded</span>
+                  </div>
+
+                </div>
+
+                <!-- TIME-OUT LOCATION -->
+
+                <div class="location-card">
+
+                  <div class="location-card-header">
+                    <span>Time-out location</span>
+
+                    <span class="location-time">
+                      {{ formatTime(record.time_out) }}
+                    </span>
+                  </div>
+
+                  <div
+                    class="location-details"
+                    *ngIf="hasTimeOutLocation"
+                  >
+                    <span class="coordinate-label">
+                      GPS coordinates
+                    </span>
+
+                    <strong class="coordinates">
+                      {{ timeOutCoordinates }}
+                    </strong>
+
+                    <button
+                      type="button"
+                      class="map-link"
+                      (click)="openLocation('out')"
+                    >
+                      View map
+                      <ion-icon name="open-outline"></ion-icon>
+                    </button>
+                  </div>
+
+                  <div
+                    class="location-placeholder"
+                    *ngIf="!hasTimeOutLocation"
+                  >
+                    <span>Location not recorded</span>
+                  </div>
+
+                </div>
+
+              </div>
+
+            </div>
+
+          </section>
+
+        </div>
+
+        <!-- RIGHT COLUMN -->
+
+        <aside class="side-column">
+
+          <!-- INTERNSHIP PLACEMENT -->
+
+          <section class="content-card">
+
+            <header class="card-header">
+              <h2>Internship placement</h2>
+            </header>
+
+            <div class="information-body">
+
+              <div class="information-row">
+                <span class="information-label">
+                  Company
+                </span>
+
+                <span class="information-value">
+                  {{ companyName }}
+                </span>
+              </div>
+
+              <div class="information-row">
+                <span class="information-label">
+                  Supervisor
+                </span>
+
+                <span class="information-value">
+                  {{ supervisorName }}
+                </span>
+              </div>
+
+              <div class="information-row">
+                <span class="information-label">
+                  Internship period
+                </span>
+
+                <span class="information-value">
+                  {{ internshipPeriod }}
+                </span>
+              </div>
+
+              <div
+                class="information-notice"
+                *ngIf="!assignment"
+              >
+                The historical internship placement could
+                not be identified for this attendance date.
+              </div>
+
+            </div>
+
+          </section>
+
+          <!-- VERIFICATION INFORMATION -->
+
+          <section class="content-card">
+
+            <header class="card-header">
+              <h2>Verification</h2>
+            </header>
+
+            <div class="information-body">
+
+              <div class="information-row">
+                <span class="information-label">
+                  Status
+                </span>
+
+                <span
+                  class="status-badge"
+                  [ngClass]="verificationClass"
+                >
+                  {{ verificationLabel }}
+                </span>
+              </div>
+
+              <div class="information-row">
+                <span class="information-label">
+                  Reviewing supervisor
+                </span>
+
+                <span class="information-value">
+                  {{ reviewingSupervisorName }}
+                </span>
+              </div>
+
+              <div class="information-row">
+                <span class="information-label">
+                  Verified on
+                </span>
+
+                <span class="information-value">
+                  {{ verifiedOn }}
+                </span>
+              </div>
+
+              <!-- SUPERVISOR REMARKS -->
+
+              <div
+                class="remarks-section"
+                *ngIf="remarks"
+              >
+                <h3>Supervisor remarks</h3>
+                <p>{{ remarks }}</p>
+              </div>
+
+              <!-- VERIFICATION NOTICE -->
+
+              <div
+                class="verification-notice"
+                [ngClass]="'notice-' + attendanceStatus"
+              >
+                <p>{{ verificationMessage }}</p>
+              </div>
+
+            </div>
+
+          </section>
+
+        </aside>
+
+      </div>
+
+    </ng-container>
+  </ng-container>
+
+  <!-- PHOTO PREVIEW MODAL -->
+
+  <div
+    class="photo-modal-overlay"
+    *ngIf="selectedPhotoUrl"
+    (click)="closePhoto()"
+    (keydown.escape)="closePhoto()"
+  >
+
+    <section
+      class="photo-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Attendance photo preview"
+      (click)="$event.stopPropagation()"
+    >
+
+      <header class="photo-modal-header">
+
+        <h2>{{ selectedPhotoTitle }}</h2>
+
+        <button
+          type="button"
+          class="modal-close"
+          aria-label="Close photo preview"
+          (click)="closePhoto()"
+        >
+          <ion-icon name="close-outline"></ion-icon>
+        </button>
+
+      </header>
+
+      <div class="photo-modal-body">
+
+        <img
+          [src]="selectedPhotoUrl"
+          [alt]="selectedPhotoTitle"
+          referrerpolicy="no-referrer"
+        />
+
+      </div>
+
+    </section>
+
+  </div>
+
+</div>

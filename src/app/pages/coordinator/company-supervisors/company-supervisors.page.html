@@ -1,13 +1,940 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-title>company-supervisors</ion-title>
-  </ion-toolbar>
-</ion-header>
+<div class="company-supervisors-page">
 
-<ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">company-supervisors</ion-title>
-    </ion-toolbar>
-  </ion-header>
-</ion-content>
+  <!-- PAGE HEADER -->
+  <header class="page-header">
+    <div class="page-heading">
+      <h1>Company Supervisors</h1>
+
+      <p *ngIf="isLoading">
+        Loading company supervisors...
+      </p>
+
+      <p *ngIf="!isLoading && !errorMessage">
+        {{ summaryText }}
+      </p>
+
+      <p *ngIf="!isLoading && errorMessage">
+        Manage registered host-company supervisors.
+      </p>
+    </div>
+
+    <button
+      type="button"
+      class="primary-button add-supervisor-button"
+      [disabled]="!canAddSupervisor"
+      (click)="openAddModal()">
+
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.8"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true">
+
+        <path d="M12 5v14M5 12h14"/>
+
+      </svg>
+
+      Add Supervisor
+
+    </button>
+  </header>
+
+  <!-- SUCCESS NOTIFICATION -->
+  <div
+    *ngIf="successMessage"
+    class="feedback-banner success-banner"
+    role="status">
+
+    <ion-icon
+      name="checkmark-circle-outline"
+      class="feedback-icon">
+    </ion-icon>
+
+    <div class="feedback-content">
+      <strong>Supervisor registered</strong>
+      <p>{{ successMessage }}</p>
+    </div>
+
+    <button
+      type="button"
+      class="feedback-close"
+      aria-label="Dismiss success message"
+      (click)="dismissSuccessMessage()">
+      <ion-icon name="close-outline"></ion-icon>
+    </button>
+  </div>
+
+  <!-- ACCOUNT CONFIRMATION -->
+  <div
+    *ngIf="warningMessage"
+    class="feedback-banner warning-banner"
+    role="status">
+
+    <ion-icon
+      name="information-circle-outline"
+      class="feedback-icon">
+    </ion-icon>
+
+    <div class="feedback-content">
+      <strong>Account confirmation</strong>
+      <p>{{ warningMessage }}</p>
+    </div>
+
+    <button
+      type="button"
+      class="feedback-close"
+      aria-label="Dismiss account confirmation message"
+      (click)="dismissWarningMessage()">
+      <ion-icon name="close-outline"></ion-icon>
+    </button>
+  </div>
+
+  <!-- LOADING STATE -->
+  <section
+    *ngIf="isLoading"
+    class="state-card"
+    role="status">
+
+    <div class="loading-spinner"></div>
+    <h3>Loading company supervisors</h3>
+
+    <p>Please wait while we retrieve the supervisor records.</p>
+  </section>
+
+  <!-- ERROR STATE -->
+  <section
+    *ngIf="!isLoading && errorMessage"
+    class="state-card error-state"
+    role="alert">
+
+    <div class="state-icon error-icon">
+      <ion-icon name="alert-circle-outline"></ion-icon>
+    </div>
+
+    <h3>Unable to load company supervisors</h3>
+    <p>{{ errorMessage }}</p>
+
+    <button
+      type="button"
+      class="secondary-button"
+      (click)="retryLoad()">
+      Try again
+    </button>
+  </section>
+
+  <!-- SUPERVISORS TABLE -->
+  <section
+    *ngIf="!isLoading && !errorMessage"
+    class="supervisors-card">
+
+    <!-- TABLE TOOLBAR -->
+    <div class="table-toolbar">
+      <div class="toolbar-filters">
+
+        <!-- SEARCH -->
+        <div class="search-container">
+          <ion-icon
+            name="search-outline"
+            class="search-icon">
+          </ion-icon>
+
+          <input
+            type="search"
+            class="search-input"
+            placeholder="Search by name, ID, email, or department"
+            aria-label="Search company supervisors"
+            [(ngModel)]="searchQuery"
+            (ngModelChange)="onSearchChange()"
+          />
+        </div>
+
+        <!-- COMPANY FILTER -->
+        <div class="filter-container company-filter">
+          <select
+            class="filter-select"
+            aria-label="Filter by company"
+            [(ngModel)]="selectedCompany"
+            (ngModelChange)="onFilterChange()">
+
+            <option value="all">All companies</option>
+
+            <option
+              *ngFor="let company of companyOptions"
+              [value]="company">
+              {{ company }}
+            </option>
+          </select>
+
+          <ion-icon
+            name="chevron-down-outline"
+            class="filter-icon">
+          </ion-icon>
+        </div>
+
+        <!-- STATUS FILTER -->
+        <div class="filter-container status-filter">
+          <select
+            class="filter-select"
+            aria-label="Filter by account status"
+            [(ngModel)]="selectedStatus"
+            (ngModelChange)="onFilterChange()">
+
+            <option value="all">All statuses</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive / Disabled</option>
+
+          </select>
+
+          <ion-icon
+            name="chevron-down-outline"
+            class="filter-icon">
+          </ion-icon>
+        </div>
+
+      </div>
+
+      <!-- RESULT COUNT -->
+      <div class="toolbar-count">
+        {{ filteredCount }}
+        {{ filteredCount === 1 ? 'supervisor' : 'supervisors' }}
+      </div>
+    </div>
+
+    <!-- TABLE -->
+    <div
+      *ngIf="filteredCount > 0"
+      class="table-wrapper">
+
+      <table class="supervisors-table">
+
+        <thead>
+          <tr>
+            <th scope="col" class="supervisor-column">
+              Supervisor
+            </th>
+
+            <th scope="col" class="id-column">
+              Supervisor ID
+            </th>
+
+            <th scope="col" class="company-column">
+              Company
+            </th>
+
+            <th scope="col" class="department-column">
+              Department
+            </th>
+
+            <th scope="col" class="email-column">
+              Email address
+            </th>
+
+            <th scope="col" class="interns-column">
+              Interns
+            </th>
+
+            <th scope="col" class="account-column">
+              Account
+            </th>
+
+            <th
+              scope="col"
+              class="action-column"
+              aria-label="Actions">
+            </th>
+          </tr>
+        </thead>
+
+        <tbody>
+
+          <tr
+            *ngFor="
+              let supervisor of paginatedSupervisors;
+              trackBy: trackBySupervisor
+            ">
+
+            <!-- SUPERVISOR PROFILE -->
+            <td class="supervisor-column">
+
+              <div class="supervisor-profile">
+
+                <div
+                  class="supervisor-avatar"
+                  [ngClass]="supervisor.avatarColor">
+                  {{ supervisor.initials }}
+                </div>
+
+                <div class="supervisor-information">
+
+                  <span
+                    class="supervisor-name"
+                    [title]="supervisor.fullName">
+                    {{ supervisor.fullName }}
+                  </span>
+
+                  <span
+                    class="supervisor-position"
+                    [title]="supervisor.position">
+                    {{ supervisor.position }}
+                  </span>
+
+                </div>
+              </div>
+            </td>
+
+            <!-- SUPERVISOR ID -->
+            <td class="id-column">
+              <span class="supervisor-id">
+                {{ supervisor.supervisorId }}
+              </span>
+            </td>
+
+            <!-- COMPANY -->
+            <td class="company-column">
+              <span
+                class="company-name"
+                [title]="supervisor.companyName">
+                {{ supervisor.companyName }}
+              </span>
+            </td>
+
+            <!-- DEPARTMENT -->
+            <td class="department-column">
+              <span
+                class="department-name"
+                [title]="supervisor.department">
+                {{ supervisor.department }}
+              </span>
+            </td>
+
+            <!-- EMAIL ADDRESS -->
+            <td class="email-column">
+              <span
+                class="supervisor-email"
+                [title]="supervisor.email">
+                {{ supervisor.email }}
+              </span>
+            </td>
+
+            <!-- ASSIGNED INTERNS -->
+            <td class="interns-column">
+              <span class="intern-count">
+                {{ supervisor.internCount }}
+              </span>
+            </td>
+
+            <!-- ACCOUNT STATUS -->
+            <td class="account-column">
+              <span
+                class="status-text"
+                [ngClass]="getStatusClass(supervisor.accountStatus)">
+
+                {{ getStatusLabel(supervisor.accountStatus) }}
+
+              </span>
+            </td>
+
+            <!-- VIEW BUTTON -->
+            <td class="action-column">
+              <button
+                type="button"
+                class="view-button"
+                [attr.aria-label]="'View ' + supervisor.fullName"
+                [disabled]="isCreatingSupervisor"
+                (click)="viewSupervisor(supervisor)">
+
+                View
+
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.7"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true">
+
+                  <path d="m9 18 6-6-6-6"/>
+
+                </svg>
+
+              </button>
+            </td>
+
+          </tr>
+
+        </tbody>
+      </table>
+    </div>
+
+    <!-- EMPTY STATE -->
+    <div
+      *ngIf="totalSupervisors === 0"
+      class="empty-state">
+
+      <div class="empty-state-icon">
+        <ion-icon name="people-outline"></ion-icon>
+      </div>
+
+      <h3>No company supervisors yet</h3>
+
+      <p>
+        Register a company supervisor to start managing
+        internship placements.
+      </p>
+
+      <button
+        type="button"
+        class="primary-button"
+        [disabled]="!canAddSupervisor"
+        (click)="openAddModal()">
+        Add supervisor
+      </button>
+
+    </div>
+
+    <!-- NO SEARCH RESULTS -->
+    <div
+      *ngIf="totalSupervisors > 0 && filteredCount === 0"
+      class="empty-state">
+
+      <div class="empty-state-icon">
+        <ion-icon name="search-outline"></ion-icon>
+      </div>
+
+      <h3>No matching supervisors</h3>
+      <p>Try adjusting your search or selected filters.</p>
+
+      <button
+        type="button"
+        class="secondary-button clear-filters-button"
+        (click)="clearFilters()">
+        Clear filters
+      </button>
+
+    </div>
+
+    <!-- PAGINATION -->
+    <footer
+      *ngIf="filteredCount > 0"
+      class="table-footer">
+
+      <div class="pagination-information">
+        Showing
+        <strong>{{ showingFrom }}–{{ showingTo }}</strong>
+        of
+        <strong>{{ filteredCount }}</strong>
+        {{ filteredCount === 1 ? 'supervisor' : 'supervisors' }}
+      </div>
+
+      <nav
+        class="pagination"
+        aria-label="Supervisor table pagination">
+
+        <button
+          type="button"
+          class="pagination-button navigation-button"
+          aria-label="Previous page"
+          [disabled]="currentPage === 1"
+          (click)="previousPage()">
+
+          <ion-icon name="chevron-back-outline"></ion-icon>
+
+        </button>
+
+        <button
+          *ngFor="let page of pageNumbers; trackBy: trackByPage"
+          type="button"
+          class="pagination-button page-button"
+          [class.active]="currentPage === page"
+          [attr.aria-current]="currentPage === page ? 'page' : null"
+          [attr.aria-label]="'Page ' + page"
+          (click)="goToPage(page)">
+
+          {{ page }}
+
+        </button>
+
+        <button
+          type="button"
+          class="pagination-button navigation-button"
+          aria-label="Next page"
+          [disabled]="currentPage === totalPages"
+          (click)="nextPage()">
+
+          <ion-icon name="chevron-forward-outline"></ion-icon>
+
+        </button>
+
+      </nav>
+    </footer>
+
+  </section>
+</div>
+
+<!-- ADD SUPERVISOR MODAL -->
+<div
+  *ngIf="showAddModal"
+  class="modal-overlay"
+  (click)="closeAddModal()"
+  (keydown.escape)="closeAddModal()">
+
+  <section
+    class="add-supervisor-modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="add-supervisor-title"
+    aria-describedby="add-supervisor-description"
+    (click)="$event.stopPropagation()">
+
+    <!-- MODAL HEADER -->
+    <header class="modal-header">
+
+      <div class="modal-heading">
+
+        <h2 id="add-supervisor-title">
+          Add company supervisor
+        </h2>
+
+        <p id="add-supervisor-description">
+          Register a supervisor and provide access to InternTrack.
+        </p>
+
+      </div>
+
+      <button
+        type="button"
+        class="modal-close-button"
+        aria-label="Close registration form"
+        [disabled]="isCreatingSupervisor"
+        (click)="closeAddModal()">
+
+        <ion-icon name="close-outline"></ion-icon>
+
+      </button>
+
+    </header>
+
+    <!-- REGISTRATION FORM -->
+    <form
+      class="registration-form"
+      autocomplete="off"
+      novalidate
+      (ngSubmit)="createSupervisor()">
+
+      <div class="modal-body">
+
+        <!-- FORM ERROR -->
+        <div
+          *ngIf="addErrorMessage"
+          class="form-error-banner"
+          role="alert">
+
+          <ion-icon name="alert-circle-outline"></ion-icon>
+
+          <div class="form-error-content">
+            <strong>Unable to register supervisor</strong>
+            <p>{{ addErrorMessage }}</p>
+          </div>
+
+          <button
+            type="button"
+            class="form-error-close"
+            aria-label="Dismiss error"
+            (click)="dismissAddError()">
+
+            <ion-icon name="close-outline"></ion-icon>
+
+          </button>
+        </div>
+
+        <!-- PERSONAL INFORMATION -->
+        <section class="form-section">
+
+          <div class="form-section-heading">
+            <h3>Personal information</h3>
+            <p>Enter the supervisor's name and contact details.</p>
+          </div>
+
+          <!-- FULL NAME -->
+          <div class="form-group">
+
+            <label for="supervisor-full-name">
+              Full name
+              <span class="required-indicator">*</span>
+            </label>
+
+            <input
+              id="supervisor-full-name"
+              name="fullName"
+              type="text"
+              class="form-input"
+              placeholder="Enter full name"
+              autocomplete="off"
+              maxlength="150"
+              required
+              [(ngModel)]="addForm.fullName"
+              (ngModelChange)="onAddFormChange()"
+              [disabled]="isCreatingSupervisor"
+            />
+
+          </div>
+
+          <div class="form-grid">
+
+            <!-- COMPANY EMAIL -->
+            <div class="form-group">
+
+              <label for="supervisor-email">
+                Company email
+                <span class="required-indicator">*</span>
+              </label>
+
+              <input
+                id="supervisor-email"
+                name="email"
+                type="email"
+                class="form-input"
+                placeholder="name@company.com"
+                autocomplete="off"
+                maxlength="254"
+                required
+                [(ngModel)]="addForm.email"
+                (ngModelChange)="onAddFormChange()"
+                [disabled]="isCreatingSupervisor"
+                [class.input-invalid]="
+                  addForm.email.trim() !== '' &&
+                  (!isEmailValid || emailAlreadyExists)
+                "
+                [attr.aria-invalid]="
+                  addForm.email.trim() !== '' &&
+                  (!isEmailValid || emailAlreadyExists)
+                "
+                aria-describedby="supervisor-email-help"
+              />
+
+              <div id="supervisor-email-help">
+
+                <p
+                  *ngIf="addForm.email.trim() !== '' && !isEmailValid"
+                  class="field-error">
+                  Enter a valid email address.
+                </p>
+
+                <p
+                  *ngIf="emailAlreadyExists"
+                  class="field-error">
+                  This email is already registered.
+                </p>
+
+                <p
+                  *ngIf="
+                    !emailAlreadyExists &&
+                    (addForm.email.trim() === '' || isEmailValid)
+                  "
+                  class="field-helper">
+                  Used for account login and confirmation.
+                </p>
+
+              </div>
+
+            </div>
+
+            <!-- CONTACT NUMBER -->
+            <div class="form-group">
+
+              <label for="supervisor-contact-number">
+                Contact number
+                <span class="optional-label">Optional</span>
+              </label>
+
+              <input
+                id="supervisor-contact-number"
+                name="contactNumber"
+                type="tel"
+                class="form-input"
+                placeholder="09XX XXX XXXX"
+                maxlength="30"
+                autocomplete="off"
+                [(ngModel)]="addForm.contactNumber"
+                (ngModelChange)="onAddFormChange()"
+                [disabled]="isCreatingSupervisor"
+              />
+
+            </div>
+
+          </div>
+        </section>
+
+        <!-- PROFESSIONAL INFORMATION -->
+        <section class="form-section">
+
+          <div class="form-section-heading">
+            <h3>Professional information</h3>
+            <p>Specify the supervisor's company and role.</p>
+          </div>
+
+          <!-- COMPANY NAME -->
+          <div class="form-group">
+
+            <label for="supervisor-company-name">
+              Company name
+              <span class="required-indicator">*</span>
+            </label>
+
+            <input
+              id="supervisor-company-name"
+              name="companyName"
+              type="text"
+              class="form-input"
+              placeholder="Enter or select a company"
+              list="registered-company-options"
+              maxlength="150"
+              autocomplete="off"
+              required
+              [(ngModel)]="addForm.companyName"
+              (ngModelChange)="onAddFormChange()"
+              [disabled]="isCreatingSupervisor"
+            />
+
+            <datalist id="registered-company-options">
+              <option
+                *ngFor="let company of companyOptions"
+                [value]="company">
+              </option>
+            </datalist>
+
+            <p class="field-helper">
+              Select an existing company or enter a new one.
+            </p>
+
+          </div>
+
+          <div class="form-grid">
+
+            <!-- POSITION -->
+            <div class="form-group">
+
+              <label for="supervisor-position">
+                Position
+                <span class="required-indicator">*</span>
+              </label>
+
+              <input
+                id="supervisor-position"
+                name="position"
+                type="text"
+                class="form-input"
+                placeholder="Enter job position"
+                maxlength="100"
+                required
+                [(ngModel)]="addForm.position"
+                (ngModelChange)="onAddFormChange()"
+                [disabled]="isCreatingSupervisor"
+              />
+
+            </div>
+
+            <!-- DEPARTMENT -->
+            <div class="form-group">
+
+              <label for="supervisor-department">
+                Department or unit
+                <span class="required-indicator">*</span>
+              </label>
+
+              <input
+                id="supervisor-department"
+                name="department"
+                type="text"
+                class="form-input"
+                placeholder="Enter department"
+                maxlength="100"
+                required
+                [(ngModel)]="addForm.department"
+                (ngModelChange)="onAddFormChange()"
+                [disabled]="isCreatingSupervisor"
+              />
+
+            </div>
+
+          </div>
+        </section>
+
+        <!-- ACCOUNT CREDENTIALS -->
+        <section class="form-section credentials-section">
+
+          <div class="form-section-heading">
+            <h3>Account credentials</h3>
+            <p>Set up the supervisor's initial login credentials.</p>
+          </div>
+
+          <div class="form-grid">
+
+            <!-- AUTOMATIC SUPERVISOR ID -->
+            <div class="form-group">
+
+              <label for="generated-supervisor-id">
+                Supervisor ID
+              </label>
+
+              <input
+                id="generated-supervisor-id"
+                type="text"
+                class="form-input readonly-input"
+                value="Automatically generated"
+                readonly
+              />
+
+              <p class="field-helper">
+                Assigned when the account is created.
+              </p>
+
+            </div>
+
+            <!-- TEMPORARY PASSWORD -->
+            <div class="form-group">
+
+              <label for="supervisor-temporary-password">
+                Temporary password
+                <span class="required-indicator">*</span>
+              </label>
+
+              <div
+                class="password-input-container"
+                [class.input-invalid]="
+                  addForm.temporaryPassword !== '' &&
+                  !isPasswordValid
+                ">
+
+                <input
+                  id="supervisor-temporary-password"
+                  name="temporaryPassword"
+                  [type]="showPassword ? 'text' : 'password'"
+                  class="password-input"
+                  placeholder="Enter temporary password"
+                  autocomplete="new-password"
+                  minlength="8"
+                  maxlength="72"
+                  required
+                  [(ngModel)]="addForm.temporaryPassword"
+                  (ngModelChange)="onAddFormChange()"
+                  [disabled]="isCreatingSupervisor"
+                  aria-describedby="password-requirement"
+                />
+
+                <button
+                  type="button"
+                  class="password-toggle-button"
+                  [attr.aria-label]="
+                    showPassword ? 'Hide password' : 'Show password'
+                  "
+                  [attr.aria-pressed]="showPassword"
+                  [disabled]="isCreatingSupervisor"
+                  (click)="togglePasswordVisibility()">
+
+                  <ion-icon
+                    [name]="showPassword ? 'eye-off-outline' : 'eye-outline'">
+                  </ion-icon>
+
+                </button>
+
+              </div>
+
+              <p
+                id="password-requirement"
+                class="field-helper"
+                [class.field-error]="
+                  addForm.temporaryPassword !== '' &&
+                  !isPasswordValid
+                ">
+                Must contain 8 to 72 characters.
+              </p>
+
+            </div>
+
+          </div>
+
+          <!-- ACCOUNT ACTIVATION NOTICE -->
+          <div class="registration-info-box">
+
+            <ion-icon
+              name="information-circle-outline"
+              class="registration-info-icon">
+            </ion-icon>
+
+            <div class="registration-info-content">
+
+              <strong>Account activation</strong>
+
+              <p>
+                The supervisor must confirm their email
+                before signing in. Share the temporary
+                password securely and advise the supervisor
+                to change it after their first login.
+                Internship assignments can be managed separately.
+              </p>
+
+            </div>
+
+          </div>
+
+        </section>
+
+        <p class="required-fields-note">
+          <span class="required-indicator">*</span>
+          Required fields
+        </p>
+
+      </div>
+
+      <!-- MODAL FOOTER -->
+      <footer class="modal-footer">
+
+        <div
+          *ngIf="isCreatingSupervisor"
+          class="submission-status"
+          role="status">
+          Creating supervisor account...
+        </div>
+
+        <div class="modal-footer-actions">
+
+          <button
+            type="button"
+            class="secondary-button modal-cancel-button"
+            [disabled]="isCreatingSupervisor"
+            (click)="closeAddModal()">
+            Cancel
+          </button>
+
+          <button
+            type="submit"
+            class="primary-button modal-submit-button"
+            [disabled]="!canCreateSupervisor">
+
+            <span
+              *ngIf="isCreatingSupervisor"
+              class="button-spinner">
+            </span>
+
+            <span>
+              {{
+                isCreatingSupervisor
+                  ? 'Creating account...'
+                  : 'Create supervisor'
+              }}
+            </span>
+
+          </button>
+
+        </div>
+
+      </footer>
+
+    </form>
+  </section>
+</div>

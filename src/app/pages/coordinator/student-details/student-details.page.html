@@ -1,13 +1,2434 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-title>student-details</ion-title>
-  </ion-toolbar>
-</ion-header>
 
-<ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">student-details</ion-title>
-    </ion-toolbar>
-  </ion-header>
-</ion-content>
+<div class="student-details-page">
+
+  <!-- BACK NAVIGATION -->
+
+  <button
+    type="button"
+    class="back-button"
+    (click)="backToStudents()"
+    [disabled]="savingAcademicInfo || savingAssignment"
+  >
+    <ion-icon name="arrow-back-outline"></ion-icon>
+    Student interns
+  </button>
+
+  <!-- LOADING STATE -->
+
+  <div
+    class="state-card"
+    *ngIf="isLoading"
+    role="status"
+  >
+    <div class="loading-spinner"></div>
+
+    <h3>Loading student details</h3>
+
+    <p>Please wait while we retrieve student records.</p>
+  </div>
+
+  <!-- ERROR STATE -->
+
+  <div
+    class="state-card"
+    *ngIf="!isLoading && errorMessage"
+    role="alert"
+  >
+    <ion-icon
+      class="state-icon"
+      name="person-outline"
+    ></ion-icon>
+
+    <h3>Unable to load student</h3>
+
+    <p>{{ errorMessage }}</p>
+
+    <button
+      type="button"
+      class="button secondary-button"
+      (click)="loadStudentDetails()"
+    >
+      <ion-icon name="refresh-outline"></ion-icon>
+      Try again
+    </button>
+  </div>
+
+  <!-- MANAGEMENT SUCCESS MESSAGE -->
+
+  <div
+    class="management-message"
+    *ngIf="managementMessage"
+    role="status"
+  >
+    <div class="management-message-content">
+      <ion-icon name="checkmark-circle-outline"></ion-icon>
+
+      <span>{{ managementMessage }}</span>
+    </div>
+
+    <button
+      type="button"
+      class="message-close-button"
+      aria-label="Dismiss message"
+      (click)="dismissManagementMessage()"
+    >
+      <ion-icon name="close-outline"></ion-icon>
+    </button>
+  </div>
+
+  <!-- MAIN CONTENT -->
+
+  <ng-container *ngIf="!isLoading && student as s">
+
+    <div
+      class="student-content"
+      [attr.inert]="hasOpenModal ? '' : null"
+    >
+
+      <!-- STUDENT PROFILE -->
+
+      <section class="card profile-card">
+
+        <div class="profile-information">
+
+          <div class="profile-avatar">
+            {{ getInitials(s.full_name) }}
+          </div>
+
+          <div class="profile-content">
+
+            <div class="profile-title">
+
+              <h1>{{ s.full_name }}</h1>
+
+              <span
+                class="status-badge"
+                [ngClass]="internshipStatus"
+              >
+                <span class="status-dot"></span>
+                {{ internshipStatusLabel }}
+              </span>
+
+            </div>
+
+            <p class="profile-subtitle">
+
+              {{ s.student_id }}
+
+              <span class="separator">·</span>
+
+              {{ s.course || 'Course not specified' }}
+
+            </p>
+
+            <p class="profile-year">
+              {{ s.year_level || 'Year level not specified' }}
+            </p>
+
+            <div class="profile-meta">
+
+              <span>
+                <ion-icon name="mail-outline"></ion-icon>
+                {{ s.email || 'Email not specified' }}
+              </span>
+
+              <span>
+                <ion-icon name="shield-checkmark-outline"></ion-icon>
+                Account {{ s.account_status }}
+              </span>
+
+            </div>
+
+          </div>
+
+        </div>
+
+        <div class="profile-actions">
+
+          <button
+            type="button"
+            class="button secondary-button"
+            [disabled]="
+              !canEditAcademicInfo ||
+              savingAcademicInfo ||
+              savingAssignment ||
+              downloadingDTR
+            "
+            (click)="openAcademicModal()"
+          >
+            <ion-icon name="create-outline"></ion-icon>
+
+            Edit academic info
+          </button>
+
+          <button
+            type="button"
+            class="button primary-button"
+            [disabled]="
+              !canReassignIntern ||
+              savingAcademicInfo ||
+              savingAssignment ||
+              downloadingDTR
+            "
+            (click)="openAssignmentModal()"
+          >
+            <ion-icon name="business-outline"></ion-icon>
+
+            {{ assignmentButtonLabel }}
+          </button>
+
+        </div>
+
+      </section>
+
+      <!-- MAIN TWO-COLUMN LAYOUT -->
+
+      <div class="details-grid">
+
+        <!-- LEFT COLUMN -->
+
+        <main class="main-column">
+
+          <!-- INTERNSHIP HOURS -->
+
+          <section class="card hours-card">
+
+            <div class="card-header">
+
+              <div>
+
+                <h2>Internship hours</h2>
+
+                <p>
+                  Verified hours come from
+                  supervisor-approved attendance records.
+                </p>
+
+              </div>
+
+              <button
+                type="button"
+                class="button secondary-button download-button"
+                (click)="downloadDTR()"
+                [disabled]="
+                  downloadingDTR ||
+                  savingAcademicInfo ||
+                  savingAssignment
+                "
+              >
+                <ion-icon name="download-outline"></ion-icon>
+
+                {{ downloadingDTR ? 'Downloading...' : 'Download DTR' }}
+
+              </button>
+
+            </div>
+
+            <!-- DOWNLOAD ERROR -->
+
+            <div
+              class="message error-message"
+              *ngIf="downloadError"
+              role="alert"
+            >
+              {{ downloadError }}
+            </div>
+
+            <!-- DOWNLOAD SUCCESS -->
+
+            <div
+              class="message success-message"
+              *ngIf="downloadMessage"
+              role="status"
+            >
+              {{ downloadMessage }}
+            </div>
+
+            <!-- HOURS SUMMARY -->
+
+            <div class="hours-grid">
+
+              <div class="hour-stat">
+
+                <span class="stat-label">Required</span>
+
+                <strong>
+                  {{ formatHours(requiredHours) }} h
+                </strong>
+
+              </div>
+
+              <div class="hour-stat">
+
+                <span class="stat-label">Verified</span>
+
+                <strong>
+                  {{ formatHours(verifiedHours) }} h
+                </strong>
+
+              </div>
+
+              <div class="hour-stat">
+
+                <span class="stat-label">Provisional</span>
+
+                <strong>
+                  {{ formatHours(provisionalHours) }} h
+                </strong>
+
+              </div>
+
+              <div class="hour-stat">
+
+                <span class="stat-label">Remaining</span>
+
+                <strong>
+                  {{ formatHours(remainingHours) }} h
+                </strong>
+
+              </div>
+
+            </div>
+
+            <!-- INTERNSHIP PROGRESS -->
+
+            <div class="progress-section">
+
+              <div class="progress-heading">
+
+                <span>
+                  {{ formatHours(verifiedHours) }}
+                  of
+                  {{ formatHours(requiredHours) }}
+                  required hours verified
+                </span>
+
+                <strong>{{ progress }}%</strong>
+
+              </div>
+
+              <div
+                class="progress-track"
+                role="progressbar"
+                aria-label="Internship progress"
+                [attr.aria-valuenow]="progress"
+                aria-valuemin="0"
+                aria-valuemax="100"
+              >
+                <div
+                  class="progress-fill"
+                  [style.width.%]="progress"
+                  [class.completed]="progress === 100"
+                ></div>
+              </div>
+
+              <p class="progress-note">
+
+                Weekly reports:
+
+                {{ approvedReportsCount }}
+
+                of
+
+                {{ submittedReportsCount }}
+
+                submitted reports approved.
+
+              </p>
+
+            </div>
+
+          </section>
+
+          <!-- RECORD TABS -->
+
+          <section class="card records-card">
+
+            <div
+              class="tabs"
+              aria-label="Student record sections"
+            >
+
+              <button
+                type="button"
+                *ngFor="let tab of tabs"
+                class="tab-button"
+                [class.active]="activeTab === tab.id"
+                [attr.aria-pressed]="activeTab === tab.id"
+                (click)="setActiveTab(tab.id)"
+              >
+                {{ tab.label }}
+              </button>
+
+            </div>
+
+            <!-- OVERVIEW TAB -->
+
+            <div
+              class="tab-content"
+              *ngIf="activeTab === 'overview'"
+            >
+
+              <div class="overview-grid">
+
+                <!-- ACADEMIC INFORMATION -->
+
+                <div class="information-section">
+
+                  <h3 class="section-label">
+                    Academic information
+                  </h3>
+
+                  <div class="information-grid">
+
+                    <div class="information-item">
+
+                      <span>Course</span>
+
+                      <strong>
+                        {{ s.course || 'Not specified' }}
+                      </strong>
+
+                    </div>
+
+                    <div class="information-item">
+
+                      <span>School</span>
+
+                      <strong>
+                        {{ s.school_name || 'Not specified' }}
+                      </strong>
+
+                    </div>
+
+                    <div class="information-item">
+
+                      <span>Year level</span>
+
+                      <strong>
+                        {{ s.year_level || 'Not specified' }}
+                      </strong>
+
+                    </div>
+
+                    <div class="information-item">
+
+                      <span>Student ID</span>
+
+                      <strong>{{ s.student_id }}</strong>
+
+                    </div>
+
+                  </div>
+
+                </div>
+
+                <!-- INTERNSHIP REQUIREMENTS -->
+
+                <div class="information-section">
+
+                  <h3 class="section-label">
+                    Internship requirement
+                  </h3>
+
+                  <div class="information-grid">
+
+                    <div class="information-item">
+
+                      <span>Start date</span>
+
+                      <strong>
+                        {{ formatDate(s.ojt_start_date) }}
+                      </strong>
+
+                    </div>
+
+                    <div class="information-item">
+
+                      <span>End date</span>
+
+                      <strong>
+                        {{ formatDate(s.ojt_end_date) }}
+                      </strong>
+
+                    </div>
+
+                    <div class="information-item">
+
+                      <span>Required hours</span>
+
+                      <strong>
+                        {{ formatHours(requiredHours) }} hours
+                      </strong>
+
+                    </div>
+
+                    <div class="information-item">
+
+                      <span>Assigned on</span>
+
+                      <strong>
+                        {{ formatDate(currentAssignment?.assigned_date) }}
+                      </strong>
+
+                    </div>
+
+                  </div>
+
+                </div>
+
+              </div>
+
+              <!-- CURRENT PLACEMENT PREVIEW -->
+
+              
+
+            </div>
+
+            <!-- ATTENDANCE HISTORY TAB -->
+
+            <div
+              class="tab-content"
+              *ngIf="activeTab === 'attendance'"
+            >
+
+              <div class="tab-heading">
+
+                <div>
+
+                  <h3>Attendance history</h3>
+
+                  <p>
+                    Monitor synchronized attendance records
+                    and supervisor verification.
+                  </p>
+
+                </div>
+
+              </div>
+
+              <!-- ATTENDANCE SUMMARY -->
+
+              <div class="record-summary-grid">
+
+                <div class="record-summary">
+
+                  <span>Verified</span>
+
+                  <strong>{{ verifiedAttendanceCount }}</strong>
+
+                </div>
+
+                <div class="record-summary">
+
+                  <span>Provisional</span>
+
+                  <strong>{{ provisionalAttendanceCount }}</strong>
+
+                </div>
+
+                <div class="record-summary">
+
+                  <span>Rejected</span>
+
+                  <strong>{{ rejectedAttendanceCount }}</strong>
+
+                </div>
+
+                <div class="record-summary">
+
+                  <span>Incomplete</span>
+
+                  <strong>{{ incompleteAttendanceCount }}</strong>
+
+                </div>
+
+              </div>
+
+              <!-- ATTENDANCE TABLE -->
+
+              <div
+                class="table-wrapper"
+                *ngIf="attendanceRecords.length > 0"
+              >
+
+                <table class="records-table">
+
+                  <thead>
+
+                    <tr>
+
+                      <th scope="col">Date</th>
+
+                      <th scope="col">Time in</th>
+
+                      <th scope="col">Time out</th>
+
+                      <th scope="col">Rendered hours</th>
+
+                      <th scope="col">Credited hours</th>
+
+                      <th scope="col">Status</th>
+
+                    </tr>
+
+                  </thead>
+
+                  <tbody>
+
+                    <tr *ngFor="let record of paginatedAttendance">
+
+                      <td>
+                        {{ formatDate(record.attendance_date) }}
+                      </td>
+
+                      <td>
+                        {{ formatTime(record.time_in) }}
+                      </td>
+
+                      <td>
+                        {{ formatTime(record.time_out) }}
+                      </td>
+
+                      <td>
+                        {{ formatHours(getRecordHours(record)) }} h
+                      </td>
+
+                      <td>
+                        {{ formatHours(getCreditedHours(record)) }} h
+                      </td>
+
+                      <td>
+
+                        <span
+                          class="status-badge"
+                          [ngClass]="getAttendanceStatusClass(record)"
+                          [attr.title]="record.remarks || null"
+                        >
+
+                          <span class="status-dot"></span>
+
+                          {{ getAttendanceStatus(record) }}
+
+                        </span>
+
+                      </td>
+
+                    </tr>
+
+                  </tbody>
+
+                </table>
+
+              </div>
+
+              <!-- ATTENDANCE EMPTY STATE -->
+
+              <div
+                class="empty-state"
+                *ngIf="attendanceRecords.length === 0"
+              >
+
+                <h3>No attendance records</h3>
+
+                <p>
+                  Synchronized attendance records
+                  will appear here.
+                </p>
+
+              </div>
+
+              <!-- ATTENDANCE PAGINATION -->
+
+              <div
+                class="pagination"
+                *ngIf="attendanceRecords.length > 0"
+              >
+
+                <span class="pagination-info">
+
+                  Showing
+
+                  {{ (attendancePage - 1) * attendancePageSize + 1 }}
+
+                  to
+
+                  {{
+                    attendancePage * attendancePageSize >
+                    attendanceRecords.length
+                      ? attendanceRecords.length
+                      : attendancePage * attendancePageSize
+                  }}
+
+                  of
+
+                  {{ attendanceRecords.length }} records
+
+                </span>
+
+                <div class="pagination-actions">
+
+                  <button
+                    type="button"
+                    class="button secondary-button"
+                    [disabled]="attendancePage === 1"
+                    (click)="changeAttendancePage(attendancePage - 1)"
+                  >
+                    Previous
+                  </button>
+
+                  <span class="page-number">
+
+                    {{ attendancePage }}
+
+                    /
+
+                    {{ attendanceTotalPages }}
+
+                  </span>
+
+                  <button
+                    type="button"
+                    class="button secondary-button"
+                    [disabled]="attendancePage === attendanceTotalPages"
+                    (click)="changeAttendancePage(attendancePage + 1)"
+                  >
+                    Next
+                  </button>
+
+                </div>
+
+              </div>
+
+              <p class="monitoring-note">
+                Only verified, synchronized, and complete attendance
+                contributes to official internship hours.
+                Attendance verification is handled by the
+                company supervisor.
+              </p>
+
+            </div>
+
+            <!-- WEEKLY REPORTS TAB -->
+
+            <div
+              class="tab-content"
+              *ngIf="activeTab === 'reports'"
+            >
+
+              <div class="tab-heading">
+
+                <div>
+
+                  <h3>Weekly reports</h3>
+
+                  <p>
+                    Monitor weekly report submissions
+                    and review status.
+                  </p>
+
+                </div>
+
+              </div>
+
+              <!-- REPORT SUMMARY -->
+
+              <div class="record-summary-grid">
+
+                <div class="record-summary">
+
+                  <span>Submitted</span>
+
+                  <strong>{{ submittedReportsCount }}</strong>
+
+                </div>
+
+                <div class="record-summary">
+
+                  <span>Approved</span>
+
+                  <strong>{{ approvedReportsCount }}</strong>
+
+                </div>
+
+                <div class="record-summary">
+
+                  <span>Pending review</span>
+
+                  <strong>{{ pendingReportsCount }}</strong>
+
+                </div>
+
+                <div class="record-summary">
+
+                  <span>Returned</span>
+
+                  <strong>{{ returnedReportsCount }}</strong>
+
+                </div>
+
+              </div>
+
+              <!-- WEEKLY REPORTS TABLE -->
+
+              <div
+                class="table-wrapper"
+                *ngIf="weeklyReports.length > 0"
+              >
+
+                <table class="records-table">
+
+                  <thead>
+
+                    <tr>
+
+                      <th scope="col">Week</th>
+
+                      <th scope="col">Period</th>
+
+                      <th scope="col">Submitted on</th>
+
+                      <th scope="col">Reviewed on</th>
+
+                      <th scope="col">Status</th>
+
+                    </tr>
+
+                  </thead>
+
+                  <tbody>
+
+                    <tr *ngFor="let report of weeklyReports">
+
+                      <td>
+
+                        <strong>Week {{ report.week }}</strong>
+
+                      </td>
+
+                      <td>
+                        {{ report.period }}
+                      </td>
+
+                      <td>
+                        {{ formatDate(report.submitted_at) }}
+                      </td>
+
+                      <td>
+                        {{ formatDate(report.reviewed_at) }}
+                      </td>
+
+                      <td>
+
+                        <span
+                          class="status-badge"
+                          [ngClass]="report.status"
+                        >
+
+                          <span class="status-dot"></span>
+
+                          {{ getReportStatusLabel(report.status) }}
+
+                        </span>
+
+                      </td>
+
+                    </tr>
+
+                  </tbody>
+
+                </table>
+
+              </div>
+
+              <!-- REPORT EMPTY STATE -->
+
+              <div
+                class="empty-state"
+                *ngIf="weeklyReports.length === 0"
+              >
+
+                <h3>No weekly reports</h3>
+
+                <p>
+                  Weekly report records will appear here.
+                </p>
+
+              </div>
+
+              <p class="monitoring-note">
+                Weekly report approval and return actions
+                are handled by the company supervisor.
+              </p>
+
+            </div>
+
+            <!-- ASSIGNMENT HISTORY TAB -->
+
+            <div
+              class="tab-content"
+              *ngIf="activeTab === 'assignments'"
+            >
+
+              <div class="tab-heading">
+
+                <div>
+
+                  <h3>Assignment history</h3>
+
+                  <p>
+                    View current and previous
+                    internship assignment records.
+                  </p>
+
+                </div>
+
+                <button
+                  type="button"
+                  class="button secondary-button"
+                  [disabled]="
+                    !canReassignIntern ||
+                    savingAssignment ||
+                    savingAcademicInfo ||
+                    downloadingDTR
+                  "
+                  (click)="openAssignmentModal()"
+                >
+                  {{ assignmentButtonLabel }}
+                </button>
+
+              </div>
+
+              <!-- ASSIGNMENT HISTORY LIST -->
+
+              <div
+                class="assignment-list"
+                *ngIf="assignments.length > 0"
+              >
+
+                <article
+                  class="assignment-item"
+                  *ngFor="let assignment of assignments"
+                  [class.current-assignment]="
+                    assignment.assignment_status === 'active'
+                  "
+                >
+
+                  <div class="assignment-icon">
+
+                    <ion-icon name="business-outline"></ion-icon>
+
+                  </div>
+
+                  <div class="assignment-content">
+
+                    <h4>{{ assignment.company_name }}</h4>
+
+                    <p>
+                      {{
+                        assignment.supervisor?.full_name ||
+                        'Supervisor not specified'
+                      }}
+                    </p>
+
+                    <span>
+                      Assigned on
+                      {{ formatDate(assignment.assigned_date) }}
+                    </span>
+
+                    <span
+                      class="assignment-changed-date"
+                      *ngIf="getAssignmentChangedDate(assignment) as changedDate"
+                    >
+                      Changed on {{ formatDate(changedDate) }}
+                    </span>
+
+                    <div
+                      class="assignment-reason"
+                      *ngIf="
+                        getAssignmentReason(assignment) !==
+                        'No reason recorded.'
+                      "
+                    >
+
+                      <span class="assignment-reason-label">
+
+                        {{
+                          assignment.assignment_status === 'active'
+                            ? 'Assignment reason'
+                            : 'Reassignment reason'
+                        }}
+
+                      </span>
+
+                      <p>{{ getAssignmentReason(assignment) }}</p>
+
+                    </div>
+
+                  </div>
+
+                  <span
+                    class="status-badge"
+                    [ngClass]="assignment.assignment_status"
+                  >
+
+                    <span class="status-dot"></span>
+
+                    {{ getAssignmentStatusLabel(assignment.assignment_status) }}
+
+                  </span>
+
+                </article>
+
+              </div>
+
+              <!-- ASSIGNMENT EMPTY STATE -->
+
+              <div
+                class="empty-state"
+                *ngIf="assignments.length === 0"
+              >
+
+                <h3>No assignment history</h3>
+
+                <p>
+                  This student has not been assigned
+                  to a company supervisor.
+                </p>
+
+                <button
+                  type="button"
+                  class="button primary-button"
+                  [disabled]="
+                    !canReassignIntern ||
+                    savingAcademicInfo ||
+                    savingAssignment ||
+                    downloadingDTR
+                  "
+                  (click)="openAssignmentModal()"
+                >
+                  {{ assignmentButtonLabel }}
+                </button>
+
+              </div>
+
+              <p
+                class="monitoring-note"
+                *ngIf="assignments.length > 0"
+              >
+                Previous assignments are retained for record keeping.
+                Only one internship assignment can be active
+                at a time.
+              </p>
+
+            </div>
+
+          </section>
+
+        </main>
+
+        <!-- RIGHT COLUMN -->
+
+        <aside class="side-column">
+
+          <!-- PLACEMENT CARD -->
+
+          <section class="card placement-card">
+
+            <div class="card-header">
+
+              <h2>Placement</h2>
+
+            </div>
+
+            <div class="side-card-content">
+
+              <!-- COMPANY INFORMATION -->
+
+              <div class="company-profile">
+
+                <div class="company-icon">
+
+                  <ion-icon name="business-outline"></ion-icon>
+
+                </div>
+
+                <div>
+
+                  <strong>{{ companyName }}</strong>
+
+                  <p *ngIf="currentAssignment">
+
+                    {{
+                      s.department ||
+                      currentAssignment.supervisor?.department ||
+                      'Department not specified'
+                    }}
+
+                  </p>
+
+                  <p *ngIf="!currentAssignment">
+                    No active placement
+                  </p>
+
+                </div>
+
+              </div>
+
+              <div
+                class="detail-list"
+                *ngIf="currentAssignment"
+              >
+
+                <div class="detail-row">
+
+                  <span>Location</span>
+
+                  <strong>
+                    {{ s.company_location || 'Not specified' }}
+                  </strong>
+
+                </div>
+
+              </div>
+
+              <!-- SUPERVISOR INFORMATION -->
+
+              <div
+                class="supervisor-section"
+                *ngIf="currentAssignment"
+              >
+
+                <h3 class="section-label">
+                  Company supervisor
+                </h3>
+
+                <div class="supervisor-profile">
+
+                  <div class="supervisor-avatar">
+
+                    {{ getInitials(supervisorName) }}
+
+                  </div>
+
+                  <div>
+
+                    <strong>{{ supervisorName }}</strong>
+
+                    <p>
+                      {{
+                        currentAssignment.supervisor?.position ||
+                        'Position not specified'
+                      }}
+                    </p>
+
+                  </div>
+
+                </div>
+
+              </div>
+
+              <!-- PLACEMENT DETAILS -->
+
+              <div class="detail-list">
+
+                <div class="detail-row">
+
+                  <span>Internship period</span>
+
+                  <strong>{{ internshipPeriod }}</strong>
+
+                </div>
+
+                <div class="detail-row">
+
+                  <span>Assigned on</span>
+
+                  <strong>
+                    {{ formatDate(currentAssignment?.assigned_date) }}
+                  </strong>
+
+                </div>
+
+              </div>
+
+              <button
+                type="button"
+                class="button secondary-button full-width"
+                [disabled]="
+                  !canReassignIntern ||
+                  savingAssignment ||
+                  savingAcademicInfo ||
+                  downloadingDTR
+                "
+                (click)="openAssignmentModal()"
+              >
+                {{
+                  currentAssignment
+                    ? 'Manage assignment'
+                    : 'Assign internship'
+                }}
+              </button>
+
+            </div>
+
+          </section>
+
+          <!-- ACCOUNT CARD -->
+
+          <section class="card account-card">
+
+            <div class="card-header">
+
+              <h2>Account</h2>
+
+            </div>
+
+            <div class="side-card-content">
+
+              <div class="detail-list account-details">
+
+                <div class="detail-row">
+
+                  <span>Account status</span>
+
+                  <span
+                    class="status-badge"
+                    [ngClass]="s.account_status"
+                  >
+
+                    <span class="status-dot"></span>
+
+                    {{ s.account_status | titlecase }}
+
+                  </span>
+
+                </div>
+
+                <div class="detail-row">
+
+                  <span>Student ID</span>
+
+                  <strong>{{ s.student_id }}</strong>
+
+                </div>
+
+                <div class="detail-row">
+
+                  <span>Email</span>
+
+                  <strong>
+                    {{ s.email || 'Not specified' }}
+                  </strong>
+
+                </div>
+
+              </div>
+
+              <button
+                type="button"
+                class="button danger-button full-width"
+                [disabled]="!canDeactivateAccount"
+                title="Account deactivation is not yet available"
+              >
+
+                <ion-icon name="power-outline"></ion-icon>
+
+                Deactivate account
+
+              </button>
+
+            </div>
+
+          </section>
+
+        </aside>
+
+      </div>
+
+    </div>
+
+    <!-- ========================================= -->
+    <!-- EDIT ACADEMIC INFORMATION MODAL -->
+    <!-- ========================================= -->
+
+    <div
+      class="modal-overlay"
+      *ngIf="showAcademicModal"
+      (keydown.escape)="closeAcademicModal()"
+    >
+
+      <section
+        class="management-modal academic-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="academic-modal-title"
+        aria-describedby="academic-modal-description"
+      >
+
+        <!-- MODAL HEADER -->
+
+        <header class="modal-header">
+
+          <div class="modal-heading">
+
+            <h2 id="academic-modal-title">
+              Edit academic information
+            </h2>
+
+            <p id="academic-modal-description">
+              Update the student's program details
+              and internship requirement.
+            </p>
+
+          </div>
+
+          <button
+            type="button"
+            class="modal-close-button"
+            aria-label="Close academic information"
+            [disabled]="savingAcademicInfo"
+            (click)="closeAcademicModal()"
+          >
+
+            <ion-icon name="close-outline"></ion-icon>
+
+          </button>
+
+        </header>
+
+        <!-- ACADEMIC FORM -->
+
+        <form
+          class="modal-form"
+          (ngSubmit)="saveAcademicInfo()"
+          novalidate
+        >
+
+          <div class="modal-body">
+
+            <!-- STUDENT INFORMATION -->
+
+            <div class="modal-student-summary">
+
+              <div class="modal-student-avatar">
+
+                {{ getInitials(s.full_name) }}
+
+              </div>
+
+              <div>
+
+                <strong>{{ s.full_name }}</strong>
+
+                <span>{{ s.student_id }}</span>
+
+              </div>
+
+            </div>
+
+            <!-- VALIDATION ERROR -->
+
+            <div
+              class="form-error"
+              *ngIf="academicError"
+              role="alert"
+            >
+
+              <ion-icon name="alert-circle-outline"></ion-icon>
+
+              <span>{{ academicError }}</span>
+
+            </div>
+
+            <!-- COURSE -->
+
+            <div class="form-field">
+
+              <label for="academic-course">
+
+                Course
+
+                <span class="required-mark">*</span>
+
+              </label>
+
+              <select
+                id="academic-course"
+                name="academicCourse"
+                [(ngModel)]="academicForm.course"
+                [disabled]="savingAcademicInfo"
+                required
+              >
+
+                <option value="" disabled>
+                  Select course
+                </option>
+
+                <option
+                  *ngFor="let course of availableCourses"
+                  [value]="course"
+                >
+                  {{ course }}
+                </option>
+
+              </select>
+
+            </div>
+
+            <!-- YEAR LEVEL -->
+
+            <div class="form-field">
+
+              <label for="academic-year-level">
+
+                Year level
+
+                <span class="required-mark">*</span>
+
+              </label>
+
+              <select
+                id="academic-year-level"
+                name="academicYearLevel"
+                [(ngModel)]="academicForm.yearLevel"
+                [disabled]="savingAcademicInfo"
+                required
+              >
+
+                <option value="" disabled>
+                  Select year level
+                </option>
+
+                <option
+                  *ngFor="let yearLevel of yearLevelOptions"
+                  [value]="yearLevel"
+                >
+                  {{ yearLevel }}
+                </option>
+
+              </select>
+
+            </div>
+
+            <!-- REQUIRED HOURS -->
+
+            <div class="form-field">
+
+              <label for="academic-required-hours">
+
+                Required internship hours
+
+                <span class="required-mark">*</span>
+
+              </label>
+
+              <div class="input-with-suffix">
+
+                <input
+                  id="academic-required-hours"
+                  type="number"
+                  name="academicRequiredHours"
+                  [(ngModel)]="academicForm.requiredHours"
+                  [disabled]="savingAcademicInfo"
+                  min="1"
+                  max="2147483647"
+                  step="1"
+                  placeholder="Enter required hours"
+                  aria-describedby="required-hours-help"
+                  required
+                />
+
+                <span class="input-suffix">
+                  hours
+                </span>
+
+              </div>
+
+              <p
+                class="field-hint"
+                id="required-hours-help"
+              >
+                Reaching this value does not automatically
+                complete the internship.
+              </p>
+
+            </div>
+
+            <!-- INTERNSHIP DATES -->
+
+            <div class="form-grid two-columns">
+
+              <div class="form-field">
+
+                <label for="academic-start-date">
+
+                  Internship start date
+
+                  <span class="required-mark">*</span>
+
+                </label>
+
+                <input
+                  id="academic-start-date"
+                  type="date"
+                  name="academicStartDate"
+                  [(ngModel)]="academicForm.startDate"
+                  [disabled]="savingAcademicInfo"
+                  required
+                />
+
+              </div>
+
+              <div class="form-field">
+
+                <label for="academic-end-date">
+
+                  Internship end date
+
+                  <span class="optional-label">
+                    (Optional)
+                  </span>
+
+                </label>
+
+                <input
+                  id="academic-end-date"
+                  type="date"
+                  name="academicEndDate"
+                  [(ngModel)]="academicForm.endDate"
+                  [attr.min]="academicForm.startDate || null"
+                  [disabled]="savingAcademicInfo"
+                />
+
+              </div>
+
+            </div>
+
+            <!-- INFORMATION NOTE -->
+
+            <div class="form-information">
+
+              <ion-icon name="information-circle-outline"></ion-icon>
+
+              <p>
+                Updating academic information does not delete
+                existing attendance records, weekly reports,
+                or internship assignments. Changing internship
+                dates may affect DTR report coverage.
+              </p>
+
+            </div>
+
+          </div>
+
+          <!-- MODAL FOOTER -->
+
+          <footer class="modal-footer">
+
+            <button
+              type="button"
+              class="button secondary-button"
+              [disabled]="savingAcademicInfo"
+              (click)="closeAcademicModal()"
+            >
+              Cancel
+            </button>
+
+            <button
+              type="submit"
+              class="button primary-button"
+              [disabled]="savingAcademicInfo"
+            >
+
+              <span
+                class="button-spinner"
+                *ngIf="savingAcademicInfo"
+              ></span>
+
+              {{
+                savingAcademicInfo
+                  ? 'Saving changes...'
+                  : 'Save changes'
+              }}
+
+            </button>
+
+          </footer>
+
+        </form>
+
+      </section>
+
+    </div>
+
+    <!-- ========================================= -->
+    <!-- INTERNSHIP ASSIGNMENT MODAL -->
+    <!-- ========================================= -->
+
+    <div
+      class="modal-overlay"
+      *ngIf="showAssignmentModal"
+      (keydown.escape)="closeAssignmentModal()"
+    >
+
+      <section
+        class="management-modal assignment-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="assignment-modal-title"
+        aria-describedby="assignment-modal-description"
+      >
+
+        <!-- MODAL HEADER -->
+
+        <header class="modal-header">
+
+          <div class="modal-heading">
+
+            <h2 id="assignment-modal-title">
+              {{ assignmentModalTitle }}
+            </h2>
+
+            <p
+              id="assignment-modal-description"
+              *ngIf="currentAssignment"
+            >
+              Changing an active placement requires a written
+              reason and keeps the previous assignment in history.
+            </p>
+
+            <p
+              *ngIf="!currentAssignment"
+            >
+              Assign this student to an available company supervisor
+              and establish the internship placement.
+            </p>
+
+          </div>
+
+          <button
+            type="button"
+            class="modal-close-button"
+            aria-label="Close internship assignment"
+            [disabled]="savingAssignment"
+            (click)="closeAssignmentModal()"
+          >
+
+            <ion-icon name="close-outline"></ion-icon>
+
+          </button>
+
+        </header>
+
+        <!-- ASSIGNMENT FORM -->
+
+        <form
+          class="modal-form"
+          (ngSubmit)="reviewAssignment()"
+          novalidate
+        >
+
+          <div class="modal-body">
+
+            <!-- CURRENT PLACEMENT -->
+
+            <div
+              class="current-placement-panel"
+              *ngIf="currentAssignment"
+            >
+
+              <div class="current-placement-heading">
+
+                <span>Current placement</span>
+
+                <span class="status-badge active">
+
+                  <span class="status-dot"></span>
+
+                  Active
+
+                </span>
+
+              </div>
+
+              <div class="current-placement-grid">
+
+                <div class="placement-field">
+
+                  <span>Company</span>
+
+                  <strong>{{ companyName }}</strong>
+
+                </div>
+
+                <div class="placement-field">
+
+                  <span>Company supervisor</span>
+
+                  <strong>{{ supervisorName }}</strong>
+
+                </div>
+
+                <div class="placement-field">
+
+                  <span>Internship start date</span>
+
+                  <strong>
+                    {{ formatDate(s.ojt_start_date) }}
+                  </strong>
+
+                </div>
+
+                <div class="placement-field">
+
+                  <span>Internship end date</span>
+
+                  <strong>
+                    {{ formatDate(s.ojt_end_date) }}
+                  </strong>
+
+                </div>
+
+              </div>
+
+            </div>
+
+            <!-- UNASSIGNED STUDENT -->
+
+            <div
+              class="unassigned-placement-panel"
+              *ngIf="!currentAssignment"
+            >
+
+              <strong>No active internship placement</strong>
+
+              <p>
+                This student is currently unassigned.
+                Select a company and supervisor below.
+              </p>
+
+            </div>
+
+            <!-- FORM ERROR -->
+
+            <div
+              class="form-error"
+              *ngIf="assignmentError"
+              role="alert"
+            >
+
+              <ion-icon name="alert-circle-outline"></ion-icon>
+
+              <span>{{ assignmentError }}</span>
+
+            </div>
+
+            <!-- STUDENT INFORMATION -->
+
+            <div class="modal-section">
+
+              <h3 class="modal-section-title">
+                Student information
+              </h3>
+
+              <div class="form-grid two-columns">
+
+                <div class="form-field">
+
+                  <label for="assignment-student-name">
+                    Student name
+                  </label>
+
+                  <input
+                    id="assignment-student-name"
+                    type="text"
+                    [value]="s.full_name"
+                    readonly
+                    class="readonly-input"
+                  />
+
+                </div>
+
+                <div class="form-field">
+
+                  <label for="assignment-student-id">
+                    Student ID
+                  </label>
+
+                  <input
+                    id="assignment-student-id"
+                    type="text"
+                    [value]="s.student_id"
+                    readonly
+                    class="readonly-input"
+                  />
+
+                </div>
+
+              </div>
+
+            </div>
+
+            <!-- NEW INTERNSHIP PLACEMENT -->
+
+            <div class="modal-section">
+
+              <h3 class="modal-section-title">
+                {{
+                  currentAssignment
+                    ? 'New internship placement'
+                    : 'Internship placement'
+                }}
+              </h3>
+
+              <!-- LOADING SUPERVISORS -->
+
+              <div
+                class="form-loading"
+                *ngIf="loadingSupervisors"
+                role="status"
+              >
+
+                <span class="small-spinner"></span>
+
+                <span>Loading available companies and supervisors...</span>
+
+              </div>
+
+              <!-- RETRY LOADING -->
+
+              <button
+                type="button"
+                class="button secondary-button retry-button"
+                *ngIf="
+                  !loadingSupervisors &&
+                  availableSupervisors.length === 0
+                "
+                [disabled]="savingAssignment"
+                (click)="loadAvailableSupervisors()"
+              >
+
+                <ion-icon name="refresh-outline"></ion-icon>
+
+                Refresh available supervisors
+
+              </button>
+
+              <!-- COMPANY -->
+
+              <div class="form-field">
+
+                <label for="assignment-company">
+
+                  Partner company
+
+                  <span class="required-mark">*</span>
+
+                </label>
+
+                <select
+                  id="assignment-company"
+                  name="assignmentCompany"
+                  [ngModel]="assignmentForm.companyName"
+                  (ngModelChange)="onCompanyChange($event)"
+                  [disabled]="
+                    loadingSupervisors ||
+                    savingAssignment ||
+                    availableCompanies.length === 0
+                  "
+                  required
+                >
+
+                  <option value="" disabled>
+                    {{
+                      loadingSupervisors
+                        ? 'Loading companies...'
+                        : 'Select partner company'
+                    }}
+                  </option>
+
+                  <option
+                    *ngFor="let company of availableCompanies"
+                    [value]="company"
+                  >
+                    {{ company }}
+                  </option>
+
+                </select>
+
+                <p class="field-hint">
+                  Only companies with active registered
+                  supervisors are available.
+                </p>
+
+              </div>
+
+              <!-- SUPERVISOR -->
+
+              <div class="form-field">
+
+                <label for="assignment-supervisor">
+
+                  Company supervisor
+
+                  <span class="required-mark">*</span>
+
+                </label>
+
+                <select
+                  id="assignment-supervisor"
+                  name="assignmentSupervisor"
+                  [ngModel]="assignmentForm.supervisorId"
+                  (ngModelChange)="onSupervisorChange($event)"
+                  [disabled]="
+                    loadingSupervisors ||
+                    savingAssignment ||
+                    !assignmentForm.companyName ||
+                    filteredSupervisors.length === 0
+                  "
+                  required
+                >
+
+                  <option value="" disabled>
+
+                    {{
+                      !assignmentForm.companyName
+                        ? 'Select a company first'
+                        : 'Select company supervisor'
+                    }}
+
+                  </option>
+
+                  <option
+                    *ngFor="let supervisor of filteredSupervisors"
+                    [value]="supervisor.id"
+                  >
+                    {{ supervisor.full_name }}
+
+                    {{
+                      supervisor.position
+                        ? ' - ' + supervisor.position
+                        : ''
+                    }}
+                  </option>
+
+                </select>
+
+              </div>
+
+              <!-- SELECTED SUPERVISOR PREVIEW -->
+
+              <div
+                class="selected-supervisor-preview"
+                *ngIf="selectedSupervisor as supervisor"
+              >
+
+                <div class="supervisor-avatar">
+
+                  {{ getInitials(supervisor.full_name) }}
+
+                </div>
+
+                <div class="selected-supervisor-details">
+
+                  <strong>{{ supervisor.full_name }}</strong>
+
+                  <span>
+                    {{ supervisor.position || 'Company supervisor' }}
+                  </span>
+
+                  <span *ngIf="supervisor.department">
+                    {{ supervisor.department }}
+                  </span>
+
+                </div>
+
+                <span class="status-badge active">
+
+                  <span class="status-dot"></span>
+
+                  Active
+
+                </span>
+
+              </div>
+
+              <!-- INTERNSHIP DATES -->
+
+              <div class="form-grid two-columns">
+
+                <div class="form-field">
+
+                  <label for="assignment-start-date">
+
+                    Internship start date
+
+                    <span class="required-mark">*</span>
+
+                  </label>
+
+                  <input
+                    id="assignment-start-date"
+                    type="date"
+                    name="assignmentStartDate"
+                    [(ngModel)]="assignmentForm.startDate"
+                    [disabled]="savingAssignment"
+                    required
+                  />
+
+                </div>
+
+                <div class="form-field">
+
+                  <label for="assignment-end-date">
+
+                    Internship end date
+
+                    <span class="optional-label">
+                      (Optional)
+                    </span>
+
+                  </label>
+
+                  <input
+                    id="assignment-end-date"
+                    type="date"
+                    name="assignmentEndDate"
+                    [(ngModel)]="assignmentForm.endDate"
+                    [attr.min]="assignmentForm.startDate || null"
+                    [disabled]="savingAssignment"
+                  />
+
+                </div>
+
+              </div>
+
+            </div>
+
+            <!-- ASSIGNMENT REASON -->
+
+            <div class="form-field">
+
+              <label for="assignment-reason">
+
+                {{
+                  currentAssignment
+                    ? 'Reason for reassignment'
+                    : 'Reason for assignment'
+                }}
+
+                <span class="required-mark">*</span>
+
+              </label>
+
+              <textarea
+                id="assignment-reason"
+                name="assignmentReason"
+                [(ngModel)]="assignmentForm.reason"
+                [disabled]="savingAssignment"
+                [placeholder]="
+                  currentAssignment
+                    ? 'Explain why the student is being reassigned...'
+                    : 'Provide the reason for this internship assignment...'
+                "
+                rows="4"
+                maxlength="2000"
+                aria-describedby="assignment-reason-help"
+                required
+              ></textarea>
+
+              <div class="field-hint-row">
+
+                <p
+                  class="field-hint"
+                  id="assignment-reason-help"
+                >
+                  Recorded in the student's assignment history.
+                </p>
+
+                <span class="character-count">
+                  {{ assignmentForm.reason.length }}/2000
+                </span>
+
+              </div>
+
+            </div>
+
+            <!-- ASSIGNMENT INFORMATION NOTE -->
+
+            <div class="form-information">
+
+              <ion-icon name="information-circle-outline"></ion-icon>
+
+              <div>
+
+                <strong>Assignment policy</strong>
+
+                <p>
+                  A student can only have one active internship
+                  assignment at a time. Previous assignments,
+                  attendance records, and weekly reports
+                  will be retained.
+                </p>
+
+              </div>
+
+            </div>
+
+          </div>
+
+          <!-- MODAL FOOTER -->
+
+          <footer class="modal-footer">
+
+            <button
+              type="button"
+              class="button secondary-button"
+              [disabled]="savingAssignment"
+              (click)="closeAssignmentModal()"
+            >
+              Cancel
+            </button>
+
+            <button
+              type="submit"
+              class="button primary-button"
+              [disabled]="
+                loadingSupervisors ||
+                savingAssignment ||
+                availableSupervisors.length === 0
+              "
+            >
+
+              Review assignment
+
+              <ion-icon name="arrow-forward-outline"></ion-icon>
+
+            </button>
+
+          </footer>
+
+        </form>
+
+      </section>
+
+    </div>
+
+    <!-- ========================================= -->
+    <!-- REVIEW ASSIGNMENT MODAL -->
+    <!-- ========================================= -->
+
+    <div
+      class="modal-overlay"
+      *ngIf="showReviewModal"
+      (keydown.escape)="closeReviewModal()"
+    >
+
+      <section
+        class="management-modal review-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="review-modal-title"
+        aria-describedby="review-modal-description"
+      >
+
+        <!-- MODAL HEADER -->
+
+        <header class="modal-header">
+
+          <div class="modal-heading">
+
+            <h2 id="review-modal-title">
+              Review internship assignment
+            </h2>
+
+            <p id="review-modal-description">
+              Review the information below before
+              confirming the internship assignment.
+            </p>
+
+          </div>
+
+          <button
+            type="button"
+            class="modal-close-button"
+            aria-label="Close assignment review"
+            [disabled]="savingAssignment"
+            (click)="closeReviewModal()"
+          >
+
+            <ion-icon name="close-outline"></ion-icon>
+
+          </button>
+
+        </header>
+
+        <!-- REVIEW BODY -->
+
+        <div class="modal-body">
+
+          <!-- ERROR MESSAGE -->
+
+          <div
+            class="form-error"
+            *ngIf="assignmentError"
+            role="alert"
+          >
+
+            <ion-icon name="alert-circle-outline"></ion-icon>
+
+            <span>{{ assignmentError }}</span>
+
+          </div>
+
+          <!-- STUDENT SUMMARY -->
+
+          <div class="modal-student-summary">
+
+            <div class="modal-student-avatar">
+
+              {{ getInitials(s.full_name) }}
+
+            </div>
+
+            <div>
+
+              <strong>{{ s.full_name }}</strong>
+
+              <span>
+
+                {{ s.student_id }}
+
+                ·
+
+                {{ s.course || 'Course not specified' }}
+
+              </span>
+
+            </div>
+
+          </div>
+
+          <!-- PLACEMENT COMPARISON -->
+
+          <div class="assignment-comparison">
+
+            <!-- PREVIOUS PLACEMENT -->
+
+            <div
+              class="comparison-card previous-placement"
+              *ngIf="currentAssignment"
+            >
+
+              <h3>Current placement</h3>
+
+              <div class="review-detail">
+
+                <span>Company</span>
+
+                <strong>{{ companyName }}</strong>
+
+              </div>
+
+              <div class="review-detail">
+
+                <span>Company supervisor</span>
+
+                <strong>{{ supervisorName }}</strong>
+
+              </div>
+
+              <div class="review-detail">
+
+                <span>Internship start date</span>
+
+                <strong>
+                  {{ formatDate(s.ojt_start_date) }}
+                </strong>
+
+              </div>
+
+              <div class="review-detail">
+
+                <span>Internship end date</span>
+
+                <strong>
+                  {{ formatDate(s.ojt_end_date) }}
+                </strong>
+
+              </div>
+
+            </div>
+
+            <div
+              class="comparison-arrow"
+              *ngIf="currentAssignment"
+              aria-hidden="true"
+            >
+
+              <ion-icon name="arrow-forward-outline"></ion-icon>
+
+            </div>
+
+            <!-- NEW PLACEMENT -->
+
+            <div class="comparison-card new-placement">
+
+              <h3>New placement</h3>
+
+              <div class="review-detail">
+
+                <span>Company</span>
+
+                <strong>
+                  {{ assignmentForm.companyName }}
+                </strong>
+
+              </div>
+
+              <div class="review-detail">
+
+                <span>Company supervisor</span>
+
+                <strong>{{ selectedSupervisorName }}</strong>
+
+              </div>
+
+              <div class="review-detail">
+
+                <span>Internship start date</span>
+
+                <strong>
+                  {{ formatDate(assignmentForm.startDate) }}
+                </strong>
+
+              </div>
+
+              <div class="review-detail">
+
+                <span>Internship end date</span>
+
+                <strong>
+                  {{
+                    assignmentForm.endDate
+                      ? formatDate(assignmentForm.endDate)
+                      : 'Not specified'
+                  }}
+                </strong>
+
+              </div>
+
+            </div>
+
+          </div>
+
+          <!-- REVIEW REASON -->
+
+          <div class="review-reason-panel">
+
+            <h3>
+              {{
+                currentAssignment
+                  ? 'Reason for reassignment'
+                  : 'Reason for assignment'
+              }}
+            </h3>
+
+            <p>{{ assignmentForm.reason }}</p>
+
+          </div>
+
+          <!-- CONFIRMATION NOTICE -->
+
+          <div class="form-information confirmation-information">
+
+            <ion-icon name="information-circle-outline"></ion-icon>
+
+            <div>
+
+              <strong>Before confirming</strong>
+
+              <p *ngIf="currentAssignment">
+                The current assignment will become inactive,
+                and the selected company supervisor will become
+                the student's active supervisor. The previous
+                assignment will remain in assignment history.
+              </p>
+
+              <p *ngIf="!currentAssignment">
+                The selected company supervisor will become
+                the student's active supervisor.
+              </p>
+
+              <p>
+                Existing attendance records and weekly reports
+                will not be deleted. The student's registered
+                internship dates will be updated.
+              </p>
+
+            </div>
+
+          </div>
+
+        </div>
+
+        <!-- REVIEW FOOTER -->
+
+        <footer class="modal-footer review-footer">
+
+          <button
+            type="button"
+            class="button secondary-button"
+            [disabled]="savingAssignment"
+            (click)="backToAssignmentForm()"
+          >
+
+            <ion-icon name="arrow-back-outline"></ion-icon>
+
+            Back to edit
+
+          </button>
+
+          <div class="modal-footer-actions">
+
+            <button
+              type="button"
+              class="button secondary-button"
+              [disabled]="savingAssignment"
+              (click)="closeReviewModal()"
+            >
+              Cancel
+            </button>
+
+            <button
+              type="button"
+              class="button primary-button"
+              [disabled]="savingAssignment"
+              (click)="confirmAssignment()"
+            >
+
+              <span
+                class="button-spinner"
+                *ngIf="savingAssignment"
+              ></span>
+
+              {{
+                savingAssignment
+                  ? 'Saving assignment...'
+                  : 'Confirm assignment'
+              }}
+
+            </button>
+
+          </div>
+
+        </footer>
+
+      </section>
+
+    </div>
+
+  </ng-container>
+
+</div>

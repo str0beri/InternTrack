@@ -7,6 +7,12 @@
   --text-primary: #101828;
   --text-secondary: #64748b;
 
+  --status-verified: #087b56;
+  --status-provisional: #7556d9;
+  --status-pending: #b36a08;
+  --status-incomplete: #64748b;
+  --status-rejected: #b42318;
+
   display: block;
   width: 100%;
   min-width: 0;
@@ -69,51 +75,12 @@ select:focus-visible {
   }
 
   p {
-    max-width: 660px;
     margin: 0;
     color: var(--text-secondary);
     font-size: 13px;
     font-weight: 400;
     line-height: 1.8;
   }
-}
-
-// ==========================================
-// ATTENDANCE SUMMARY
-// ==========================================
-
-.attendance-summary {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  flex-shrink: 0;
-  min-height: 31px;
-  padding: 7px 12px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  font-size: 12px;
-  white-space: nowrap;
-}
-
-.summary-pending {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  color: var(--text-primary);
-  font-weight: 500;
-}
-
-.summary-dot {
-  width: 6px;
-  height: 6px;
-  background: #b36a08;
-  border-radius: 50%;
-}
-
-.summary-separator,
-.summary-incomplete {
-  color: var(--text-secondary);
 }
 
 // ==========================================
@@ -240,19 +207,14 @@ select:focus-visible {
   width: 135px;
 }
 
+// Record count without icon
+
 .record-count {
-  display: flex;
-  align-items: center;
-  gap: 6px;
   margin-left: auto;
   color: var(--text-secondary);
   font-size: 12px;
+  font-weight: 400;
   white-space: nowrap;
-
-  svg {
-    width: 15px;
-    height: 15px;
-  }
 }
 
 .filter-error {
@@ -431,54 +393,46 @@ select:focus-visible {
 }
 
 // ==========================================
-// STATUS BADGES
+// STATUS TEXT
+// No pills, backgrounds, borders, or dots
 // ==========================================
 
-.status-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-height: 26px;
-  padding: 4px 10px;
-  border: 1px solid transparent;
-  border-radius: 20px;
-  font-size: 12px;
+.status-text {
+  display: inline-block;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  color: var(--text-secondary);
+  font-size: inherit;
   font-weight: 500;
+  line-height: 1.5;
   white-space: nowrap;
 
-  &.pending,
-  &.incomplete {
-    background: #f9f0e5;
-    border-color: #ebcba6;
-    color: #b36a08;
+  &.pending {
+    color: var(--status-pending);
+  }
+
+  &.provisional {
+    color: var(--status-provisional);
   }
 
   &.verified {
-    background: #e6f3ed;
-    border-color: #b8dfcd;
-    color: #087b56;
+    color: var(--status-verified);
+  }
+
+  &.incomplete {
+    color: var(--status-incomplete);
   }
 
   &.rejected {
-    background: #fcebea;
-    border-color: #efc1bd;
-    color: #b42318;
+    color: var(--status-rejected);
   }
 
   &.unknown {
-    background: #f1f3f6;
-    border-color: #dce2ed;
-    color: #64748b;
+    color: var(--text-secondary);
   }
-}
-
-.status-dot {
-  width: 6px;
-  height: 6px;
-  flex-shrink: 0;
-  background: currentColor;
-  border-radius: 50%;
 }
 
 // ==========================================

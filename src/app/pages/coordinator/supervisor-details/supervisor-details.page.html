@@ -1,13 +1,1074 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-title>supervisor-details</ion-title>
-  </ion-toolbar>
-</ion-header>
+<div class="supervisor-details-page">
+  <button
+    type="button"
+    class="back-button"
+    [disabled]="isSavingEdit || isUpdatingAccount"
+    (click)="goBack()"
+  >
+    <ion-icon name="arrow-back-outline"></ion-icon>
+    <span>Company Supervisors</span>
+  </button>
 
-<ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">supervisor-details</ion-title>
-    </ion-toolbar>
-  </ion-header>
-</ion-content>
+  <div
+    *ngIf="successMessage"
+    class="feedback-banner success-banner"
+    role="status"
+  >
+    <span>{{ successMessage }}</span>
+    <button
+      type="button"
+      class="feedback-close"
+      aria-label="Dismiss success message"
+      (click)="dismissSuccessMessage()"
+    >
+      <ion-icon name="close-outline"></ion-icon>
+    </button>
+  </div>
+
+  <div
+    *ngIf="actionErrorMessage"
+    class="feedback-banner error-banner"
+    role="alert"
+  >
+    <span>{{ actionErrorMessage }}</span>
+    <button
+      type="button"
+      class="feedback-close"
+      aria-label="Dismiss error message"
+      (click)="dismissActionError()"
+    >
+      <ion-icon name="close-outline"></ion-icon>
+    </button>
+  </div>
+
+  <section *ngIf="isLoading" class="state-card" role="status">
+    <div class="loading-spinner"></div>
+    <h3>Loading supervisor details</h3>
+  </section>
+
+  <section
+    *ngIf="!isLoading && errorMessage"
+    class="state-card error-state"
+    role="alert"
+  >
+    <h3>Unable to load supervisor details</h3>
+    <p>{{ errorMessage }}</p>
+    <button
+      type="button"
+      class="secondary-button"
+      (click)="retryLoad()"
+    >
+      Try again
+    </button>
+  </section>
+
+  <ng-container *ngIf="!isLoading && !errorMessage">
+    <ng-container *ngIf="supervisor as profile">
+
+      <!-- PROFILE HEADER -->
+
+      <section class="profile-card">
+        <div class="profile-main">
+          <div
+            class="profile-avatar"
+            [ngClass]="supervisorAvatarColor"
+            aria-hidden="true"
+          >
+            {{ supervisorInitials }}
+          </div>
+
+          <div class="profile-information">
+            <div class="profile-name-row">
+              <h1>{{ supervisorName }}</h1>
+
+              <span
+                class="status-badge"
+                [ngClass]="getStatusClass(profile.account_status)"
+              >
+                {{ accountStatusLabel }}
+              </span>
+            </div>
+
+            <p class="profile-position">
+              {{ supervisorPosition }}
+              <span class="text-separator">·</span>
+              {{ supervisorDepartment }}
+            </p>
+
+            <p class="profile-company">
+              {{ companyName }}
+              <span class="text-separator">·</span>
+              {{ profile.supervisor_id }}
+            </p>
+
+            <div class="profile-contact">
+              <span class="contact-item">
+                {{ supervisorEmail }}
+              </span>
+              <span class="contact-item">
+                {{ contactNumber }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div class="profile-actions">
+          <button
+            type="button"
+            class="secondary-button edit-button"
+            [disabled]="!canEditSupervisor"
+            (click)="openEditModal()"
+          >
+            Edit information
+          </button>
+
+          <button
+            *ngIf="profile.account_status === 'active'"
+            type="button"
+            class="danger-outline-button"
+            [disabled]="!canDeactivateSupervisor"
+            (click)="openDeactivateModal()"
+          >
+            Deactivate account
+          </button>
+
+          <button
+            *ngIf="profile.account_status === 'inactive'"
+            type="button"
+            class="secondary-button"
+            [disabled]="!canReactivateSupervisor"
+            (click)="openReactivateModal()"
+          >
+            Reactivate account
+          </button>
+        </div>
+      </section>
+
+      <div class="details-layout">
+        <main class="main-column">
+
+          <!-- PERSONAL INFORMATION -->
+
+          <section class="detail-card personal-card">
+            <div class="card-header">
+              <div class="card-heading">
+                <h2>Personal and professional information</h2>
+              </div>
+            </div>
+
+            <div class="information-grid">
+              <div class="information-item">
+                <span class="information-label">Supervisor ID</span>
+                <span class="information-value">
+                  {{ profile.supervisor_id }}
+                </span>
+              </div>
+
+              <div class="information-item">
+                <span class="information-label">Position</span>
+                <span class="information-value">
+                  {{ supervisorPosition }}
+                </span>
+              </div>
+
+              <div class="information-item">
+                <span class="information-label">Department</span>
+                <span class="information-value">
+                  {{ supervisorDepartment }}
+                </span>
+              </div>
+
+              <div class="information-item">
+                <span class="information-label">Company</span>
+                <span class="information-value">
+                  {{ companyName }}
+                </span>
+              </div>
+
+              <div class="information-item">
+                <span class="information-label">Registered since</span>
+                <span class="information-value">
+                  {{ formatDate(profile.date_registered || profile.created_at) }}
+                </span>
+              </div>
+
+              <div class="information-item">
+                <span class="information-label">Account status</span>
+                <span
+                  class="status-badge"
+                  [ngClass]="getStatusClass(profile.account_status)"
+                >
+                  {{ accountStatusLabel }}
+                </span>
+              </div>
+            </div>
+          </section>
+
+          <!-- ASSIGNED STUDENT INTERNS -->
+
+          <section class="detail-card assigned-interns-card">
+            <div class="card-header">
+              <div class="card-heading">
+                <h2>Assigned student interns</h2>
+                <p>
+                  {{ activeInternCount }}
+                  {{ activeInternCount === 1 ? 'active placement' : 'active placements' }}
+                </p>
+              </div>
+
+              <button
+                *ngIf="activeTab === 'overview'"
+                type="button"
+                class="secondary-button open-assignments-button"
+                (click)="viewAllInterns()"
+              >
+                Open assignments
+              </button>
+
+              <button
+                *ngIf="activeTab !== 'overview'"
+                type="button"
+                class="secondary-button"
+                (click)="setActiveTab('overview')"
+              >
+                Overview
+              </button>
+            </div>
+
+            <div
+              *ngIf="activeTab !== 'overview'"
+              class="assignment-tabs"
+              aria-label="Assignment views"
+            >
+              <button
+                type="button"
+                class="assignment-tab"
+                [class.active]="activeTab === 'interns'"
+                [attr.aria-pressed]="activeTab === 'interns'"
+                (click)="viewAllInterns()"
+              >
+                Active assignments
+                <span class="tab-count">{{ activeInternCount }}</span>
+              </button>
+
+              <button
+                type="button"
+                class="assignment-tab"
+                [class.active]="activeTab === 'history'"
+                [attr.aria-pressed]="activeTab === 'history'"
+                (click)="viewAssignmentHistory()"
+              >
+                Assignment history
+                <span class="tab-count">{{ previousAssignmentCount }}</span>
+              </button>
+            </div>
+
+            <div
+              *ngIf="activeTab !== 'overview'"
+              class="interns-toolbar"
+            >
+              <div class="search-container">
+                <ion-icon
+                  name="search-outline"
+                  class="search-icon"
+                ></ion-icon>
+
+                <input
+                  type="search"
+                  class="search-input"
+                  placeholder="Search by name or ID"
+                  aria-label="Search assigned interns"
+                  [(ngModel)]="searchQuery"
+                  (ngModelChange)="onSearchChange()"
+                  autocomplete="off"
+                />
+              </div>
+
+              <div class="filter-container">
+                <select
+                  class="filter-select"
+                  aria-label="Filter internship status"
+                  [(ngModel)]="selectedStatus"
+                  (ngModelChange)="onFilterChange()"
+                >
+                  <option value="all">All statuses</option>
+
+                  <ng-container *ngIf="activeTab === 'interns'">
+                    <option value="ongoing">Ongoing</option>
+                    <option value="not_started">Not started</option>
+                    <option value="needs_follow_up">Needs follow-up</option>
+                    <option value="hours_completed">Hours completed</option>
+                    <option value="inactive">Inactive</option>
+                  </ng-container>
+
+                  <ng-container *ngIf="activeTab === 'history'">
+                    <option value="inactive">Inactive</option>
+                    <option value="ended">Ended</option>
+                  </ng-container>
+                </select>
+
+                <ion-icon
+                  name="chevron-down-outline"
+                  class="filter-icon"
+                ></ion-icon>
+              </div>
+
+              <span class="results-count">
+                {{ filteredCount }}
+                {{ filteredCount === 1 ? 'assignment' : 'assignments' }}
+              </span>
+            </div>
+
+            <!-- ACTIVE INTERNS TABLE -->
+
+            <div
+              *ngIf="
+                (activeTab === 'overview' && previewInterns.length > 0) ||
+                (activeTab === 'interns' && filteredCount > 0)
+              "
+              class="table-wrapper"
+            >
+              <table
+                class="interns-table"
+                aria-label="Active student internship assignments"
+              >
+                <thead>
+                  <tr>
+                    <th scope="col" class="student-column">Student</th>
+                    <th scope="col" class="student-id-column">Student ID</th>
+                    <th scope="col" class="period-column">Internship period</th>
+                    <th scope="col" class="hours-column">Verified / Required</th>
+                    <th scope="col" class="status-column">Status</th>
+                    <th scope="col" class="action-column" aria-label="Actions"></th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  <tr
+                    *ngFor="
+                      let intern of (
+                        activeTab === 'overview'
+                          ? previewInterns
+                          : paginatedInterns
+                      );
+                      trackBy: trackByIntern
+                    "
+                  >
+                    <td class="student-column">
+                      <div class="student-profile">
+                        <div
+                          class="student-avatar"
+                          [ngClass]="intern.avatarColor"
+                          aria-hidden="true"
+                        >
+                          {{ intern.initials }}
+                        </div>
+
+                        <div class="student-information">
+                          <span class="student-name">{{ intern.fullName }}</span>
+                          <span class="student-course">{{ intern.course }}</span>
+                        </div>
+                      </div>
+                    </td>
+
+                    <td class="student-id-column">
+                      <span class="student-id">{{ intern.studentId }}</span>
+                    </td>
+
+                    <td class="period-column">
+                      <span class="internship-period">
+                        {{ formatInternshipPeriod(intern.startDate, intern.endDate) }}
+                      </span>
+                    </td>
+
+                    <td class="hours-column">
+                      <div class="hours-information">
+                        <span class="hours-value">
+                          <strong>{{ formatHours(intern.verifiedHours) }}</strong>
+                          <span class="hours-divider">/</span>
+                          {{ formatHours(intern.requiredHours) }} hrs
+                        </span>
+
+                        <div
+                          class="progress-track"
+                          role="progressbar"
+                          aria-label="Internship hours progress"
+                          aria-valuemin="0"
+                          aria-valuemax="100"
+                          [attr.aria-valuenow]="intern.progress"
+                        >
+                          <div
+                            class="progress-fill"
+                            [class.completed]="intern.internshipStatus === 'hours_completed'"
+                            [style.width.%]="intern.progress"
+                          ></div>
+                        </div>
+                      </div>
+                    </td>
+
+                    <td class="status-column">
+                      <span
+                        class="status-badge"
+                        [ngClass]="getStatusClass(intern.internshipStatus)"
+                      >
+                        {{ getStatusLabel(intern.internshipStatus) }}
+                      </span>
+                    </td>
+
+                    <td class="action-column">
+                      <button
+                        type="button"
+                        class="view-button"
+                        [attr.aria-label]="'View student ' + intern.fullName"
+                        (click)="viewStudent(intern)"
+                      >
+                        View
+                        <ion-icon name="chevron-forward-outline"></ion-icon>
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div
+              *ngIf="activeTab === 'overview' && previewInterns.length > 0"
+              class="preview-footer"
+            >
+              <span class="muted-text">
+                Showing {{ previewInterns.length }} of {{ activeInternCount }}
+                {{ activeInternCount === 1 ? 'active intern' : 'active interns' }}
+              </span>
+
+              <button
+                *ngIf="activeInternCount > previewInterns.length"
+                type="button"
+                class="text-button"
+                (click)="viewAllInterns()"
+              >
+                View all assigned interns
+                <ion-icon name="chevron-forward-outline"></ion-icon>
+              </button>
+            </div>
+
+            <!-- ASSIGNMENT HISTORY -->
+
+            <div
+              *ngIf="activeTab === 'history' && filteredCount > 0"
+              class="table-wrapper"
+            >
+              <table
+                class="interns-table history-table"
+                aria-label="Previous internship assignments"
+              >
+                <thead>
+                  <tr>
+                    <th scope="col">Student</th>
+                    <th scope="col">Student ID</th>
+                    <th scope="col">Assigned on</th>
+                    <th scope="col">Assignment status</th>
+                    <th scope="col" aria-label="Actions"></th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  <tr
+                    *ngFor="let intern of paginatedInterns; trackBy: trackByIntern"
+                  >
+                    <td>
+                      <div class="student-profile">
+                        <div
+                          class="student-avatar"
+                          [ngClass]="intern.avatarColor"
+                          aria-hidden="true"
+                        >
+                          {{ intern.initials }}
+                        </div>
+
+                        <div class="student-information">
+                          <span class="student-name">{{ intern.fullName }}</span>
+                          <span class="student-course">{{ intern.course }}</span>
+                        </div>
+                      </div>
+                    </td>
+
+                    <td>{{ intern.studentId }}</td>
+                    <td>{{ formatDate(intern.assignedDate) }}</td>
+
+                    <td>
+                      <span
+                        class="status-badge"
+                        [ngClass]="getStatusClass(intern.assignmentStatus)"
+                      >
+                        {{ getStatusLabel(intern.assignmentStatus) }}
+                      </span>
+                    </td>
+
+                    <td class="action-column">
+                      <button
+                        type="button"
+                        class="view-button"
+                        [attr.aria-label]="'View student ' + intern.fullName"
+                        (click)="viewStudent(intern)"
+                      >
+                        View
+                        <ion-icon name="chevron-forward-outline"></ion-icon>
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- EMPTY STATES -->
+
+            <div
+              *ngIf="activeTab !== 'history' && activeInterns.length === 0"
+              class="empty-state"
+            >
+              <h3>No active student interns</h3>
+              <p>This supervisor has no active internship assignments.</p>
+
+              <button
+                *ngIf="previousAssignmentCount > 0"
+                type="button"
+                class="text-button"
+                (click)="viewAssignmentHistory()"
+              >
+                View assignment history
+                <ion-icon name="chevron-forward-outline"></ion-icon>
+              </button>
+            </div>
+
+            <div
+              *ngIf="activeTab === 'history' && historicalInterns.length === 0"
+              class="empty-state"
+            >
+              <h3>No previous assignments</h3>
+              <p>Previous internship assignments will appear here.</p>
+            </div>
+
+            <div
+              *ngIf="
+                activeTab !== 'overview' &&
+                filteredCount === 0 &&
+                hasActiveFilters &&
+                (
+                  (activeTab === 'interns' && activeInterns.length > 0) ||
+                  (activeTab === 'history' && historicalInterns.length > 0)
+                )
+              "
+              class="empty-state"
+            >
+              <h3>No matching assignments</h3>
+              <p>Try a different search or filter.</p>
+
+              <button
+                type="button"
+                class="secondary-button"
+                (click)="clearFilters()"
+              >
+                Clear filters
+              </button>
+            </div>
+
+            <!-- PAGINATION -->
+
+            <footer
+              *ngIf="activeTab !== 'overview' && filteredCount > 0"
+              class="table-footer"
+            >
+              <span class="pagination-information">
+                Showing {{ showingFrom }}–{{ showingTo }} of {{ filteredCount }}
+                {{ filteredCount === 1 ? 'assignment' : 'assignments' }}
+              </span>
+
+              <nav class="pagination" aria-label="Assignment pagination">
+                <button
+                  type="button"
+                  class="pagination-button navigation-button"
+                  aria-label="Previous page"
+                  [disabled]="currentPage === 1"
+                  (click)="previousPage()"
+                >
+                  <ion-icon name="chevron-back-outline"></ion-icon>
+                </button>
+
+                <button
+                  *ngFor="let page of pageNumbers; trackBy: trackByPage"
+                  type="button"
+                  class="pagination-button"
+                  [class.active]="currentPage === page"
+                  [attr.aria-current]="currentPage === page ? 'page' : null"
+                  [attr.aria-label]="'Page ' + page"
+                  (click)="goToPage(page)"
+                >
+                  {{ page }}
+                </button>
+
+                <button
+                  type="button"
+                  class="pagination-button navigation-button"
+                  aria-label="Next page"
+                  [disabled]="currentPage === totalPages"
+                  (click)="nextPage()"
+                >
+                  <ion-icon name="chevron-forward-outline"></ion-icon>
+                </button>
+              </nav>
+            </footer>
+          </section>
+
+          <!-- COMPANY STATISTICS -->
+
+          <section class="detail-card company-card">
+            <div class="card-header">
+              <div class="card-heading">
+                <h2>Assignment summary</h2>
+              </div>
+            </div>
+
+            <div class="company-card-content">
+              <div class="company-statistics">
+                <div class="company-statistic statistic-blue">
+                  <span class="statistic-label">Active interns</span>
+                  <strong class="statistic-value">
+                    {{ activeInternCount }}
+                  </strong>
+                </div>
+
+                <div class="company-statistic statistic-orange">
+                  <span class="statistic-label">Ended placements</span>
+                  <strong class="statistic-value">
+                    {{ endedAssignmentCount }}
+                  </strong>
+                </div>
+
+                <div class="company-statistic statistic-purple">
+                  <span class="statistic-label">Hours completed</span>
+                  <strong class="statistic-value">
+                    {{ hoursCompletedCount }}
+                  </strong>
+                </div>
+              </div>
+            </div>
+          </section>
+        </main>
+
+        <!-- RIGHT COLUMN -->
+
+        <aside
+          class="side-column"
+          aria-label="Supervisor contact and account information"
+        >
+          <section class="detail-card contact-card">
+            <div class="card-header">
+              <div class="card-heading">
+                <h2>Contact information</h2>
+              </div>
+            </div>
+
+            <div class="contact-card-content">
+              <div class="contact-detail">
+                <span class="information-label">Company email</span>
+                <span class="information-value">{{ supervisorEmail }}</span>
+              </div>
+
+              <div class="contact-detail">
+                <span class="information-label">Contact number</span>
+                <span class="information-value">{{ contactNumber }}</span>
+              </div>
+            </div>
+          </section>
+
+          <section class="detail-card account-card">
+            <div class="card-header">
+              <div class="card-heading">
+                <h2>Account</h2>
+              </div>
+            </div>
+
+            <div class="account-card-content">
+              <div class="account-detail">
+                <span class="information-label">Account status</span>
+                <span
+                  class="status-badge"
+                  [ngClass]="getStatusClass(profile.account_status)"
+                >
+                  {{ accountStatusLabel }}
+                </span>
+              </div>
+
+              <div class="account-detail">
+                <span class="information-label">Linked user account</span>
+                <span class="information-value">
+                  {{ hasLinkedAccount ? 'Linked' : 'Not linked' }}
+                </span>
+              </div>
+
+              <div class="account-detail">
+                <span class="information-label">Role responsibilities</span>
+                <span class="information-value access-description">
+                  Attendance verification
+                  <br />
+                  Weekly report review
+                </span>
+              </div>
+
+              <div class="account-notice">
+                <p>{{ accountNoticeMessage }}</p>
+              </div>
+            </div>
+          </section>
+        </aside>
+      </div>
+    </ng-container>
+  </ng-container>
+    <!-- EDIT SUPERVISOR MODAL -->
+
+  <div
+    *ngIf="showEditModal"
+    class="modal-backdrop"
+    (click)="closeEditModal()"
+  >
+    <section
+      class="modal-panel edit-supervisor-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="edit-supervisor-title"
+      (click)="$event.stopPropagation()"
+      (keydown.escape)="closeEditModal()"
+    >
+      <header class="modal-header">
+        <div class="modal-heading">
+          <h2 id="edit-supervisor-title">
+            Edit supervisor information
+          </h2>
+        </div>
+
+        <button
+          type="button"
+          class="modal-close-button"
+          aria-label="Close edit information"
+          [disabled]="isSavingEdit"
+          (click)="closeEditModal()"
+        >
+          <ion-icon name="close-outline"></ion-icon>
+        </button>
+      </header>
+
+      <form
+        class="modal-form"
+        #supervisorEditForm="ngForm"
+        (ngSubmit)="saveSupervisorInformation()"
+        novalidate
+      >
+        <div class="modal-body">
+          <div
+            *ngIf="editErrorMessage"
+            class="modal-error-message"
+            role="alert"
+          >
+            <span>{{ editErrorMessage }}</span>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-field full-width">
+              <label for="supervisor-full-name">
+                Full name <span class="required-mark">*</span>
+              </label>
+
+              <input
+                id="supervisor-full-name"
+                name="fullName"
+                type="text"
+                class="form-input"
+                placeholder="Enter supervisor's full name"
+                [(ngModel)]="editForm.fullName"
+                [disabled]="isSavingEdit"
+                maxlength="150"
+                autocomplete="name"
+                required
+              />
+            </div>
+
+            <div class="form-field">
+              <label for="supervisor-email">Company email</label>
+
+              <input
+                id="supervisor-email"
+                name="email"
+                type="email"
+                class="form-input readonly-input"
+                [value]="editForm.email"
+                readonly
+                aria-describedby="supervisor-email-help"
+              />
+
+              <span id="supervisor-email-help" class="field-helper">
+                Linked to the supervisor's login account.
+              </span>
+            </div>
+
+            <div class="form-field">
+              <label for="supervisor-contact-number">
+                Contact number
+              </label>
+
+              <input
+                id="supervisor-contact-number"
+                name="contactNumber"
+                type="tel"
+                class="form-input"
+                placeholder="Enter contact number"
+                [(ngModel)]="editForm.contactNumber"
+                [disabled]="isSavingEdit"
+                maxlength="30"
+                autocomplete="tel"
+              />
+
+              <span class="field-helper">Optional</span>
+            </div>
+
+            <div class="form-field">
+              <label for="supervisor-position">
+                Position <span class="required-mark">*</span>
+              </label>
+
+              <input
+                id="supervisor-position"
+                name="position"
+                type="text"
+                class="form-input"
+                placeholder="Enter job position"
+                [(ngModel)]="editForm.position"
+                [disabled]="isSavingEdit"
+                maxlength="100"
+                autocomplete="organization-title"
+                required
+              />
+            </div>
+
+            <div class="form-field">
+              <label for="supervisor-department">
+                Department or unit
+                <span class="required-mark">*</span>
+              </label>
+
+              <input
+                id="supervisor-department"
+                name="department"
+                type="text"
+                class="form-input"
+                placeholder="Enter department or unit"
+                [(ngModel)]="editForm.department"
+                [disabled]="isSavingEdit"
+                maxlength="100"
+                required
+              />
+            </div>
+          </div>
+
+          <div class="modal-info-notice">
+            <p>
+              Changes apply to the supervisor's profile only.
+              Existing internship assignments, attendance records,
+              and weekly reports will not be modified.
+            </p>
+          </div>
+        </div>
+
+        <footer class="modal-footer">
+          <button
+            type="button"
+            class="secondary-button modal-cancel-button"
+            [disabled]="isSavingEdit"
+            (click)="closeEditModal()"
+          >
+            Cancel
+          </button>
+
+          <button
+            type="submit"
+            class="primary-button modal-save-button"
+            [disabled]="!canSaveEdit"
+            [attr.aria-busy]="isSavingEdit"
+          >
+            <span
+              *ngIf="isSavingEdit"
+              class="button-spinner"
+              aria-hidden="true"
+            ></span>
+
+            {{ isSavingEdit ? 'Saving changes...' : 'Save changes' }}
+          </button>
+        </footer>
+      </form>
+    </section>
+  </div>
+
+  <!-- ACCOUNT CONFIRMATION MODAL -->
+
+  <div
+    *ngIf="showAccountModal"
+    class="modal-backdrop"
+    (click)="closeAccountModal()"
+  >
+    <section
+      class="modal-panel account-confirmation-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="account-modal-title"
+      aria-describedby="account-modal-description"
+      (click)="$event.stopPropagation()"
+      (keydown.escape)="closeAccountModal()"
+    >
+      <header class="modal-header confirmation-header">
+        <div class="modal-heading">
+          <h2 id="account-modal-title">
+            {{ accountModalTitle }}
+          </h2>
+        </div>
+
+        <button
+          type="button"
+          class="modal-close-button"
+          aria-label="Close account confirmation"
+          [disabled]="isUpdatingAccount"
+          (click)="closeAccountModal()"
+        >
+          <ion-icon name="close-outline"></ion-icon>
+        </button>
+      </header>
+
+      <div class="modal-body confirmation-body">
+        <div class="confirmation-heading">
+          <p id="account-modal-description">
+            {{ accountModalDescription }}
+          </p>
+        </div>
+
+        <div
+          *ngIf="accountErrorMessage"
+          class="modal-error-message"
+          role="alert"
+        >
+          <span>{{ accountErrorMessage }}</span>
+        </div>
+
+        <div class="confirmation-profile">
+          <div
+            class="confirmation-avatar"
+            [ngClass]="supervisorAvatarColor"
+            aria-hidden="true"
+          >
+            {{ supervisorInitials }}
+          </div>
+
+          <div class="confirmation-profile-info">
+            <strong>{{ supervisorName }}</strong>
+
+            <span>
+              {{ companyName }}
+              <span class="text-separator">·</span>
+              {{ supervisor?.supervisor_id }}
+            </span>
+          </div>
+
+          <span
+            class="status-badge"
+            [ngClass]="getStatusClass(supervisor?.account_status || 'unknown')"
+          >
+            {{ accountStatusLabel }}
+          </span>
+        </div>
+
+        <div
+          *ngIf="isDeactivationBlocked"
+          class="modal-warning-notice"
+          role="alert"
+        >
+          <div class="warning-notice-content">
+            <h3>Reassignment required</h3>
+
+            <p>
+              This supervisor has
+              <strong>
+                {{ activeInternCount }}
+                {{ activeInternCount === 1
+                  ? 'active student intern'
+                  : 'active student interns' }}.
+              </strong>
+
+              Reassign all affected interns before deactivating
+              this account.
+            </p>
+
+            <button
+              type="button"
+              class="text-button affected-interns-button"
+              [disabled]="isUpdatingAccount"
+              (click)="viewAffectedInterns()"
+            >
+              View affected interns
+              <ion-icon name="chevron-forward-outline"></ion-icon>
+            </button>
+          </div>
+        </div>
+
+        <div
+          *ngIf="isDeactivationAction && !isDeactivationBlocked"
+          class="modal-info-notice"
+        >
+          <p>
+            The supervisor and linked user account will be marked
+            inactive. Previous assignments, attendance records,
+            and weekly reports will be retained.
+          </p>
+        </div>
+
+        <div
+          *ngIf="!isDeactivationAction"
+          class="modal-info-notice"
+        >
+          <p>
+            The supervisor and linked user account will be marked
+            active again. Previous internship assignments will not
+            be automatically restored.
+          </p>
+        </div>
+      </div>
+
+      <footer class="modal-footer confirmation-footer">
+        <button
+          type="button"
+          class="secondary-button modal-cancel-button"
+          [disabled]="isUpdatingAccount"
+          (click)="closeAccountModal()"
+        >
+          Cancel
+        </button>
+
+        <button
+          type="button"
+          class="modal-confirm-button"
+          [class.danger-button]="isDeactivationAction"
+          [class.primary-button]="!isDeactivationAction"
+          [disabled]="!canConfirmAccountAction"
+          [attr.aria-busy]="isUpdatingAccount"
+          (click)="confirmAccountAction()"
+        >
+          <span
+            *ngIf="isUpdatingAccount"
+            class="button-spinner"
+            aria-hidden="true"
+          ></span>
+
+          {{ isUpdatingAccount
+            ? accountProcessingLabel
+            : accountConfirmLabel }}
+        </button>
+      </footer>
+    </section>
+  </div>
+</div>

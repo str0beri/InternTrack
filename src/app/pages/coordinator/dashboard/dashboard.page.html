@@ -1,88 +1,96 @@
+
 <div class="dashboard-container">
 
   @if (loading) {
+
     <div class="state-container">
       <div class="spinner"></div>
       <p>Loading dashboard...</p>
     </div>
+
   } @else if (loadError) {
+
     <div class="state-container">
       <h2>Unable to load dashboard</h2>
       <p>{{ loadError }}</p>
-      <button class="primary-button" (click)="loadDashboardData()">
+
+      <button
+        type="button"
+        class="primary-button"
+        (click)="loadDashboardData()">
         Try again
       </button>
     </div>
+
   } @else {
 
-    <!-- Page header -->
+    <!-- Welcome banner -->
+
     <header class="dashboard-header">
 
-      <div class="header-content">
-        <span class="eyebrow">OJT COORDINATOR</span>
-
-        <h1>{{ greeting }}, {{ coordinatorName }}</h1>
-
-        <p>
-          {{ currentDate }} ·
-          {{ metrics.registeredInterns }} registered interns across
-          {{ metrics.partnerCompanies }} partner companies.
-          {{ metrics.unassignedInterns }} interns still need a placement
-          and {{ metrics.overdueReports }} interns have overdue weekly reports.
-        </p>
+      <div class="banner-decoration" aria-hidden="true">
+        <span class="shape shape-blue"></span>
+        <span class="shape shape-purple"></span>
+        <span class="shape shape-orange"></span>
       </div>
 
-      <div class="header-actions">
+      <div class="header-content">
 
-        <a
-          class="secondary-button"
-          routerLink="/coordinator/student-interns"
-          [queryParams]="{ action: 'add' }">
+        <h1>{{ greeting }}, {{ coordinatorName }}!</h1>
 
-          <svg viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="1.8">
-            <path d="M12 5v14M5 12h14"/>
-          </svg>
+        <p>
+          {{ currentDate }}. Here's your internship program overview.
+        </p>
 
-          Add student intern
-        </a>
+        <div class="header-actions">
 
-        <a
-          class="primary-button"
-          routerLink="/coordinator/internship-assignments">
-          Manage assignments
-        </a>
+          <a
+            class="primary-button"
+            routerLink="/coordinator/student-interns">
+            Manage student interns
+          </a>
+
+          <a
+            class="secondary-button"
+            routerLink="/coordinator/internship-assignments">
+            View assignments
+          </a>
+
+        </div>
 
       </div>
 
     </header>
 
+
     <!-- Summary cards -->
-    <section class="summary-grid">
+
+    <section
+      class="summary-grid"
+      aria-label="Internship summary">
 
       @for (card of summaryCards; track card.label) {
 
-        <article class="summary-card">
+        <article
+          class="summary-card"
+          [attr.data-color]="card.color">
 
-          <div class="summary-heading">
-            <span
-              class="card-accent"
-              [style.background]="card.color">
-            </span>
+          <span class="summary-label">
+            {{ card.label }}
+          </span>
 
-            <span class="summary-label">
-              {{ card.label }}
-            </span>
-          </div>
-
-          <h2>{{ card.value }}</h2>
+          <strong class="summary-value">
+            {{ card.value }}
+          </strong>
 
           <div class="summary-description">
+
             <p>{{ card.description }}</p>
 
             @if (card.secondaryDescription) {
               <p>{{ card.secondaryDescription }}</p>
             }
+
           </div>
 
           <a
@@ -92,11 +100,6 @@
 
             {{ card.linkLabel }}
 
-            <svg viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="1.8">
-              <path d="M5 12h14m-6-6 6 6-6 6"/>
-            </svg>
-
           </a>
 
         </article>
@@ -105,65 +108,200 @@
 
     </section>
 
-    <!-- Needs attention -->
-    <section class="attention-panel">
+
+    <!-- Main dashboard content -->
+
+    <section class="dashboard-content">
+
+      <!-- Needs attention -->
+
+      <article class="panel attention-panel">
+
+        <header class="panel-header">
+
+          <div>
+            <h2>Needs attention</h2>
+            <p>Items that require your follow-up.</p>
+          </div>
+
+        </header>
+
+        <div class="attention-list">
+
+          @for (item of attentionItems; track item.title) {
+
+            <a
+              class="attention-row"
+              [routerLink]="item.route"
+              [queryParams]="item.queryParams">
+
+              <div class="attention-info">
+
+                <h3>{{ item.title }}</h3>
+                <p>{{ item.description }}</p>
+
+              </div>
+
+              <span
+                class="item-count"
+                [attr.data-color]="item.color">
+
+                {{ item.count }}
+
+              </span>
+
+              <svg
+                class="chevron"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true">
+
+                <path d="m9 18 6-6-6-6"/>
+
+              </svg>
+
+            </a>
+
+          } @empty {
+
+            <div class="empty-state">
+
+              <strong>You're all caught up!</strong>
+
+              <p>No items currently require your follow-up.</p>
+
+            </div>
+
+          }
+
+        </div>
+
+      </article>
+
+
+      <!-- Internship overview -->
+
+      <article class="panel overview-panel">
+
+        <header class="panel-header">
+
+          <div>
+            <h2>Internship overview</h2>
+            <p>Current distribution of active student interns.</p>
+          </div>
+
+        </header>
+
+        <div class="overview-body">
+
+          @for (item of internshipOverview; track item.label) {
+
+            <div class="overview-item">
+
+              <div class="overview-heading">
+
+                <span>{{ item.label }}</span>
+
+                <strong [attr.data-color]="item.color">
+                  {{ item.value }}
+                </strong>
+
+              </div>
+
+              <div
+                class="progress-track"
+                role="progressbar"
+                [attr.aria-label]="item.label"
+                [attr.aria-valuenow]="item.percentage"
+                aria-valuemin="0"
+                aria-valuemax="100">
+
+                <div
+                  class="progress-fill"
+                  [attr.data-color]="item.color"
+                  [style.width.%]="item.percentage">
+                </div>
+
+              </div>
+
+            </div>
+
+          }
+
+        </div>
+
+        <footer class="panel-footer">
+
+          <a
+            class="card-link"
+            routerLink="/coordinator/student-interns">
+
+            View all student interns
+            <span aria-hidden="true">›</span>
+
+          </a>
+
+        </footer>
+
+      </article>
+
+    </section>
+
+
+    <!-- Today's attendance overview -->
+
+    <section class="panel attendance-panel">
 
       <header class="panel-header">
 
         <div>
-          <h2>Needs attention</h2>
-          <p>
-            Items that require a coordinator decision or follow-up.
-          </p>
+
+          <h2>Today's attendance overview</h2>
+
+          <p>{{ currentDate }}</p>
+
         </div>
 
-        <span class="open-items">
-          {{ totalOpenItems }} open items
-        </span>
+        <a
+          class="card-link attendance-link"
+          routerLink="/coordinator/attendance-monitoring">
+
+          View attendance
+          <span aria-hidden="true">›</span>
+
+        </a>
 
       </header>
 
-      <div class="attention-list">
+      <div class="attendance-grid">
 
-        @for (item of attentionItems; track item.title) {
+        @for (item of attendanceOverview; track item.label) {
 
-          <a
-            class="attention-row"
-            [routerLink]="item.route"
-            [queryParams]="item.queryParams">
+          <div class="attendance-stat">
 
-            <span
-              class="attention-dot"
-              [style.background]="item.color">
+            <span class="attendance-label">
+              {{ item.label }}
             </span>
 
-            <div class="attention-info">
-              <h3>{{ item.title }}</h3>
-              <p>{{ item.description }}</p>
-            </div>
+            <strong
+              class="attendance-value"
+              [attr.data-color]="item.color">
 
-            <span class="item-count">
-              {{ item.count }}
-            </span>
+              {{ item.value }}
 
-            <svg
-              class="chevron"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.8">
-              <path d="m9 18 6-6-6-6"/>
-            </svg>
+            </strong>
 
-          </a>
+            <p>{{ item.description }}</p>
+
+          </div>
 
         }
 
       </div>
-
-      <footer class="panel-footer">
-        Each item opens the corresponding management page.
-      </footer>
 
     </section>
 

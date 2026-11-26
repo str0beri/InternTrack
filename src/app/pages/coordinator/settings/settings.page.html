@@ -1,13 +1,801 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-title>settings</ion-title>
-  </ion-toolbar>
-</ion-header>
+<div class="settings-page">
 
-<ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">settings</ion-title>
-    </ion-toolbar>
-  </ion-header>
-</ion-content>
+  <!-- PAGE HEADER -->
+  <header class="page-header">
+    <h1>Settings</h1>
+    <p>Manage your profile and account security.</p>
+  </header>
+
+  <!-- LOADING STATE -->
+  <div
+    class="state-card"
+    *ngIf="isLoading"
+    role="status">
+
+    <div class="loading-spinner"></div>
+    <p>Loading settings...</p>
+
+  </div>
+
+  <!-- ERROR STATE -->
+  <div
+    class="state-card"
+    *ngIf="!isLoading && errorMessage"
+    role="alert">
+
+    <h3>Unable to load settings</h3>
+    <p>{{ errorMessage }}</p>
+
+    <button
+      type="button"
+      class="secondary-button"
+      (click)="retryLoad()">
+      Try again
+    </button>
+
+  </div>
+
+  <!-- SETTINGS CONTENT -->
+  <ng-container *ngIf="!isLoading && profile && !errorMessage">
+
+    <!-- PROFILE SUCCESS MESSAGE -->
+    <div
+      class="message-banner success-banner page-message"
+      role="status"
+      *ngIf="successMessage">
+
+      <span>{{ successMessage }}</span>
+
+      <button
+        type="button"
+        class="dismiss-button"
+        aria-label="Dismiss success message"
+        (click)="dismissSuccessMessage()">
+
+        <ion-icon name="close-outline"></ion-icon>
+
+      </button>
+
+    </div>
+
+    <div class="settings-grid">
+
+      <!-- ==============================
+           LEFT COLUMN
+      =============================== -->
+
+      <div class="main-column">
+
+        <!-- PROFILE CARD -->
+        <section class="content-card profile-card">
+
+          <!-- DECORATIVE PROFILE COVER -->
+          <div
+            class="profile-cover"
+            aria-hidden="true">
+
+            <span class="cover-shape shape-one"></span>
+            <span class="cover-shape shape-two"></span>
+            <span class="cover-shape shape-three"></span>
+
+          </div>
+
+          <div class="profile-body">
+
+            <!-- PROFILE HEADER -->
+            <div class="profile-header">
+
+              <div class="profile-identity">
+
+                <div class="profile-avatar">
+                  {{ initials }}
+                </div>
+
+                <div class="profile-heading">
+
+                  <h2>{{ fullName }}</h2>
+
+                  <p class="profile-role">
+                    OJT Coordinator
+                    <span class="separator">·</span>
+                    {{ coordinatorId }}
+                  </p>
+
+                  <span
+                    class="status-text"
+                    [class.status-active]="
+                      profile.account_status === 'active'
+                    "
+                    [class.status-inactive]="
+                      profile.account_status === 'inactive'
+                    "
+                    [class.status-disabled]="
+                      profile.account_status === 'disabled'
+                    ">
+
+                    {{ accountStatus }}
+
+                  </span>
+
+                </div>
+
+              </div>
+
+              <button
+                type="button"
+                class="secondary-button edit-profile-button"
+                *ngIf="!isEditingProfile"
+                [disabled]="isChangingPassword"
+                (click)="startEditProfile()">
+
+                Edit Profile
+
+              </button>
+
+            </div>
+
+            <div class="profile-divider"></div>
+
+            <!-- PROFILE FORM -->
+            <form (ngSubmit)="saveProfile()">
+
+              <!-- PROFILE ERROR -->
+              <div
+                class="message-banner error-banner"
+                role="alert"
+                *ngIf="profileError">
+
+                <span>{{ profileError }}</span>
+
+                <button
+                  type="button"
+                  class="dismiss-button"
+                  aria-label="Dismiss profile error"
+                  (click)="dismissProfileError()">
+
+                  <ion-icon name="close-outline"></ion-icon>
+
+                </button>
+
+              </div>
+
+              <!-- PROFILE VIEW MODE -->
+              <div
+                class="information-grid"
+                *ngIf="!isEditingProfile">
+
+                <div class="information-field">
+
+                  <span class="field-label">
+                    Email address
+                  </span>
+
+                  <strong>{{ emailAddress }}</strong>
+
+                </div>
+
+                <div class="information-field">
+
+                  <span class="field-label">
+                    Contact number
+                  </span>
+
+                  <strong>
+                    {{ editForm.contactNumber || 'Not provided' }}
+                  </strong>
+
+                </div>
+
+                <div class="information-field">
+
+                  <span class="field-label">
+                    Account created
+                  </span>
+
+                  <strong>
+                    {{ formatDate(profile.date_created) }}
+                  </strong>
+
+                </div>
+
+                <div class="information-field">
+
+                  <span class="field-label">
+                    Last profile update
+                  </span>
+
+                  <strong>
+                    {{ formatDate(profile.updated_at) }}
+                  </strong>
+
+                </div>
+
+              </div>
+
+              <!-- PROFILE EDIT MODE -->
+              <ng-container *ngIf="isEditingProfile">
+
+                <div class="form-grid">
+
+                  <!-- FULL NAME -->
+                  <div class="form-field">
+
+                    <label for="fullName">
+                      Full name
+                      <span class="required-mark">*</span>
+                    </label>
+
+                    <input
+                      id="fullName"
+                      name="fullName"
+                      type="text"
+                      autocomplete="name"
+                      maxlength="150"
+                      [(ngModel)]="editForm.fullName"
+                      [disabled]="isSavingProfile"
+                      [class.invalid]="!isFullNameValid"
+                      placeholder="Enter your full name"
+                    />
+
+                    <small
+                      class="field-error"
+                      *ngIf="!isFullNameValid">
+
+                      Please enter a valid full name.
+
+                    </small>
+
+                  </div>
+
+                  <!-- COORDINATOR ID -->
+                  <div class="form-field">
+
+                    <label for="coordinatorId">
+                      Coordinator ID
+                    </label>
+
+                    <input
+                      id="coordinatorId"
+                      type="text"
+                      [value]="coordinatorId"
+                      readonly
+                    />
+
+                  </div>
+
+                  <!-- EMAIL ADDRESS -->
+                  <div class="form-field">
+
+                    <label for="emailAddress">
+                      Email address
+                    </label>
+
+                    <input
+                      id="emailAddress"
+                      type="email"
+                      [value]="emailAddress"
+                      readonly
+                    />
+
+                    <small class="field-hint">
+                      Your login email cannot be changed here.
+                    </small>
+
+                  </div>
+
+                  <!-- CONTACT NUMBER -->
+                  <div class="form-field">
+
+                    <label for="contactNumber">
+                      Contact number
+                    </label>
+
+                    <input
+                      id="contactNumber"
+                      name="contactNumber"
+                      type="tel"
+                      autocomplete="tel"
+                      maxlength="30"
+                      [(ngModel)]="editForm.contactNumber"
+                      [disabled]="isSavingProfile"
+                      [class.invalid]="!isContactNumberValid"
+                      placeholder="Enter contact number"
+                    />
+
+                    <small
+                      class="field-error"
+                      *ngIf="!isContactNumberValid">
+
+                      Please enter a valid contact number.
+
+                    </small>
+
+                  </div>
+
+                </div>
+
+                <!-- PROFILE EDIT ACTIONS -->
+                <div class="profile-form-actions form-actions">
+
+                  <button
+                    type="button"
+                    class="secondary-button"
+                    [disabled]="isSavingProfile"
+                    (click)="cancelEditProfile()">
+
+                    Cancel
+
+                  </button>
+
+                  <button
+                    type="submit"
+                    class="primary-button"
+                    [disabled]="!canSaveProfile || isSavingProfile">
+
+                    <span
+                      class="button-spinner"
+                      *ngIf="isSavingProfile">
+                    </span>
+
+                    {{
+                      isSavingProfile
+                        ? 'Saving changes...'
+                        : 'Save Changes'
+                    }}
+
+                  </button>
+
+                </div>
+
+              </ng-container>
+
+            </form>
+
+          </div>
+
+        </section>
+
+        <!-- INSTITUTIONAL INFORMATION -->
+        <section class="content-card institution-card">
+
+          <div class="card-header">
+            <h2>Institutional Information</h2>
+          </div>
+
+          <div class="card-body">
+
+            <div class="institution-details">
+
+              <div class="institution-name">
+
+                <span class="field-label">
+                  Institution
+                </span>
+
+                <h3>
+                  Pamantasan ng Lungsod ng Valenzuela
+                </h3>
+
+              </div>
+
+              <div class="information-field">
+
+                <span class="field-label">
+                  Account role
+                </span>
+
+                <strong>OJT Coordinator</strong>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </section>
+
+        <!-- DATA PRIVACY AND RESPONSIBLE USE -->
+        <section class="content-card privacy-card">
+
+          <div class="card-header">
+
+            <h2>Data Privacy and Responsible Use</h2>
+
+          </div>
+
+          <div class="card-body">
+
+            <div class="guideline-list">
+
+              <div class="guideline-item">
+
+                <h3>Confidentiality</h3>
+
+                <p>
+                  Access student information, attendance evidence,
+                  and internship records only for authorized
+                  institutional purposes.
+                </p>
+
+              </div>
+
+              <div class="guideline-item">
+
+                <h3>Account Responsibility</h3>
+
+                <p>
+                  Keep your account credentials private and
+                  log out when using shared computers.
+                </p>
+
+              </div>
+
+              <div class="guideline-item">
+
+                <h3>Record Accuracy</h3>
+
+                <p>
+                  Ensure that internship assignments, academic
+                  information, and institutional records remain
+                  accurate and up to date.
+                </p>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </section>
+
+      </div>
+
+      <!-- ==============================
+           RIGHT COLUMN
+      =============================== -->
+
+      <aside class="side-column">
+
+        <!-- ACCOUNT SECURITY -->
+        <section class="content-card security-card">
+
+          <div class="card-header">
+            <h2>Account Security</h2>
+          </div>
+
+          <div class="card-body security-body">
+
+            <!-- LOGIN INFORMATION -->
+            <div class="security-information">
+
+              <div class="information-field">
+
+                <span class="field-label">
+                  Login email
+                </span>
+
+                <strong>{{ emailAddress }}</strong>
+
+              </div>
+
+              <div class="information-field">
+
+                <span class="field-label">
+                  Authentication method
+                </span>
+
+                <strong>Email and password</strong>
+
+              </div>
+
+            </div>
+
+            <div class="security-divider"></div>
+
+            <!-- CHANGE PASSWORD -->
+            <div class="password-section">
+
+              <h3 class="section-title">
+                Change Password
+              </h3>
+
+              <!-- PASSWORD SUCCESS -->
+              <div
+                class="message-banner success-banner"
+                role="status"
+                *ngIf="passwordSuccess">
+
+                <span>{{ passwordSuccess }}</span>
+
+                <button
+                  type="button"
+                  class="dismiss-button"
+                  aria-label="Dismiss success message"
+                  (click)="dismissPasswordSuccess()">
+
+                  <ion-icon name="close-outline"></ion-icon>
+
+                </button>
+
+              </div>
+
+              <!-- PASSWORD ERROR -->
+              <div
+                class="message-banner error-banner"
+                role="alert"
+                *ngIf="passwordError">
+
+                <span>{{ passwordError }}</span>
+
+                <button
+                  type="button"
+                  class="dismiss-button"
+                  aria-label="Dismiss password error"
+                  (click)="dismissPasswordError()">
+
+                  <ion-icon name="close-outline"></ion-icon>
+
+                </button>
+
+              </div>
+
+              <form (ngSubmit)="changePassword()">
+
+                <div class="password-fields">
+
+                  <!-- CURRENT PASSWORD -->
+                  <div class="form-field">
+
+                    <label for="currentPassword">
+                      Current password
+                    </label>
+
+                    <div class="password-input">
+
+                      <input
+                        id="currentPassword"
+                        name="currentPassword"
+                        [type]="
+                          showCurrentPassword
+                            ? 'text'
+                            : 'password'
+                        "
+                        autocomplete="current-password"
+                        [(ngModel)]="passwordForm.currentPassword"
+                        [disabled]="isChangingPassword"
+                        placeholder="Enter current password"
+                      />
+
+                      <button
+                        type="button"
+                        class="password-toggle"
+                        [attr.aria-label]="
+                          showCurrentPassword
+                            ? 'Hide current password'
+                            : 'Show current password'
+                        "
+                        [disabled]="isChangingPassword"
+                        (click)="togglePasswordVisibility('current')">
+
+                        <ion-icon
+                          [name]="
+                            showCurrentPassword
+                              ? 'eye-off-outline'
+                              : 'eye-outline'
+                          "
+                          aria-hidden="true">
+                        </ion-icon>
+
+                      </button>
+
+                    </div>
+
+                  </div>
+
+                  <!-- NEW PASSWORD -->
+                  <div class="form-field">
+
+                    <label for="newPassword">
+                      New password
+                    </label>
+
+                    <div class="password-input">
+
+                      <input
+                        id="newPassword"
+                        name="newPassword"
+                        [type]="
+                          showNewPassword
+                            ? 'text'
+                            : 'password'
+                        "
+                        autocomplete="new-password"
+                        [(ngModel)]="passwordForm.newPassword"
+                        [disabled]="isChangingPassword"
+                        [class.invalid]="
+                          passwordForm.newPassword &&
+                          !isNewPasswordValid
+                        "
+                        placeholder="Enter new password"
+                      />
+
+                      <button
+                        type="button"
+                        class="password-toggle"
+                        [attr.aria-label]="
+                          showNewPassword
+                            ? 'Hide new password'
+                            : 'Show new password'
+                        "
+                        [disabled]="isChangingPassword"
+                        (click)="togglePasswordVisibility('new')">
+
+                        <ion-icon
+                          [name]="
+                            showNewPassword
+                              ? 'eye-off-outline'
+                              : 'eye-outline'
+                          "
+                          aria-hidden="true">
+                        </ion-icon>
+
+                      </button>
+
+                    </div>
+
+                    <small
+                      class="field-hint"
+                      [class.field-error]="
+                        passwordForm.newPassword &&
+                        !isNewPasswordValid
+                      ">
+
+                      Use at least 8 characters and no more
+                      than 72 bytes.
+
+                    </small>
+
+                    <small
+                      class="field-error"
+                      *ngIf="
+                        passwordForm.newPassword &&
+                        passwordForm.newPassword ===
+                        passwordForm.currentPassword
+                      ">
+
+                      Your new password must be different.
+
+                    </small>
+
+                  </div>
+
+                  <!-- CONFIRM PASSWORD -->
+                  <div class="form-field">
+
+                    <label for="confirmPassword">
+                      Confirm new password
+                    </label>
+
+                    <div class="password-input">
+
+                      <input
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        [type]="
+                          showConfirmPassword
+                            ? 'text'
+                            : 'password'
+                        "
+                        autocomplete="new-password"
+                        [(ngModel)]="passwordForm.confirmPassword"
+                        [disabled]="isChangingPassword"
+                        [class.invalid]="
+                          passwordForm.confirmPassword &&
+                          !passwordsMatch
+                        "
+                        placeholder="Re-enter new password"
+                      />
+
+                      <button
+                        type="button"
+                        class="password-toggle"
+                        [attr.aria-label]="
+                          showConfirmPassword
+                            ? 'Hide confirmation password'
+                            : 'Show confirmation password'
+                        "
+                        [disabled]="isChangingPassword"
+                        (click)="togglePasswordVisibility('confirm')">
+
+                        <ion-icon
+                          [name]="
+                            showConfirmPassword
+                              ? 'eye-off-outline'
+                              : 'eye-outline'
+                          "
+                          aria-hidden="true">
+                        </ion-icon>
+
+                      </button>
+
+                    </div>
+
+                    <small
+                      class="field-error"
+                      *ngIf="
+                        passwordForm.confirmPassword &&
+                        !passwordsMatch
+                      ">
+
+                      Passwords do not match.
+
+                    </small>
+
+                  </div>
+
+                </div>
+
+                <!-- PASSWORD SECURITY NOTE -->
+                <div class="security-note">
+
+                  <h3>Password Security</h3>
+
+                  <p>
+                    Use a strong, unique password and keep
+                    your login credentials private.
+                  </p>
+
+                </div>
+
+                <!-- PASSWORD ACTIONS -->
+                <div class="password-form-actions form-actions">
+
+                  <button
+                    type="button"
+                    class="secondary-button"
+                    [disabled]="isChangingPassword"
+                    (click)="clearPasswordForm()">
+
+                    Clear
+
+                  </button>
+
+                  <button
+                    type="submit"
+                    class="primary-button"
+                    [disabled]="
+                      !canChangePassword ||
+                      isChangingPassword ||
+                      isSavingProfile
+                    ">
+
+                    <span
+                      class="button-spinner"
+                      *ngIf="isChangingPassword">
+                    </span>
+
+                    {{
+                      isChangingPassword
+                        ? 'Updating password...'
+                        : 'Update Password'
+                    }}
+
+                  </button>
+
+                </div>
+
+              </form>
+
+            </div>
+
+          </div>
+
+        </section>
+
+      </aside>
+
+    </div>
+
+  </ng-container>
+
+</div>

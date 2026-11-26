@@ -5,12 +5,17 @@
     class="back-button"
     (click)="goBack()">
 
-    <svg viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" stroke-width="1.7">
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="1.7">
+
       <path d="M19 12H5M12 19l-7-7 7-7"/>
+
     </svg>
 
-    Attendance
+    Attendance Verification
 
   </button>
 
@@ -18,14 +23,15 @@
 
     <div class="state-panel">
       <div class="spinner"></div>
-      <h3>Loading attendance details</h3>
-      <p>Retrieving attendance and capture evidence...</p>
+      <p>Loading attendance details...</p>
     </div>
 
   } @else if (loadError) {
 
     <div class="state-panel">
+
       <h3>Unable to load attendance details</h3>
+
       <p>{{ loadError }}</p>
 
       <button
@@ -33,26 +39,26 @@
         (click)="loadData()">
         Try again
       </button>
+
     </div>
 
   } @else if (student && record) {
 
-    <!-- Page header -->
+    <!-- PAGE HEADER -->
 
     <header class="page-header">
 
       <div class="page-heading">
-
-        <span class="eyebrow">
-          ATTENDANCE VERIFICATION
-        </span>
 
         <h1>{{ student.full_name }}</h1>
 
         <p>
           {{ formatDate(record.attendance_date, true) }}
           · {{ student.student_id }}
-          · {{ student.department || 'Not provided' }}
+
+          @if (student.department) {
+            · {{ student.department }}
+          }
         </p>
 
       </div>
@@ -62,16 +68,22 @@
         <button
           class="outline-button"
           (click)="openAttendanceHistory()">
+
           Attendance history
+
         </button>
 
         <button
           class="outline-button"
-          disabled
-          title="Supervisor DTR export is not yet connected">
+          [disabled]="downloadingDTR || saving || loading"
+          (click)="downloadDTR()"
+          title="Download Daily Time Record">
 
-          <svg viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="1.7"
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.7"
             stroke-linecap="round"
             stroke-linejoin="round">
 
@@ -80,7 +92,7 @@
 
           </svg>
 
-          DTR
+          {{ downloadingDTR ? 'Downloading...' : 'Download DTR' }}
 
         </button>
 
@@ -96,21 +108,18 @@
 
     }
 
-    <!-- Main layout -->
+    <!-- MAIN LAYOUT -->
 
     <div class="details-grid">
 
-      <!-- Left column -->
-
       <div class="main-column">
 
-        <!-- Attendance details -->
+        <!-- ATTENDANCE DETAILS -->
 
         <section class="panel">
 
           <div class="panel-header">
             <h2>Attendance details</h2>
-            <p>Synchronized from the student mobile app.</p>
           </div>
 
           <div class="panel-body">
@@ -122,17 +131,19 @@
               </div>
 
               <div class="student-information">
+
                 <h3>{{ student.full_name }}</h3>
+
                 <p>
                   {{ student.course }} · {{ student.student_id }}
                 </p>
+
               </div>
 
               <span
-                class="status-badge"
+                class="status-text"
                 [ngClass]="statusClass">
 
-                <span class="status-dot"></span>
                 {{ status }}
 
               </span>
@@ -144,16 +155,22 @@
             <div class="information-grid">
 
               <div class="information-item">
+
                 <span class="field-label">
-                  ATTENDANCE DATE
+                  Attendance date
                 </span>
+
                 <span class="field-value">
                   {{ formatDate(record.attendance_date, true) }}
                 </span>
+
               </div>
 
               <div class="information-item">
-                <span class="field-label">RECORD ID</span>
+
+                <span class="field-label">
+                  Record ID
+                </span>
 
                 <span
                   class="field-value record-id"
@@ -162,76 +179,93 @@
                   {{ record.id.slice(0, 8).toUpperCase() }}
 
                 </span>
-              </div>
 
-              <div class="information-item">
-                <span class="field-label">TIME-IN</span>
-                <span class="field-value">
-                  {{ formatTime(record.time_in) }}
-                </span>
-              </div>
-
-              <div class="information-item">
-                <span class="field-label">TIME-OUT</span>
-                <span class="field-value">
-                  {{ formatTime(record.time_out) }}
-                </span>
               </div>
 
               <div class="information-item">
 
                 <span class="field-label">
-                  RECORDED DURATION
+                  Time in
+                </span>
+
+                <span class="field-value">
+                  {{ formatTime(record.time_in) }}
+                </span>
+
+              </div>
+
+              <div class="information-item">
+
+                <span class="field-label">
+                  Time out
+                </span>
+
+                <span class="field-value">
+                  {{ formatTime(record.time_out) }}
+                </span>
+
+              </div>
+
+              <div class="information-item">
+
+                <span class="field-label">
+                  Recorded duration
                 </span>
 
                 <span class="field-value">
                   {{ recordedDuration }}
                 </span>
 
-                <span class="field-description">
-                  Elapsed time between time-in and time-out.
-                </span>
-
               </div>
 
               <div class="information-item">
 
                 <span class="field-label">
-                  ELIGIBLE CREDITED HOURS
+                  Eligible credited hours
                 </span>
 
                 <span class="field-value">
 
                   @if (record.time_out) {
+
                     {{ creditedHours | number:'1.0-2' }} hours
+
                   } @else {
-                    —
+
+                    Not available
+
                   }
 
                 </span>
 
-                <span class="field-description">
-                  Based on the recorded attendance hours.
-                </span>
-
-              </div>
-
-              <div class="information-item">
-                <span class="field-label">DEPARTMENT</span>
-                <span class="field-value">
-                  {{ student.department || 'Not provided' }}
-                </span>
               </div>
 
               <div class="information-item">
 
                 <span class="field-label">
-                  INTERNSHIP STATUS
+                  Department
                 </span>
 
-                <span class="status-badge ongoing">
-                  <span class="status-dot"></span>
+                <span class="field-value">
+                  {{ student.department || 'Not provided' }}
+                </span>
+
+              </div>
+
+              <div class="information-item">
+
+                <span class="field-label">
+                  Internship status
+                </span>
+
+                <span
+                  class="status-text"
+                  [class.ongoing]="internshipStatus === 'Ongoing'"
+                  [class.completed]="internshipStatus === 'Completed' || internshipStatus === 'Hours completed'"
+                  [class.follow-up]="internshipStatus === 'Needs follow-up'">
+
                   {{ internshipStatus }}
+
                 </span>
 
               </div>
@@ -242,36 +276,32 @@
 
         </section>
 
-        <!-- Capture evidence -->
+        <!-- CAPTURE EVIDENCE -->
 
         <section class="panel">
 
           <div class="panel-header">
-
             <h2>Capture evidence</h2>
-
-            <p>
-              Time-in and time-out photos with recorded GPS
-              coordinates.
-            </p>
-
           </div>
 
           <div class="panel-body">
 
             <div class="evidence-grid">
 
-              <!-- Time-in evidence -->
+              <!-- TIME-IN EVIDENCE -->
 
               <article class="evidence-card">
 
-                <div class="photo-container">
+                <div class="evidence-heading">
+                  Time in
+                </div>
 
-                  <span class="photo-label">TIME IN</span>
+                <div class="photo-container">
 
                   @if (record.time_in_photo) {
 
                     <button
+                      type="button"
                       class="photo-button"
                       (click)="viewPhoto(record.time_in_photo)"
                       aria-label="Open time-in photo">
@@ -299,7 +329,9 @@
                   </strong>
 
                   <button
+                    type="button"
                     class="location-link"
+                    title="View time-in location in Google Maps"
                     [disabled]="
                       record.time_in_location_lat === null ||
                       record.time_in_location_long === null
@@ -309,8 +341,10 @@
                       record.time_in_location_long
                     )">
 
-                    <svg viewBox="0 0 24 24"
-                      fill="none" stroke="currentColor"
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
                       stroke-width="1.7">
 
                       <path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"/>
@@ -329,17 +363,20 @@
 
               </article>
 
-              <!-- Time-out evidence -->
+              <!-- TIME-OUT EVIDENCE -->
 
               <article class="evidence-card">
 
-                <div class="photo-container">
+                <div class="evidence-heading">
+                  Time out
+                </div>
 
-                  <span class="photo-label">TIME OUT</span>
+                <div class="photo-container">
 
                   @if (record.time_out_photo) {
 
                     <button
+                      type="button"
                       class="photo-button"
                       (click)="viewPhoto(record.time_out_photo)"
                       aria-label="Open time-out photo">
@@ -367,7 +404,9 @@
                   </strong>
 
                   <button
+                    type="button"
                     class="location-link"
+                    title="View time-out location in Google Maps"
                     [disabled]="
                       record.time_out_location_lat === null ||
                       record.time_out_location_long === null
@@ -377,8 +416,10 @@
                       record.time_out_location_long
                     )">
 
-                    <svg viewBox="0 0 24 24"
-                      fill="none" stroke="currentColor"
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
                       stroke-width="1.7">
 
                       <path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"/>
@@ -399,55 +440,34 @@
 
             </div>
 
-            <div class="evidence-note">
-
-              <svg viewBox="0 0 24 24"
-                fill="none" stroke="currentColor"
-                stroke-width="1.7">
-
-                <path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"/>
-                <circle cx="12" cy="10" r="2.5"/>
-
-              </svg>
-
-              <span>
-                GPS points are recorded at capture time.
-                Select the coordinates to inspect the location
-                in Google Maps.
-              </span>
-
-            </div>
-
           </div>
 
         </section>
 
       </div>
 
-      <!-- Right column -->
+      <!-- RIGHT COLUMN -->
 
       <aside class="side-column">
 
-        <!-- Verification -->
+        <!-- VERIFICATION -->
 
         <section class="panel">
 
           <div class="panel-header">
             <h2>Verification</h2>
-            <p>Confirm the evidence before deciding.</p>
           </div>
 
-          <div class="panel-body">
+          <div class="panel-body verification-body">
 
             <div class="summary-row">
 
               <span>Current status</span>
 
               <span
-                class="status-badge"
+                class="status-text"
                 [ngClass]="statusClass">
 
-                <span class="status-dot"></span>
                 {{ status }}
 
               </span>
@@ -456,37 +476,34 @@
 
             @if (status === 'Pending' || status === 'Incomplete') {
 
-              <div class="verification-information">
+              @if (status === 'Pending') {
 
-                <p>
-                  Recorded {{ recordedDuration }}
-                  on {{ formatDate(record.attendance_date) }}.
-                </p>
+                <div class="verification-information">
 
-                @if (status === 'Pending') {
+                  <div class="summary-row">
 
-                  <p>
-                    Verifying adds
-                    {{ creditedHours | number:'1.0-2' }} h
-                    to official rendered hours.
-                  </p>
+                    <span>Hours to credit</span>
 
-                }
+                    <strong class="provisional-value">
+                      {{ creditedHours | number:'1.0-2' }} h
+                    </strong>
 
-              </div>
+                  </div>
+
+                </div>
+
+              }
 
               @if (status === 'Incomplete') {
 
                 <div class="warning-message">
-                  This attendance record is incomplete.
                   Both time-in and time-out are required.
                 </div>
 
               } @else if (!hasCompleteEvidence) {
 
                 <div class="warning-message">
-                  Complete photo and GPS evidence is
-                  required before verification.
+                  Complete photo and GPS evidence is required.
                 </div>
 
               }
@@ -513,49 +530,60 @@
 
               </div>
 
-              <p class="verification-note">
-
-                Only verified attendance contributes to
-                rendered hours. Provisional hours are
-                tracked separately until verification.
-
-              </p>
-
             } @else if (status === 'Verified') {
 
-              <div class="verified-message">
+              <div class="verification-result">
 
-                <strong>Attendance verified</strong>
+                <div class="summary-row">
 
-                <p>
-                  {{ creditedHours | number:'1.0-2' }}
-                  credited hours have been included in
-                  the student's official rendered hours.
-                </p>
+                  <span>Credited hours</span>
+
+                  <strong class="verified-value">
+                    {{ creditedHours | number:'1.0-2' }} h
+                  </strong>
+
+                </div>
+
+                @if (record.verified_at) {
+
+                  <div class="summary-row">
+
+                    <span>Verified on</span>
+
+                    <strong>
+                      {{ record.verified_at |
+                        date:'MMM d, y · h:mm a':'+0800' }}
+                    </strong>
+
+                  </div>
+
+                }
 
               </div>
 
-              @if (record.verified_at) {
-
-                <p class="verification-note">
-
-                  Verified on
-                  {{ record.verified_at |
-                    date:'MMM d, y · h:mm a':'+0800' }}
-
-                </p>
-
-              }
-
             } @else if (status === 'Rejected') {
 
-              <div class="warning-message">
+              <div class="verification-result">
 
-                This attendance record has been rejected.
+                <div class="summary-row">
 
-                @if (record.remarks) {
-                  <p>{{ record.remarks }}</p>
-                }
+                  <span>Credited hours</span>
+
+                  <strong>0 h</strong>
+
+                </div>
+
+                <div class="rejection-information">
+
+                  <span class="rejection-label">
+                    Rejection reason
+                  </span>
+
+                  <p>
+                    {{ record.remarks || 'No reason provided.' }}
+                  </p>
+
+                </div>
 
               </div>
 
@@ -571,7 +599,7 @@
 
         </section>
 
-        <!-- Intern summary -->
+        <!-- INTERN SUMMARY -->
 
         <section class="panel">
 
@@ -582,42 +610,35 @@
           <div class="panel-body summary-body">
 
             <div class="summary-row">
+
               <span>Verified hours</span>
+
               <strong>
                 {{ verifiedHours | number:'1.0-2' }}
                 / {{ requiredHours }} h
               </strong>
+
             </div>
 
             <div class="summary-row">
+
               <span>Provisional hours</span>
-              <strong>
+
+              <strong class="provisional-value">
                 {{ provisionalHours | number:'1.0-2' }} h
               </strong>
+
             </div>
 
             <div class="summary-row">
+
               <span>Internship ends</span>
+
               <strong>
                 {{ formatDate(student.ojt_end_date) }}
               </strong>
+
             </div>
-
-            <button
-              class="text-button"
-              (click)="openAttendanceHistory()">
-
-              Open attendance history
-
-              <svg viewBox="0 0 24 24"
-                fill="none" stroke="currentColor"
-                stroke-width="1.8">
-
-                <path d="m9 18 6-6-6-6"/>
-
-              </svg>
-
-            </button>
 
           </div>
 
@@ -627,7 +648,7 @@
 
     </div>
 
-    <!-- Verify confirmation dialog -->
+    <!-- VERIFY CONFIRMATION DIALOG -->
 
     @if (activeDialog === 'verify') {
 
@@ -640,7 +661,7 @@
           aria-labelledby="verify-title">
 
           <h2 id="verify-title">
-            Verify this attendance record?
+            Verify attendance record?
           </h2>
 
           <p class="dialog-description">
@@ -649,21 +670,27 @@
             · {{ formatTime(record.time_in) }}
             to {{ formatTime(record.time_out) }}.
 
-            This adds
-            <strong>
-              {{ creditedHours | number:'1.0-2' }}
-              credited hours
-            </strong>
-            to {{ firstName }}'s official rendered hours.
+          </p>
 
+          <p class="dialog-description">
+
+            This will add
+
+            <strong>
+              {{ creditedHours | number:'1.0-2' }} credited hours
+            </strong>
+
+            to {{ firstName }}'s official rendered hours.
             Verification cannot be undone from this screen.
 
           </p>
 
           @if (actionError) {
+
             <p class="error-message" role="alert">
               {{ actionError }}
             </p>
+
           }
 
           <div class="dialog-actions">
@@ -694,7 +721,7 @@
 
     }
 
-    <!-- Reject attendance dialog -->
+    <!-- REJECT ATTENDANCE DIALOG -->
 
     @if (activeDialog === 'reject') {
 
@@ -707,12 +734,16 @@
           aria-labelledby="reject-title">
 
           <button
+            type="button"
             class="close-dialog"
             aria-label="Close dialog"
+            [disabled]="saving"
             (click)="closeDialog()">
 
-            <svg viewBox="0 0 24 24"
-              fill="none" stroke="currentColor"
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
               stroke-width="1.7">
 
               <path d="m6 6 12 12M18 6 6 18"/>
@@ -726,10 +757,7 @@
           </h2>
 
           <p class="dialog-description">
-
-            Provide the reason and explain what needs
-            to be corrected.
-
+            Provide a reason for rejecting this record.
           </p>
 
           <div class="form-field">
@@ -740,6 +768,7 @@
 
             <select
               id="rejectionReason"
+              [disabled]="saving"
               [(ngModel)]="rejectionReason">
 
               <option value="" disabled>
@@ -766,6 +795,8 @@
 
             <textarea
               id="rejectionDetails"
+              maxlength="1000"
+              [disabled]="saving"
               [(ngModel)]="rejectionDetails"
               placeholder="Explain what needs to be corrected."
               rows="4">
@@ -773,11 +804,10 @@
 
           </div>
 
-          @if (!rejectionEnabled) {
+          @if (actionError) {
 
-            <p class="verification-note">
-              Rejection will be available once the database
-              and student correction workflow are configured.
+            <p class="error-message" role="alert">
+              {{ actionError }}
             </p>
 
           }
@@ -786,6 +816,7 @@
 
             <button
               class="outline-button"
+              [disabled]="saving"
               (click)="closeDialog()">
 
               Cancel
@@ -802,7 +833,7 @@
               "
               (click)="rejectAttendance()">
 
-              Reject record
+              {{ saving ? 'Rejecting...' : 'Reject record' }}
 
             </button>
 

@@ -1,13 +1,1006 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-title>internship-assignments</ion-title>
-  </ion-toolbar>
-</ion-header>
-
-<ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">internship-assignments</ion-title>
-    </ion-toolbar>
-  </ion-header>
-</ion-content>
+<div class="internship-assignments-page">
+  <!-- PAGE HEADER -->
+  <header class="page-header">
+    <div class="page-heading">
+      <h1>Internship Assignments</h1>
+      <p *ngIf="!isLoading && !errorMessage">
+        {{ summaryText }}
+      </p>
+      <p *ngIf="isLoading">
+        Loading internship assignments...
+      </p>
+      <p *ngIf="!isLoading && errorMessage">
+        Manage student internship placements.
+      </p>
+    </div>
+    <button
+      type="button"
+      class="btn btn-primary new-assignment-btn"
+      [disabled]="!canAddAssignment"
+      (click)="openNewAssignment()"
+    >
+      <ion-icon name="add-outline"></ion-icon>
+      New Assignment
+    </button>
+  </header>
+  <!-- SUCCESS MESSAGE -->
+  <div
+    class="alert-banner success-banner"
+    *ngIf="successMessage"
+    role="status"
+  >
+    <ion-icon name="checkmark-circle-outline"></ion-icon>
+    <span>{{ successMessage }}</span>
+    <button
+      type="button"
+      class="icon-button"
+      aria-label="Dismiss success message"
+      (click)="dismissSuccessMessage()"
+    >
+      <ion-icon name="close-outline"></ion-icon>
+    </button>
+  </div>
+  <!-- LOADING STATE -->
+  <div class="state-card" *ngIf="isLoading">
+    <div class="loading-spinner"></div>
+    <h3>Loading assignments</h3>
+    <p>Please wait while we retrieve internship records.</p>
+  </div>
+  <!-- ERROR STATE -->
+  <div
+    class="state-card error-state"
+    *ngIf="!isLoading && errorMessage"
+  >
+    <div class="state-icon error-icon">
+      <ion-icon name="alert-circle-outline"></ion-icon>
+    </div>
+    <h3>Unable to load assignments</h3>
+    <p>{{ errorMessage }}</p>
+    <button
+      type="button"
+      class="btn btn-secondary"
+      (click)="retryLoad()"
+    >
+      <ion-icon name="refresh-outline"></ion-icon>
+      Try again
+    </button>
+  </div>
+  <!-- MAIN ASSIGNMENTS CARD -->
+  <section
+    class="assignments-card"
+    *ngIf="!isLoading && !errorMessage"
+  >
+    <!-- SEARCH AND FILTERS -->
+    <div class="table-toolbar">
+      <div class="toolbar-filters">
+        <div class="search-field">
+          <ion-icon
+            name="search-outline"
+            class="search-icon"
+          ></ion-icon>
+          <input
+            type="search"
+            aria-label="Search internship assignments"
+            placeholder="Search assignments"
+            [(ngModel)]="searchQuery"
+            (ngModelChange)="onSearchChange()"
+          />
+          <button
+            *ngIf="searchQuery"
+            type="button"
+            class="clear-search"
+            aria-label="Clear search"
+            (click)="searchQuery = ''; onSearchChange()"
+          >
+            <ion-icon name="close-outline"></ion-icon>
+          </button>
+        </div>
+        <div class="filter-select company-filter">
+          <select
+            aria-label="Filter by company"
+            [(ngModel)]="selectedCompany"
+            (ngModelChange)="onFilterChange()"
+          >
+            <option value="all">All companies</option>
+            <option
+              *ngFor="let company of companyOptions"
+              [value]="company"
+            >
+              {{ company }}
+            </option>
+          </select>
+          <ion-icon name="chevron-down-outline"></ion-icon>
+        </div>
+        <div class="filter-select status-filter">
+          <select
+            aria-label="Filter by assignment status"
+            [(ngModel)]="selectedStatus"
+            (ngModelChange)="onFilterChange()"
+          >
+            <option value="all">All statuses</option>
+            <option value="active">Active</option>
+            <option value="reassigned">Reassigned</option>
+            <option value="inactive">Inactive</option>
+            <option value="ended">Ended</option>
+            <option value="unknown">Unknown</option>
+          </select>
+          <ion-icon name="chevron-down-outline"></ion-icon>
+        </div>
+      </div>
+      <span class="record-count">
+        {{ filteredCount }}
+        {{ filteredCount === 1 ? 'assignment' : 'assignments' }}
+      </span>
+    </div>
+    <!-- ASSIGNMENTS TABLE -->
+    <div
+      class="table-scroll"
+      *ngIf="filteredCount > 0"
+    >
+      <table class="assignments-table">
+        <colgroup>
+          <col class="col-student" />
+          <col class="col-company" />
+          <col class="col-supervisor" />
+          <col class="col-assigned-date" />
+          <col class="col-period" />
+          <col class="col-status" />
+          <col class="col-action" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th scope="col">Student</th>
+            <th scope="col">Company</th>
+            <th scope="col">Assigned supervisor</th>
+            <th scope="col">Assignment date</th>
+            <th scope="col">Internship period</th>
+            <th scope="col">Status</th>
+            <th scope="col" class="action-heading" aria-label="Assignment actions"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            *ngFor="
+              let assignment of paginatedAssignments;
+              trackBy: trackByAssignment
+            "
+          >
+            <!-- STUDENT -->
+            <td>
+              <div class="student-cell">
+                <div
+                  class="student-avatar"
+                  [ngClass]="'avatar-' + assignment.avatarColor"
+                  aria-hidden="true"
+                >
+                  {{ assignment.initials }}
+                </div>
+                <div class="student-info">
+                  <span class="student-name">
+                    {{ assignment.studentName }}
+                  </span>
+                  <span class="student-number">
+                    {{ assignment.studentNumber }}
+                  </span>
+                </div>
+              </div>
+            </td>
+            <!-- COMPANY -->
+            <td>
+              <span class="company-name">
+                {{ assignment.company_name }}
+              </span>
+            </td>
+            <!-- SUPERVISOR -->
+            <td>
+              <div class="supervisor-cell">
+                <span class="supervisor-name">
+                  {{ assignment.supervisorName }}
+                </span>
+                <span
+                  class="department-name"
+                  *ngIf="assignment.department"
+                >
+                  {{ assignment.department }}
+                </span>
+              </div>
+            </td>
+            <!-- ASSIGNMENT DATE -->
+            <td>
+              <span class="date-text">
+                {{ formatDate(assignment.assigned_date) }}
+              </span>
+            </td>
+            <!-- INTERNSHIP PERIOD -->
+            <td>
+              <span class="period-text">
+                {{
+                  formatPeriod(
+                    assignment.start_date,
+                    assignment.end_date
+                  )
+                }}
+              </span>
+            </td>
+            <!-- STATUS -->
+            <td>
+              <span
+                class="status-text"
+                [ngClass]="getStatusClass(assignment)"
+              >
+                {{ getStatusLabel(assignment) }}
+              </span>
+            </td>
+            <!-- ACTION -->
+            <td class="action-cell">
+              <button
+                *ngIf="assignment.assignment_status === 'active'"
+                type="button"
+                class="table-action"
+                [attr.aria-label]="
+                  'Manage assignment for ' + assignment.studentName
+                "
+                (click)="openManageAssignment(assignment)"
+              >
+                Manage
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+              </button>
+              <button
+                *ngIf="assignment.assignment_status !== 'active'"
+                type="button"
+                class="table-action"
+                [attr.aria-label]="
+                  'View assignment for ' + assignment.studentName
+                "
+                (click)="openViewAssignment(assignment)"
+              >
+                View
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- EMPTY STATE -->
+    <div
+      class="empty-state"
+      *ngIf="filteredCount === 0"
+    >
+      <div class="state-icon">
+        <ion-icon
+          [name]="
+            hasActiveFilters
+              ? 'search-outline'
+              : 'business-outline'
+          "
+        ></ion-icon>
+      </div>
+      <h3>
+        {{
+          hasActiveFilters
+            ? 'No matching assignments'
+            : 'No internship assignments yet'
+        }}
+      </h3>
+      <p>
+        {{
+          hasActiveFilters
+            ? 'Try changing your search or selected filters.'
+            : 'Create an internship assignment to place a student with a partner company.'
+        }}
+      </p>
+      <button
+        *ngIf="hasActiveFilters"
+        type="button"
+        class="btn btn-secondary"
+        (click)="clearFilters()"
+      >
+        Clear filters
+      </button>
+      <button
+        *ngIf="!hasActiveFilters && canAddAssignment"
+        type="button"
+        class="btn btn-primary"
+        (click)="openNewAssignment()"
+      >
+        <ion-icon name="add-outline"></ion-icon>
+        New Assignment
+      </button>
+    </div>
+    <!-- PAGINATION -->
+    <footer
+      class="table-footer"
+      *ngIf="filteredCount > 0"
+    >
+      <p class="pagination-summary">
+        Showing
+        <strong>{{ showingFrom }}–{{ showingTo }}</strong>
+        of
+        <strong>{{ filteredCount }}</strong>
+        {{ filteredCount === 1 ? 'assignment' : 'assignments' }}
+      </p>
+      <nav
+        class="pagination"
+        aria-label="Assignment pagination"
+      >
+        <button
+          type="button"
+          class="pagination-button"
+          aria-label="Previous page"
+          [disabled]="currentPage === 1"
+          (click)="previousPage()"
+        >
+          <ion-icon name="chevron-back-outline"></ion-icon>
+        </button>
+        <button
+          *ngFor="
+            let page of pageNumbers;
+            trackBy: trackByPage
+          "
+          type="button"
+          class="pagination-button"
+          [class.active-page]="currentPage === page"
+          [attr.aria-current]="
+            currentPage === page ? 'page' : null
+          "
+          [attr.aria-label]="'Page ' + page"
+          (click)="goToPage(page)"
+        >
+          {{ page }}
+        </button>
+        <button
+          type="button"
+          class="pagination-button"
+          aria-label="Next page"
+          [disabled]="currentPage === totalPages"
+          (click)="nextPage()"
+        >
+          <ion-icon name="chevron-forward-outline"></ion-icon>
+        </button>
+      </nav>
+    </footer>
+  </section>
+</div>
+<!-- ==========================================
+     NEW / CHANGE ASSIGNMENT MODAL
+=========================================== -->
+<div
+  class="modal-overlay"
+  *ngIf="showAssignmentModal"
+  (click)="closeAssignmentModal()"
+  (keydown.escape)="closeAssignmentModal()"
+>
+  <section
+    class="modal assignment-modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="assignment-modal-title"
+    (click)="$event.stopPropagation()"
+  >
+    <!-- MODAL HEADER -->
+    <header class="modal-header">
+      <div class="modal-heading">
+        <h2 id="assignment-modal-title">
+          {{ assignmentModalTitle }}
+        </h2>
+        <p>{{ assignmentModalDescription }}</p>
+      </div>
+      <button
+        type="button"
+        class="modal-close"
+        aria-label="Close assignment form"
+        [disabled]="isSaving"
+        (click)="closeAssignmentModal()"
+      >
+        <ion-icon name="close-outline"></ion-icon>
+      </button>
+    </header>
+    <!-- MODAL BODY -->
+    <div class="modal-body">
+      <!-- FORM ERROR -->
+      <div
+        class="alert-banner error-banner"
+        *ngIf="formErrorMessage"
+        role="alert"
+      >
+        <ion-icon name="alert-circle-outline"></ion-icon>
+        <span>{{ formErrorMessage }}</span>
+        <button
+          type="button"
+          class="icon-button"
+          aria-label="Dismiss error"
+          (click)="dismissFormError()"
+        >
+          <ion-icon name="close-outline"></ion-icon>
+        </button>
+      </div>
+      <!-- CURRENT PLACEMENT -->
+      <div
+        class="current-placement"
+        *ngIf="isChangeMode && selectedAssignment as current"
+      >
+        <h3>Current placement</h3>
+        <p>
+          {{ current.company_name }}
+          ·
+          {{ current.supervisorName }}
+        </p>
+        <p>
+          {{ formatPeriod(current.start_date, current.end_date) }}
+        </p>
+      </div>
+      <!-- FORM -->
+      <form
+        class="assignment-form"
+        (ngSubmit)="reviewAssignment()"
+      >
+        <!-- STUDENT INTERN -->
+        <div class="form-group">
+          <label for="assignment-student">
+            Student intern
+            <span class="required-mark">*</span>
+          </label>
+          <!-- NEW ASSIGNMENT -->
+          <div
+            class="form-select"
+            *ngIf="!isChangeMode"
+          >
+            <select
+              id="assignment-student"
+              name="studentId"
+              required
+              [(ngModel)]="assignmentForm.studentId"
+              (ngModelChange)="onStudentChange()"
+            >
+              <option value="" disabled>
+                Select an unassigned student
+              </option>
+              <option
+                *ngFor="
+                  let student of unassignedStudents;
+                  trackBy: trackByStudent
+                "
+                [value]="student.id"
+              >
+                {{ student.full_name }}
+                ·
+                {{ student.student_id }}
+              </option>
+            </select>
+            <ion-icon name="chevron-down-outline"></ion-icon>
+          </div>
+          <!-- CHANGE ASSIGNMENT -->
+          <div
+            class="form-select readonly-select"
+            *ngIf="isChangeMode"
+          >
+            <input
+              id="assignment-student"
+              type="text"
+              [value]="
+                (selectedStudent?.full_name || '') +
+                ' · ' +
+                (selectedStudent?.student_id || '')
+              "
+              readonly
+              aria-readonly="true"
+            />
+            <ion-icon name="chevron-down-outline"></ion-icon>
+          </div>
+        </div>
+        <!-- COMPANY AND SUPERVISOR -->
+        <div class="form-grid">
+          <!-- PARTNER COMPANY -->
+          <div class="form-group">
+            <label for="assignment-company">
+              Partner company
+              <span class="required-mark">*</span>
+            </label>
+            <div class="form-select">
+              <select
+                id="assignment-company"
+                name="companyName"
+                required
+                [(ngModel)]="assignmentForm.companyName"
+                (ngModelChange)="onCompanyChange()"
+              >
+                <option value="" disabled>
+                  Select company
+                </option>
+                <option
+                  *ngFor="let company of availableCompanies"
+                  [value]="company"
+                >
+                  {{ company }}
+                </option>
+              </select>
+              <ion-icon name="chevron-down-outline"></ion-icon>
+            </div>
+          </div>
+          <!-- COMPANY SUPERVISOR -->
+          <div class="form-group">
+            <label for="assignment-supervisor">
+              Company supervisor
+              <span class="required-mark">*</span>
+            </label>
+            <div class="form-select">
+              <select
+                id="assignment-supervisor"
+                name="supervisorId"
+                required
+                [(ngModel)]="assignmentForm.supervisorId"
+                [disabled]="!assignmentForm.companyName"
+                (ngModelChange)="onFormChange()"
+              >
+                <option value="" disabled>
+                  {{
+                    assignmentForm.companyName
+                      ? 'Select supervisor'
+                      : 'Select a company first'
+                  }}
+                </option>
+                <option
+                  *ngFor="
+                    let supervisor of availableSupervisors;
+                    trackBy: trackBySupervisor
+                  "
+                  [value]="supervisor.id"
+                >
+                  {{ supervisor.full_name }}
+                  {{
+                    supervisor.department
+                      ? ' · ' + supervisor.department
+                      : ''
+                  }}
+                </option>
+              </select>
+              <ion-icon name="chevron-down-outline"></ion-icon>
+            </div>
+          </div>
+        </div>
+        <!-- INTERNSHIP DATES -->
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="assignment-start-date">
+              Internship start date
+              <span class="required-mark">*</span>
+            </label>
+            <input
+              id="assignment-start-date"
+              class="form-input date-input"
+              type="date"
+              name="startDate"
+              required
+              [(ngModel)]="assignmentForm.startDate"
+              (ngModelChange)="onFormChange()"
+            />
+          </div>
+          <div class="form-group">
+            <label for="assignment-end-date">
+              Internship end date
+              <span class="optional-label">(Optional)</span>
+            </label>
+            <input
+              id="assignment-end-date"
+              class="form-input date-input"
+              type="date"
+              name="endDate"
+              [attr.min]="assignmentForm.startDate || null"
+              [(ngModel)]="assignmentForm.endDate"
+              (ngModelChange)="onFormChange()"
+            />
+          </div>
+        </div>
+        <!-- DATE VALIDATION -->
+        <p
+          class="field-error"
+          *ngIf="
+            assignmentForm.startDate &&
+            assignmentForm.endDate &&
+            !isDateRangeValid
+          "
+        >
+          The internship end date cannot be earlier
+          than the start date.
+        </p>
+        <!-- SAME PLACEMENT VALIDATION -->
+        <div
+          class="inline-warning"
+          *ngIf="isChangeMode && isSamePlacement"
+        >
+          <ion-icon name="information-circle-outline"></ion-icon>
+          <span>
+            Select a different company or supervisor
+            to change the current placement.
+          </span>
+        </div>
+        <!-- REASSIGNMENT REASON -->
+        <div
+          class="form-group"
+          *ngIf="isChangeMode"
+        >
+          <label for="assignment-reason">
+            Reason for changing the assignment
+            <span class="required-mark">*</span>
+          </label>
+          <textarea
+            id="assignment-reason"
+            class="form-textarea"
+            name="reason"
+            rows="4"
+            maxlength="1000"
+            required
+            placeholder="Explain why the intern is being reassigned, for example a host company slot change."
+            [(ngModel)]="assignmentForm.reason"
+            (ngModelChange)="onFormChange()"
+          ></textarea>
+          <div class="field-helper-row">
+            <span class="field-helper">
+              Recorded in the student's assignment history.
+            </span>
+            <span class="character-count">
+              {{ assignmentForm.reason.length }}/1000
+            </span>
+          </div>
+        </div>
+        <!-- ASSIGNMENT INFORMATION -->
+        <div class="form-information">
+          <ion-icon name="information-circle-outline"></ion-icon>
+          <p>
+            A student can only hold one active assignment.
+            The previous placement is retained in the
+            assignment history when a change is confirmed.
+          </p>
+        </div>
+      </form>
+    </div>
+    <!-- MODAL FOOTER -->
+    <footer class="modal-footer">
+      <button
+        type="button"
+        class="btn btn-secondary"
+        [disabled]="isSaving"
+        (click)="closeAssignmentModal()"
+      >
+        Cancel
+      </button>
+      <button
+        type="button"
+        class="btn btn-primary"
+        [disabled]="!canReviewAssignment"
+        (click)="reviewAssignment()"
+      >
+        Review assignment
+      </button>
+    </footer>
+  </section>
+</div>
+<!-- ==========================================
+     REVIEW ASSIGNMENT MODAL
+=========================================== -->
+<div
+  class="modal-overlay"
+  *ngIf="showReviewModal"
+  (click)="backToAssignmentForm()"
+  (keydown.escape)="backToAssignmentForm()"
+>
+  <section
+    class="modal review-modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="review-modal-title"
+    (click)="$event.stopPropagation()"
+  >
+    <!-- HEADER -->
+    <header class="modal-header">
+      <div class="modal-heading">
+        <h2 id="review-modal-title">
+          {{
+            isChangeMode
+              ? 'Review assignment change'
+              : 'Review internship assignment'
+          }}
+        </h2>
+        <p>
+          Please review the placement information
+          before confirming the assignment.
+        </p>
+      </div>
+      <button
+        type="button"
+        class="modal-close"
+        aria-label="Return to assignment form"
+        [disabled]="isSaving"
+        (click)="backToAssignmentForm()"
+      >
+        <ion-icon name="close-outline"></ion-icon>
+      </button>
+    </header>
+    <!-- BODY -->
+    <div class="modal-body">
+      <!-- SAVE ERROR -->
+      <div
+        class="alert-banner error-banner"
+        *ngIf="formErrorMessage"
+        role="alert"
+      >
+        <ion-icon name="alert-circle-outline"></ion-icon>
+        <span>{{ formErrorMessage }}</span>
+        <button
+          type="button"
+          class="icon-button"
+          aria-label="Dismiss error"
+          (click)="dismissFormError()"
+        >
+          <ion-icon name="close-outline"></ion-icon>
+        </button>
+      </div>
+      <!-- STUDENT PREVIEW -->
+      <div
+        class="review-student"
+        *ngIf="selectedStudent as student"
+      >
+        <div
+          class="student-avatar review-avatar"
+          [ngClass]="'avatar-' + getAvatarColor(student.id)"
+        >
+          {{ getInitials(student.full_name) }}
+        </div>
+        <div class="review-student-info">
+          <span class="review-student-name">
+            {{ student.full_name }}
+          </span>
+          <span class="student-number">
+            {{ student.student_id }}
+          </span>
+        </div>
+      </div>
+      <!-- PREVIOUS PLACEMENT -->
+      <div
+        class="current-placement"
+        *ngIf="isChangeMode && selectedAssignment as current"
+      >
+        <h3>Previous placement</h3>
+        <p>{{ current.company_name }}</p>
+        <p>{{ current.supervisorName }}</p>
+        <p>
+          {{ formatPeriod(current.start_date, current.end_date) }}
+        </p>
+      </div>
+      <!-- NEW PLACEMENT DETAILS -->
+      <section class="review-details">
+        <h3 class="section-label">
+          {{ isChangeMode ? 'New placement' : 'Placement details' }}
+        </h3>
+        <dl class="details-grid">
+          <div class="detail-item">
+            <dt>Partner company</dt>
+            <dd>{{ assignmentForm.companyName }}</dd>
+          </div>
+          <div class="detail-item">
+            <dt>Company supervisor</dt>
+            <dd>{{ selectedSupervisor?.full_name || 'Not specified' }}</dd>
+          </div>
+          <div class="detail-item">
+            <dt>Department</dt>
+            <dd>
+              {{ selectedSupervisor?.department || 'Not specified' }}
+            </dd>
+          </div>
+          <div class="detail-item">
+            <dt>Assignment status</dt>
+            <dd>
+              <span class="status-text status-active">
+                Active
+              </span>
+            </dd>
+          </div>
+          <div class="detail-item">
+            <dt>Internship start date</dt>
+            <dd>
+              {{ formatDate(assignmentForm.startDate) }}
+            </dd>
+          </div>
+          <div class="detail-item">
+            <dt>Internship end date</dt>
+            <dd>
+              {{
+                assignmentForm.endDate
+                  ? formatDate(assignmentForm.endDate)
+                  : 'Not specified'
+              }}
+            </dd>
+          </div>
+        </dl>
+      </section>
+      <!-- REASON PREVIEW -->
+      <div
+        class="reason-preview"
+        *ngIf="isChangeMode"
+      >
+        <h3 class="section-label">
+          Reason for reassignment
+        </h3>
+        <p>{{ assignmentForm.reason }}</p>
+      </div>
+      <!-- CONFIRMATION INFORMATION -->
+      <div class="form-information">
+        <ion-icon name="information-circle-outline"></ion-icon>
+        <p>
+          {{
+            isChangeMode
+              ? 'The previous placement will be retained in the assignment history. Existing attendance and weekly report records will not be deleted.'
+              : 'Confirming this assignment will link the student intern to the selected company and supervisor.'
+          }}
+        </p>
+      </div>
+    </div>
+    <!-- FOOTER -->
+    <footer class="modal-footer">
+      <button
+        type="button"
+        class="btn btn-secondary"
+        [disabled]="isSaving"
+        (click)="backToAssignmentForm()"
+      >
+        Back
+      </button>
+      <button
+        type="button"
+        class="btn btn-primary"
+        [disabled]="isSaving || !canReviewAssignment"
+        (click)="confirmAssignment()"
+      >
+        <span
+          class="button-spinner"
+          *ngIf="isSaving"
+        ></span>
+        {{
+          isSaving
+            ? 'Saving assignment...'
+            : confirmationLabel
+        }}
+      </button>
+    </footer>
+  </section>
+</div>
+<!-- ==========================================
+     HISTORICAL ASSIGNMENT DETAILS MODAL
+=========================================== -->
+<div
+  class="modal-overlay"
+  *ngIf="showViewModal && viewedAssignment as assignment"
+  (click)="closeViewModal()"
+  (keydown.escape)="closeViewModal()"
+>
+  <section
+    class="modal view-modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="view-modal-title"
+    (click)="$event.stopPropagation()"
+  >
+    <!-- HEADER -->
+    <header class="modal-header">
+      <div class="modal-heading">
+        <h2 id="view-modal-title">
+          Assignment details
+        </h2>
+        <p>
+          View the recorded internship placement information.
+        </p>
+      </div>
+      <button
+        type="button"
+        class="modal-close"
+        aria-label="Close assignment details"
+        (click)="closeViewModal()"
+      >
+        <ion-icon name="close-outline"></ion-icon>
+      </button>
+    </header>
+    <!-- BODY -->
+    <div class="modal-body">
+      <!-- STUDENT INFORMATION -->
+      <div class="review-student">
+        <div
+          class="student-avatar review-avatar"
+          [ngClass]="'avatar-' + assignment.avatarColor"
+        >
+          {{ assignment.initials }}
+        </div>
+        <div class="review-student-info">
+          <span class="review-student-name">
+            {{ assignment.studentName }}
+          </span>
+          <span class="student-number">
+            {{ assignment.studentNumber }}
+          </span>
+        </div>
+        <span
+          class="status-text"
+          [ngClass]="getStatusClass(assignment)"
+        >
+          {{ getStatusLabel(assignment) }}
+        </span>
+      </div>
+      <!-- PLACEMENT DETAILS -->
+      <section class="review-details">
+        <h3 class="section-label">
+          Placement information
+        </h3>
+        <dl class="details-grid">
+          <div class="detail-item">
+            <dt>Partner company</dt>
+            <dd>{{ assignment.company_name }}</dd>
+          </div>
+          <div class="detail-item">
+            <dt>Company supervisor</dt>
+            <dd>{{ assignment.supervisorName }}</dd>
+          </div>
+          <div class="detail-item">
+            <dt>Department</dt>
+            <dd>
+              {{ assignment.department || 'Not specified' }}
+            </dd>
+          </div>
+          <div class="detail-item">
+            <dt>Assignment date</dt>
+            <dd>
+              {{ formatDate(assignment.assigned_date) }}
+            </dd>
+          </div>
+          <div class="detail-item">
+            <dt>Internship start date</dt>
+            <dd>
+              {{ formatDate(assignment.start_date) }}
+            </dd>
+          </div>
+          <div class="detail-item">
+            <dt>Internship end date</dt>
+            <dd>
+              {{ formatDate(assignment.end_date) }}
+            </dd>
+          </div>
+        </dl>
+      </section>
+      <!-- REASSIGNMENT HISTORY -->
+      <section
+        class="history-details"
+        *ngIf="getStatusKey(assignment) === 'reassigned'"
+      >
+        <h3 class="section-label">
+          Reassignment information
+        </h3>
+        <div class="detail-item history-date">
+          <dt>Reassigned on</dt>
+          <dd>{{ viewedAssignmentChangedAt }}</dd>
+        </div>
+        <div class="reason-preview">
+          <h4>Reason for reassignment</h4>
+          <p>{{ viewedAssignmentReason }}</p>
+        </div>
+      </section>
+      <!-- READ-ONLY NOTICE -->
+      <div class="form-information">
+        <ion-icon name="information-circle-outline"></ion-icon>
+        <p>
+          This is a historical assignment record.
+          Previous placements are retained for
+          documentation and cannot be edited here.
+        </p>
+      </div>
+    </div>
+    <!-- FOOTER -->
+    <footer class="modal-footer">
+      <button
+        type="button"
+        class="btn btn-secondary"
+        (click)="closeViewModal()"
+      >
+        Close
+      </button>
+    </footer>
+  </section>
+</div>

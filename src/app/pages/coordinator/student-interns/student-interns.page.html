@@ -1,48 +1,31 @@
-
 <div class="student-interns-page">
 
-  <!-- PAGE HEADER -->
-
+  <!-- Page header -->
   <header class="page-heading">
-
     <div class="heading-content">
 
       <h1>Student Interns</h1>
 
       <p *ngIf="!isLoading && !errorMessage">
-        {{ totalStudents }} registered interns
-        <span class="separator">·</span>
-        {{ activePlacements }} with active placements
-        <span class="separator">·</span>
-        {{ awaitingAssignments }} awaiting assignment.
+        {{ totalStudents }}
+        registered {{ totalStudents === 1 ? 'student intern' : 'student interns' }}
+        · {{ awaitingAssignments }} awaiting assignment.
       </p>
 
       <p *ngIf="isLoading">
-        Loading student intern records...
+        Loading student interns...
+      </p>
+
+      <p *ngIf="!isLoading && errorMessage">
+        Manage student internship records.
       </p>
 
     </div>
-
-    <button
-      type="button"
-      class="primary-button"
-      [disabled]="!canAddStudent"
-      title="Student account creation is not yet available">
-
-      <ion-icon name="add-outline"></ion-icon>
-
-      Add student intern
-
-    </button>
-
   </header>
-
-  <!-- STUDENT TABLE CARD -->
 
   <section class="table-card">
 
-    <!-- FILTER TOOLBAR -->
-
+    <!-- Filters -->
     <div class="filter-toolbar">
 
       <div class="filters">
@@ -134,14 +117,18 @@
 
       </div>
 
-      <span class="record-count" *ngIf="!isLoading">
-        {{ filteredStudents.length }} records
+      <span
+        class="record-count"
+        *ngIf="!isLoading && !errorMessage">
+
+        {{ filteredStudents.length }}
+        {{ filteredStudents.length === 1 ? 'record' : 'records' }}
+
       </span>
 
     </div>
 
-    <!-- LOADING STATE -->
-
+    <!-- Loading state -->
     <div
       class="empty-state"
       *ngIf="isLoading"
@@ -149,14 +136,11 @@
 
       <div class="loading-spinner"></div>
 
-      <h3>Loading student interns</h3>
-
-      <p>Please wait while we retrieve student records.</p>
+      <p>Loading student interns...</p>
 
     </div>
 
-    <!-- ERROR STATE -->
-
+    <!-- Error state -->
     <div
       class="empty-state"
       *ngIf="!isLoading && errorMessage"
@@ -171,35 +155,32 @@
         class="secondary-button"
         (click)="loadStudents()">
 
-        <ion-icon name="refresh-outline"></ion-icon>
-
         Try again
 
       </button>
 
     </div>
 
-    <!-- STUDENT TABLE -->
-
+    <!-- Student table -->
     <div
       class="table-wrapper"
+      tabindex="0"
+      role="region"
+      aria-label="Student intern records"
       *ngIf="!isLoading && !errorMessage && filteredStudents.length">
 
       <table class="students-table">
 
         <thead>
-
           <tr>
             <th>Student</th>
             <th>Student ID</th>
             <th>Course &amp; Year Level</th>
             <th>Assigned Company</th>
-            <th>Verified Hours</th>
-            <th>Progress</th>
+            <th>Internship Progress</th>
             <th>Status</th>
-            <th class="action-heading">Action</th>
+            <th class="action-heading" aria-label="Actions"></th>
           </tr>
-
         </thead>
 
         <tbody>
@@ -210,8 +191,7 @@
               trackBy: trackStudent
             ">
 
-            <!-- STUDENT NAME -->
-
+            <!-- Student -->
             <td>
 
               <div class="student-profile">
@@ -244,64 +224,53 @@
 
             </td>
 
-            <!-- STUDENT ID -->
-
+            <!-- Student ID -->
             <td class="student-id">
               {{ student.studentId }}
             </td>
 
-            <!-- COURSE AND YEAR LEVEL -->
-
+            <!-- Course and year level -->
             <td>
 
               <div class="course-information">
 
                 <span>{{ student.course }}</span>
 
-                <small *ngIf="student.yearLevel">
-                  {{ student.yearLevel }}
+                <small>
+                  {{ student.yearLevel || 'Not specified' }}
                 </small>
 
               </div>
 
             </td>
 
-            <!-- COMPANY -->
-
+            <!-- Assigned company -->
             <td>
 
-              <span
-                [class.muted-text]="!student.hasAssignment">
-
+              <span [class.muted-text]="!student.hasAssignment">
                 {{ student.companyName }}
-
               </span>
 
             </td>
 
-            <!-- VERIFIED HOURS -->
-
-            <td>
-
-              <div class="hours-value">
-
-                <strong>
-                  {{ student.verifiedHours | number:'1.0-2' }}
-                </strong>
-
-                <span>
-                  / {{ student.requiredHours }} h
-                </span>
-
-              </div>
-
-            </td>
-
-            <!-- PROGRESS -->
-
+            <!-- Internship progress -->
             <td>
 
               <div class="progress-container">
+
+                <div class="hours-value">
+
+                  <strong>
+                    {{ student.verifiedHours | number:'1.0-2' }}
+                  </strong>
+
+                  <span>
+                    / {{ student.requiredHours > 0
+                      ? student.requiredHours + ' h'
+                      : 'Not set' }}
+                  </span>
+
+                </div>
 
                 <div
                   class="progress-track"
@@ -316,28 +285,28 @@
                     [class.warning]="student.status === 'needs_follow_up'"
                     [class.completed]="student.status === 'hours_completed'"
                     [style.width.%]="student.progress">
-
                   </div>
 
                 </div>
 
                 <span class="progress-label">
-                  {{ student.progress }}% complete
+
+                  {{ student.requiredHours > 0
+                    ? student.progress + '% complete'
+                    : 'Required hours not set' }}
+
                 </span>
 
               </div>
 
             </td>
 
-            <!-- STATUS -->
-
+            <!-- Status -->
             <td>
 
               <span
-                class="status-badge"
+                class="status-text"
                 [ngClass]="student.status">
-
-                <span class="status-dot"></span>
 
                 {{ getStatusLabel(student.status) }}
 
@@ -345,8 +314,7 @@
 
             </td>
 
-            <!-- ACTION -->
-
+            <!-- Action -->
             <td class="action-cell">
 
               <button
@@ -354,8 +322,6 @@
                 class="view-button"
                 [attr.aria-label]="'View ' + student.fullName"
                 (click)="viewStudent(student)">
-
-                <ion-icon name="eye-outline"></ion-icon>
 
                 View
 
@@ -371,24 +337,19 @@
 
     </div>
 
-    <!-- EMPTY STATE -->
-
+    <!-- Empty state -->
     <div
       class="empty-state"
       *ngIf="!isLoading && !errorMessage && !filteredStudents.length">
 
-      <div class="empty-icon">
-        <ion-icon name="people-outline"></ion-icon>
-      </div>
-
       <h3>No student interns found</h3>
 
       <p *ngIf="students.length">
-        Try changing your search or selected filters.
+        Try a different search or adjust your filters.
       </p>
 
       <p *ngIf="!students.length">
-        No student intern records are currently available.
+        No student intern records are available.
       </p>
 
       <button
@@ -403,8 +364,7 @@
 
     </div>
 
-    <!-- TABLE FOOTER -->
-
+    <!-- Pagination -->
     <footer
       class="table-footer"
       *ngIf="!isLoading && !errorMessage">
@@ -412,14 +372,10 @@
       <p class="pagination-summary">
 
         Showing
-
         <strong>{{ showingFrom }}–{{ showingTo }}</strong>
-
         of
-
         <strong>{{ filteredStudents.length }}</strong>
-
-        student interns
+        {{ filteredStudents.length === 1 ? 'student intern' : 'student interns' }}
 
       </p>
 

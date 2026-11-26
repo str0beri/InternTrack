@@ -1,5 +1,12 @@
 
-import { Component, inject, OnInit } from '@angular/core';
+import {
+  Component,
+  inject,
+  OnInit,
+  ChangeDetectorRef,
+  NgZone
+} from '@angular/core';
+
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -12,8 +19,6 @@ import {
   chevronDownOutline,
   chevronBackOutline,
   chevronForwardOutline,
-  addOutline,
-  eyeOutline,
   refreshOutline,
   peopleOutline
 } from 'ionicons/icons';
@@ -56,6 +61,7 @@ interface StudentIntern {
   templateUrl: './student-interns.page.html',
   styleUrls: ['./student-interns.page.scss']
 })
+
 export class StudentInternsPage implements OnInit {
 
   // =========================================
@@ -64,43 +70,54 @@ export class StudentInternsPage implements OnInit {
 
   private readonly supabaseService = inject(SupabaseService);
   private readonly supabase = this.supabaseService.getClient();
+
   private readonly router = inject(Router);
+  private readonly cdr = inject(ChangeDetectorRef);
+  private readonly ngZone = inject(NgZone);
 
   // =========================================
   // PAGE STATE
   // =========================================
 
   isLoading = true;
+
+  private loadingInProgress = false;
+
   errorMessage = '';
 
   students: StudentIntern[] = [];
 
   searchTerm = '';
+
   selectedCourse = 'all';
   selectedCompany = 'all';
   selectedStatus = 'all';
 
   currentPage = 1;
+
   readonly pageSize = 8;
 
-  // Enable after secure account creation is implemented.
-  readonly canAddStudent = false;
+  // =========================================
+  // CONSTRUCTOR
+  // =========================================
 
   constructor() {
+
     addIcons({
       searchOutline,
       chevronDownOutline,
       chevronBackOutline,
       chevronForwardOutline,
-      addOutline,
-      eyeOutline,
       refreshOutline,
       peopleOutline
     });
+
   }
 
   ngOnInit(): void {
+
     void this.loadStudents();
+
   }
 
   // =========================================
@@ -109,31 +126,40 @@ export class StudentInternsPage implements OnInit {
 
   async loadStudents(): Promise<void> {
 
-    if (this.isLoading && this.students.length > 0) {
+    if (this.loadingInProgress) {
       return;
     }
 
+    this.loadingInProgress = true;
     this.isLoading = true;
     this.errorMessage = '';
 
+    this.cdr.markForCheck();
+
     try {
 
-      const { data: students, error: studentError } =
-        await this.supabase
-          .from('students')
-          .select(`
-            id,
-            student_id,
-            full_name,
-            email,
-            course,
-            year_level,
-            required_hours,
-            ojt_start_date,
-            ojt_end_date,
-            account_status
-          `)
-          .order('full_name', { ascending: true });
+      // Retrieve registered student interns.
+
+      const {
+        data: students,
+        error: studentError
+      } = await this.supabase
+        .from('students')
+        .select(`
+          id,
+          student_id,
+          full_name,
+          email,
+          course,
+          year_level,
+          required_hours,
+          ojt_start_date,
+          ojt_end_date,
+          account_status
+        `)
+        .order('full_name', {
+          ascending: true
+        });
 
       if (studentError) {
         throw studentError;
@@ -142,18 +168,27 @@ export class StudentInternsPage implements OnInit {
       const studentRows = students ?? [];
 
       if (!studentRows.length) {
+
         this.students = [];
         this.currentPage = 1;
+
         return;
+
       }
+
+      // Student database UUIDs.
 
       const studentIds = studentRows.map(
         student => student.id
       );
 
+      // Student school IDs.
+
       const schoolIds = studentRows.map(
         student => student.student_id
       );
+
+      // Retrieve active assignments and verified attendance.
 
       const [
         assignmentResult,
@@ -172,7 +207,9 @@ export class StudentInternsPage implements OnInit {
           `)
           .in('student_id', studentIds)
           .eq('assignment_status', 'active')
-          .order('assigned_date', { ascending: false }),
+          .order('assigned_date', {
+            ascending: false
+          }),
 
         this.supabase
           .from('attendance')
@@ -196,7 +233,9 @@ export class StudentInternsPage implements OnInit {
         throw attendanceResult.error;
       }
 
-      // Map the latest active assignment of each student.
+      // =========================================
+      // MAP ACTIVE COMPANY ASSIGNMENTS
+      // =========================================
 
       const assignmentMap = new Map<string, string>();
 
@@ -208,10 +247,14 @@ export class StudentInternsPage implements OnInit {
             assignment.student_id,
             assignment.company_name
           );
+
         }
+
       }
 
-      // Calculate verified internship hours.
+      // =========================================
+      // CALCULATE VERIFIED INTERNSHIP HOURS
+      // =========================================
 
       const hoursMap = new Map<string, number>();
 
@@ -232,22 +275,30 @@ export class StudentInternsPage implements OnInit {
           record.student_id,
           existingHours + hours
         );
+
       }
 
-      // Prepare student records for the table.
+      // =========================================
+      // PREPARE STUDENT RECORDS
+      // =========================================
 
       this.students = studentRows.map((student, index) => {
 
-        const requiredHours =
-          Math.max(0, Number(student.required_hours) || 0);
+        const requiredHours = Math.max(
+          0,
+          Number(student.required_hours) || 0
+        );
 
         const verifiedHours =
           hoursMap.get(student.student_id) ?? 0;
 
+        // Prevent displaying 100% before the
+        // required internship hours are completed.
+
         const progress = requiredHours > 0
           ? Math.min(
               100,
-              Math.round(
+              Math.floor(
                 (verifiedHours / requiredHours) * 100
               )
             )
@@ -257,7 +308,12 @@ export class StudentInternsPage implements OnInit {
           assignmentMap.has(student.id);
 
         const companyName =
-          assignmentMap.get(student.id) || 'Unassigned';
+          assignmentMap.get(student.id) ||
+          (
+            hasAssignment
+              ? 'Company not specified'
+              : 'Unassigned'
+          );
 
         const status = this.calculateStatus(
           student.account_status,
@@ -269,23 +325,41 @@ export class StudentInternsPage implements OnInit {
         );
 
         return {
+
           id: student.id,
+
           studentId: student.student_id,
+
           fullName: student.full_name,
+
           email: student.email || '',
+
           course: student.course || 'Not specified',
+
           yearLevel: student.year_level
             ? String(student.year_level)
             : '',
+
           companyName,
+
           requiredHours,
+
           verifiedHours,
+
           progress,
+
           status,
-          initials: this.getInitials(student.full_name),
+
+          initials: this.getInitials(
+            student.full_name
+          ),
+
           avatarColor: this.getAvatarColor(index),
+
           hasAssignment
+
         };
+
       });
 
       this.currentPage = 1;
@@ -304,12 +378,24 @@ export class StudentInternsPage implements OnInit {
 
     } finally {
 
-      this.isLoading = false;
+      // Ensure Angular updates the page after
+      // asynchronous Supabase requests are completed.
+
+      this.ngZone.run(() => {
+
+        this.loadingInProgress = false;
+        this.isLoading = false;
+
+        this.cdr.detectChanges();
+
+      });
+
     }
+
   }
 
   // =========================================
-  // INTERNSHIP STATUS
+  // INTERNSHIP STATUS CALCULATION
   // =========================================
 
   private calculateStatus(
@@ -321,73 +407,110 @@ export class StudentInternsPage implements OnInit {
     endDate: string | null
   ): InternshipStatus {
 
+    // Inactive student account.
+
     if (accountStatus !== 'active') {
+
       return 'inactive';
+
     }
 
+    // Student has no active supervisor assignment.
+
     if (!hasAssignment) {
+
       return 'unassigned';
+
     }
+
+    // Student has completed the required hours.
 
     if (
       requiredHours > 0 &&
       verifiedHours >= requiredHours
     ) {
+
       return 'hours_completed';
+
     }
+
+    // Internship schedule is not yet configured.
 
     if (!startDate || !endDate || requiredHours <= 0) {
+
       return 'ongoing';
+
     }
 
-    const start = new Date(`${startDate}T00:00:00`).getTime();
-    const end = new Date(`${endDate}T23:59:59`).getTime();
+    const start = new Date(
+      `${startDate}T00:00:00`
+    ).getTime();
+
+    const end = new Date(
+      `${endDate}T23:59:59`
+    ).getTime();
+
     const today = Date.now();
+
+    // Validate internship schedule.
 
     if (
       !Number.isFinite(start) ||
       !Number.isFinite(end) ||
       end <= start
     ) {
+
       return 'ongoing';
+
     }
+
+    // Internship has not started.
 
     if (today < start) {
+
       return 'not_started';
+
     }
+
+    // Internship deadline has passed,
+    // but required hours remain incomplete.
 
     if (today > end) {
+
       return 'needs_follow_up';
+
     }
 
-    const expectedProgress =
-      ((today - start) / (end - start)) * 100;
-
-    const actualProgress =
-      (verifiedHours / requiredHours) * 100;
-
-    // Preliminary monitoring rule:
-    // More than 10 percentage points behind schedule.
-
-    if (expectedProgress - actualProgress > 10) {
-      return 'needs_follow_up';
-    }
+    // Student is currently undergoing internship.
 
     return 'ongoing';
+
   }
+
+  // =========================================
+  // STATUS DISPLAY LABELS
+  // =========================================
 
   getStatusLabel(status: InternshipStatus): string {
 
     const labels: Record<InternshipStatus, string> = {
+
       ongoing: 'Ongoing',
+
       unassigned: 'Unassigned',
+
       needs_follow_up: 'Needs follow-up',
+
       hours_completed: 'Hours completed',
+
       inactive: 'Inactive',
+
       not_started: 'Not started'
+
     };
 
     return labels[status];
+
   }
 
   // =========================================
@@ -395,20 +518,32 @@ export class StudentInternsPage implements OnInit {
   // =========================================
 
   get totalStudents(): number {
+
     return this.students.length;
+
   }
 
   get activePlacements(): number {
+
     return this.students.filter(student =>
+
       student.hasAssignment &&
-      student.status !== 'inactive'
+      student.status !== 'inactive' &&
+      student.status !== 'hours_completed' &&
+      student.status !== 'not_started'
+
     ).length;
+
   }
 
   get awaitingAssignments(): number {
+
     return this.students.filter(student =>
+
       student.status === 'unassigned'
+
     ).length;
+
   }
 
   // =========================================
@@ -417,18 +552,26 @@ export class StudentInternsPage implements OnInit {
 
   get courses(): string[] {
 
-    return [...new Set(
-      this.students.map(student => student.course)
-    )].sort();
+    return [
+      ...new Set(
+        this.students.map(
+          student => student.course
+        )
+      )
+    ].sort();
+
   }
 
   get companies(): string[] {
 
-    return [...new Set(
-      this.students
-        .filter(student => student.hasAssignment)
-        .map(student => student.companyName)
-    )].sort();
+    return [
+      ...new Set(
+        this.students
+          .filter(student => student.hasAssignment)
+          .map(student => student.companyName)
+      )
+    ].sort();
+
   }
 
   // =========================================
@@ -437,48 +580,73 @@ export class StudentInternsPage implements OnInit {
 
   get filteredStudents(): StudentIntern[] {
 
-    const search =
-      this.searchTerm.trim().toLowerCase();
+    const search = this.searchTerm
+      .trim()
+      .toLowerCase();
 
     return this.students.filter(student => {
 
       const matchesSearch =
+
         !search ||
-        student.fullName.toLowerCase().includes(search) ||
-        student.studentId.toLowerCase().includes(search);
+
+        String(student.fullName ?? '')
+          .toLowerCase()
+          .includes(search) ||
+
+        String(student.studentId ?? '')
+          .toLowerCase()
+          .includes(search);
 
       const matchesCourse =
+
         this.selectedCourse === 'all' ||
+
         student.course === this.selectedCourse;
 
       const matchesCompany =
+
         this.selectedCompany === 'all' ||
+
         student.companyName === this.selectedCompany;
 
       const matchesStatus =
+
         this.selectedStatus === 'all' ||
+
         student.status === this.selectedStatus;
 
       return (
+
         matchesSearch &&
         matchesCourse &&
         matchesCompany &&
         matchesStatus
+
       );
+
     });
+
   }
 
   onFilterChange(): void {
+
     this.currentPage = 1;
+
   }
 
   resetFilters(): void {
 
     this.searchTerm = '';
+
     this.selectedCourse = 'all';
+
     this.selectedCompany = 'all';
+
     this.selectedStatus = 'all';
+
     this.currentPage = 1;
+
   }
 
   // =========================================
@@ -488,11 +656,15 @@ export class StudentInternsPage implements OnInit {
   get totalPages(): number {
 
     return Math.max(
+
       1,
+
       Math.ceil(
         this.filteredStudents.length / this.pageSize
       )
+
     );
+
   }
 
   get paginatedStudents(): StudentIntern[] {
@@ -501,66 +673,99 @@ export class StudentInternsPage implements OnInit {
       (this.currentPage - 1) * this.pageSize;
 
     return this.filteredStudents.slice(
+
       start,
+
       start + this.pageSize
+
     );
+
   }
 
   get pageNumbers(): number[] {
 
     const first = Math.max(
+
       1,
+
       Math.min(
         this.currentPage - 2,
         this.totalPages - 4
       )
+
     );
 
     const last = Math.min(
+
       this.totalPages,
+
       first + 4
+
     );
 
     return Array.from(
-      { length: last - first + 1 },
+
+      {
+        length: last - first + 1
+      },
+
       (_, index) => first + index
+
     );
+
   }
 
   get showingFrom(): number {
 
     return this.filteredStudents.length
+
       ? (this.currentPage - 1) * this.pageSize + 1
+
       : 0;
+
   }
 
   get showingTo(): number {
 
     return Math.min(
+
       this.currentPage * this.pageSize,
+
       this.filteredStudents.length
+
     );
+
   }
 
   goToPage(page: number): void {
 
-    if (page < 1 || page > this.totalPages) {
+    if (
+      page < 1 ||
+      page > this.totalPages
+    ) {
+
       return;
+
     }
 
     this.currentPage = page;
+
   }
 
   // =========================================
-  // NAVIGATION
+  // STUDENT PROFILE NAVIGATION
   // =========================================
 
   viewStudent(student: StudentIntern): void {
 
     void this.router.navigate([
+
       '/coordinator/student-interns',
+
       student.id
+
     ]);
+
   }
 
   // =========================================
@@ -575,23 +780,37 @@ export class StudentInternsPage implements OnInit {
       .filter(Boolean);
 
     return parts
+
       .slice(0, 2)
-      .map(part => part.charAt(0).toUpperCase())
+
+      .map(
+        part => part.charAt(0).toUpperCase()
+      )
+
       .join('') || 'ST';
+
   }
 
   private getAvatarColor(index: number): string {
 
     const colors = [
+
       'rose',
+
       'sky',
+
       'blue',
+
       'orange',
+
       'green',
+
       'violet'
+
     ];
 
     return colors[index % colors.length];
+
   }
 
   trackStudent(
@@ -600,5 +819,7 @@ export class StudentInternsPage implements OnInit {
   ): string {
 
     return student.id;
+
   }
+
 }

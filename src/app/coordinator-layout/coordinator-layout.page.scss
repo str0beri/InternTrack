@@ -1,13 +1,15 @@
+
 :host {
   --primary: #3157d5;
   --primary-light: #edf0fc;
 
-  --background: #f5f6f9;
+  --background: #f5f6fc;
   --surface: #ffffff;
+  --border-color: #dce2ed;
 
   --text-primary: #101828;
   --text-secondary: #64748b;
-  --border-color: #dce2ed;
+  --text-muted: #8490a3;
 
   --sidebar-width: 248px;
   --collapsed-width: 72px;
@@ -20,6 +22,8 @@
 
   font-family: 'Inter', sans-serif;
   color: var(--text-primary);
+  background: var(--background);
+  color-scheme: light;
 }
 
 * {
@@ -32,15 +36,40 @@ a {
   -webkit-tap-highlight-color: transparent;
 }
 
+button {
+  cursor: pointer;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+a:hover {
+  text-decoration: none;
+}
+
 button:focus-visible,
 a:focus-visible {
   outline: 2px solid var(--primary);
-  outline-offset: 3px;
+  outline-offset: 2px;
 }
 
-// =========================================
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+ion-icon,
+svg {
+  flex-shrink: 0;
+}
+
+
+// ==========================================
 // MAIN LAYOUT
-// =========================================
+// ==========================================
 
 .coordinator-layout {
   display: grid;
@@ -51,13 +80,13 @@ a:focus-visible {
 
   width: 100%;
   height: 100%;
+  height: 100dvh;
   min-height: 0;
 
   overflow: hidden;
-
   background: var(--background);
 
-  transition: grid-template-columns 0.2s ease;
+  transition: grid-template-columns 200ms ease;
 
   &.sidebar-collapsed {
     grid-template-columns:
@@ -66,9 +95,10 @@ a:focus-visible {
   }
 }
 
-// =========================================
+
+// ==========================================
 // SIDEBAR
-// =========================================
+// ==========================================
 
 .sidebar {
   display: flex;
@@ -80,141 +110,145 @@ a:focus-visible {
   min-height: 0;
 
   background: var(--surface);
-
   border-right: 1px solid var(--border-color);
 
   overflow: hidden;
 }
 
-// =========================================
-// BRAND
-// =========================================
+
+// ==========================================
+// SIDEBAR BRANDING
+// ==========================================
 
 .sidebar-brand {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-
   gap: 10px;
 
-  min-height: 70px;
+  height: var(--header-height);
+  min-height: var(--header-height);
 
-  padding: 16px 15px;
+  padding: 10px 16px;
 
   border-bottom: 1px solid var(--border-color);
+
+  flex-shrink: 0;
 }
 
-.brand-link {
-  display: flex;
-  align-items: center;
+.brand-toggle {
+  position: relative;
 
-  gap: 10px;
-
-  min-width: 0;
-
-  color: inherit;
-  text-decoration: none;
-}
-
-.brand-logo {
   display: flex;
   align-items: center;
   justify-content: center;
 
-  width: 35px;
-  height: 35px;
-  min-width: 35px;
+  width: 36px;
+  height: 36px;
 
-  border-radius: 10px;
+  padding: 0;
+  flex-shrink: 0;
 
-  background: var(--primary);
-  color: #ffffff;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
 
-  ion-icon {
-    font-size: 21px;
+  color: var(--text-secondary);
+
+  cursor: pointer;
+
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+
+  &:hover {
+    background: var(--primary-light);
+    color: var(--primary);
+
+    .brand-logo {
+      opacity: 0;
+    }
+
+    .brand-toggle-icon {
+      opacity: 1;
+    }
   }
+
+  &:focus-visible {
+    .brand-logo {
+      opacity: 0;
+    }
+
+    .brand-toggle-icon {
+      opacity: 1;
+    }
+  }
+}
+
+.brand-logo {
+  display: block;
+
+  width: 34px;
+  height: 34px;
+
+  object-fit: contain;
+
+  transition: opacity 120ms ease;
+}
+
+.brand-toggle-icon {
+  position: absolute;
+
+  width: 21px;
+  height: 21px;
+
+  opacity: 0;
+
+  transition: opacity 120ms ease;
 }
 
 .brand-information {
   display: flex;
   flex-direction: column;
 
-  gap: 4px;
-
+  flex: 1;
   min-width: 0;
 
+  gap: 4px;
+
   strong {
+    color: var(--text-primary);
+
     font-size: 15px;
     font-weight: 650;
+
     line-height: 1.2;
+    letter-spacing: -0.3px;
+
+    white-space: nowrap;
   }
 
   span {
     color: var(--text-secondary);
 
-    font-size: 9px;
-    font-weight: 600;
+    font-size: 10px;
+    font-weight: 400;
 
-    letter-spacing: 1.3px;
+    line-height: 1.2;
+
     white-space: nowrap;
   }
 }
 
-// =========================================
-// COLLAPSE / EXPAND BUTTON
-// =========================================
 
-.collapse-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  width: 28px;
-  height: 28px;
-  min-width: 28px;
-
-  padding: 5px;
-
-  border: none;
-  border-radius: 6px;
-
-  background: transparent;
-
-  color: var(--text-secondary);
-
-  cursor: pointer;
-
-  svg {
-    width: 18px;
-    height: 18px;
-  }
-
-  &:hover {
-    color: var(--primary);
-    background: var(--primary-light);
-  }
-}
-
-.expand-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-
-  min-height: 43px;
-
-  border-bottom: 1px solid var(--border-color);
-}
-
-// =========================================
-// NAVIGATION
-// =========================================
+// ==========================================
+// SIDEBAR NAVIGATION
+// ==========================================
 
 .sidebar-navigation {
   flex: 1;
-
   min-height: 0;
 
-  padding: 16px 11px;
+  padding: 20px 11px;
 
   overflow-y: auto;
   overflow-x: hidden;
@@ -230,35 +264,37 @@ a:focus-visible {
 }
 
 .navigation-label {
-  margin: 0 0 6px;
+  margin: 0 0 7px;
   padding: 0 12px;
 
   color: #8491a5;
 
   font-size: 10px;
-  font-weight: 600;
-
-  letter-spacing: 1.4px;
+  font-weight: 550;
+  letter-spacing: 1.2px;
 }
+
+
+// ==========================================
+// NAVIGATION ITEMS
+// ==========================================
 
 .navigation-item {
   position: relative;
 
   display: flex;
   align-items: center;
-
   gap: 12px;
 
   width: 100%;
-  min-height: 37px;
+  min-height: 40px;
 
-  padding: 9px 12px;
+  padding: 10px 12px;
 
   border: none;
-  border-radius: 10px;
+  border-radius: 9px;
 
   background: transparent;
-
   color: #475569;
 
   font-size: 12px;
@@ -271,8 +307,8 @@ a:focus-visible {
   cursor: pointer;
 
   transition:
-    background 0.15s ease,
-    color 0.15s ease;
+    background-color 150ms ease,
+    color 150ms ease;
 
   ion-icon {
     flex-shrink: 0;
@@ -285,34 +321,44 @@ a:focus-visible {
 
   span {
     min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   &:hover {
     background: #f5f7fb;
     color: var(--primary);
+    text-decoration: none;
   }
 
   &.active {
     background: var(--primary-light);
     color: var(--primary);
-
     font-weight: 550;
 
-    &::before {
+    &::after {
       content: '';
-
       position: absolute;
 
-      top: 9px;
-      bottom: 9px;
-      left: 0;
+      top: 50%;
+      right: 12px;
 
-      width: 3px;
+      width: 6px;
+      height: 6px;
 
-      border-radius: 4px;
-
+      border-radius: 50%;
       background: var(--primary);
+
+      transform: translateY(-50%);
     }
+
+    span {
+      padding-right: 14px;
+    }
+  }
+
+  &:focus-visible {
+    outline-offset: -2px;
   }
 
   &:disabled {
@@ -324,111 +370,47 @@ a:focus-visible {
 .navigation-divider {
   height: 1px;
 
-  margin: 20px 0 16px;
+  margin: 20px 0 17px;
 
   background: var(--border-color);
 }
 
-// =========================================
-// SIDEBAR PROFILE
-// =========================================
-
-.sidebar-footer {
-  flex-shrink: 0;
-
-  padding: 18px 16px;
-
-  border-top: 1px solid var(--border-color);
-}
-
-.sidebar-profile,
-.header-profile {
-  display: flex;
-  align-items: center;
-
-  gap: 10px;
-
-  min-width: 0;
-}
-
-.profile-avatar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  width: 32px;
-  height: 32px;
-  min-width: 32px;
-
-  border-radius: 50%;
-
-  background: #e5f3ed;
-  color: #087b56;
-
-  font-size: 11px;
-  font-weight: 650;
-}
-
-.profile-information {
-  display: flex;
-  flex-direction: column;
-
-  gap: 4px;
-
-  min-width: 0;
-
-  strong {
-    overflow: hidden;
-
-    color: var(--text-primary);
-
-    font-size: 12px;
-    font-weight: 600;
-
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  span {
-    color: var(--text-secondary);
-
-    font-size: 11px;
-
-    white-space: nowrap;
+.logout-button {
+  &:hover:not(:disabled) {
+    background: #fef3f2;
+    color: #b42318;
   }
 }
 
-// =========================================
+
+// ==========================================
 // COLLAPSED SIDEBAR
-// =========================================
+// ==========================================
 
 .sidebar-collapsed {
 
   .sidebar-brand {
     justify-content: center;
-
-    min-height: var(--header-height);
-
-    padding: 12px 0;
+    padding: 10px 0;
   }
 
   .sidebar-navigation {
-    padding: 16px 11px;
+    padding: 20px 11px;
   }
 
   .navigation-group {
     align-items: center;
-
-    gap: 6px;
+    gap: 5px;
   }
 
   .navigation-item {
     justify-content: center;
 
-    width: 38px;
-    min-height: 38px;
+    width: 100%;
+    min-height: 40px;
 
     padding: 10px;
+    gap: 0;
 
     ion-icon {
       width: 19px;
@@ -436,24 +418,21 @@ a:focus-visible {
 
       font-size: 19px;
     }
+
+    &.active::after {
+      display: none;
+    }
   }
 
   .navigation-divider {
     margin: 20px 4px;
   }
-
-  .sidebar-footer {
-    padding: 16px 0;
-  }
-
-  .sidebar-profile {
-    justify-content: center;
-  }
 }
 
-// =========================================
+
+// ==========================================
 // MAIN WORKSPACE
-// =========================================
+// ==========================================
 
 .main-workspace {
   display: flex;
@@ -468,122 +447,324 @@ a:focus-visible {
   overflow: hidden;
 }
 
-// =========================================
-// HEADER
-// =========================================
+
+// ==========================================
+// TOP HEADER
+// ==========================================
 
 .workspace-header {
+  position: relative;
+
   display: flex;
   align-items: center;
   justify-content: space-between;
 
-  flex-shrink: 0;
-
   gap: 20px;
 
+  height: var(--header-height);
   min-height: var(--header-height);
 
-  padding: 12px 24px;
+  padding: 0 30px;
 
   background: var(--surface);
 
   border-bottom: 1px solid var(--border-color);
+
+  z-index: 20;
+  flex-shrink: 0;
+
+  overflow: visible;
 }
+
+
+// ==========================================
+// BREADCRUMB
+// ==========================================
 
 .breadcrumb {
   display: flex;
   align-items: center;
 
-  gap: 9px;
+  gap: 7px;
 
   min-width: 0;
 
-  font-size: 12px;
+  font-size: 13px;
 
-  ion-icon {
-    flex-shrink: 0;
-
-    color: #a7b1c0;
-
-    font-size: 12px;
-  }
+  white-space: nowrap;
 }
 
 .breadcrumb-brand {
   color: var(--text-secondary);
+  flex-shrink: 0;
+}
 
-  white-space: nowrap;
+.breadcrumb-divider {
+  width: 14px;
+  height: 14px;
+
+  color: #94a3b8;
+  flex-shrink: 0;
 }
 
 .breadcrumb-current {
-  overflow: hidden;
-
   color: var(--text-primary);
 
-  font-weight: 550;
+  font-weight: 500;
 
+  overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
+
+
+// ==========================================
+// HEADER RIGHT
+// ==========================================
 
 .header-right {
   display: flex;
   align-items: center;
 
-  gap: 12px;
+  gap: 15px;
 
-  min-width: 0;
+  flex-shrink: 0;
 }
-
-// =========================================
-// ACADEMIC PERIOD
-// =========================================
 
 .academic-period {
-  display: flex;
-  align-items: center;
-
-  gap: 9px;
-
-  padding: 7px 12px;
-
-  border: 1px solid var(--border-color);
-  border-radius: 20px;
-
   color: var(--text-secondary);
 
-  font-size: 11px;
+  font-size: 12px;
+  font-weight: 400;
 
   white-space: nowrap;
-
-  strong {
-    color: var(--text-primary);
-
-    font-weight: 550;
-  }
-}
-
-.period-divider {
-  width: 1px;
-  height: 12px;
-
-  background: var(--border-color);
 }
 
 .header-divider {
   width: 1px;
-  height: 30px;
+  height: 22px;
 
   background: var(--border-color);
 }
 
-.header-profile {
-  max-width: 240px;
+
+// ==========================================
+// PROFILE AVATAR
+// ==========================================
+
+.profile-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 32px;
+  height: 32px;
+
+  flex-shrink: 0;
+
+  border-radius: 50%;
+
+  background: #e5f3ed;
+  color: #087b56;
+
+  font-size: 11px;
+  font-weight: 550;
+  line-height: 1;
 }
 
-// =========================================
-// PAGE CONTENT
-// =========================================
+
+// ==========================================
+// PROFILE INFORMATION
+// ==========================================
+
+.profile-information {
+  display: flex;
+  flex-direction: column;
+
+  gap: 4px;
+
+  min-width: 0;
+  max-width: 200px;
+
+  strong {
+    color: var(--text-primary);
+
+    font-size: 12px;
+    font-weight: 550;
+
+    line-height: 1.3;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  span {
+    color: var(--text-secondary);
+
+    font-size: 11px;
+    font-weight: 400;
+
+    line-height: 1.3;
+
+    white-space: nowrap;
+  }
+}
+
+
+// ==========================================
+// PROFILE TRIGGER
+// ==========================================
+
+.profile-dropdown {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.profile-trigger {
+  display: flex;
+  align-items: center;
+
+  gap: 10px;
+
+  padding: 5px 0;
+
+  border: none;
+  border-radius: 6px;
+
+  background: transparent;
+
+  text-align: left;
+  cursor: pointer;
+
+  &:hover,
+  &:active,
+  &.menu-open {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 4px;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.profile-chevron {
+  margin-left: 4px;
+
+  color: var(--text-secondary);
+  font-size: 13px;
+
+  transition: transform 180ms ease;
+
+  &.rotated {
+    transform: rotate(180deg);
+  }
+}
+
+
+// ==========================================
+// PROFILE DROPDOWN
+// ==========================================
+
+.profile-menu {
+  position: absolute;
+
+  top: calc(100% + 12px);
+  right: 0;
+
+  width: 200px;
+
+  padding: 6px;
+
+  background: var(--surface);
+
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+
+  box-shadow:
+    0 8px 24px rgba(16, 24, 40, 0.08);
+
+  z-index: 100;
+
+  animation: profile-menu-enter 150ms ease-out;
+}
+
+.profile-menu-item {
+  display: flex;
+  align-items: center;
+
+  gap: 10px;
+
+  width: 100%;
+  min-height: 38px;
+
+  padding: 10px 12px;
+
+  border: none;
+  border-radius: 6px;
+
+  background: transparent;
+  color: var(--text-primary);
+
+  font-size: 12px;
+  font-weight: 450;
+
+  text-align: left;
+  text-decoration: none;
+
+  cursor: pointer;
+
+  ion-icon {
+    font-size: 16px;
+  }
+
+  &:hover {
+    background: var(--background);
+    text-decoration: none;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: -2px;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.profile-menu-logout {
+  color: #b42318;
+
+  &:hover {
+    background: #fef3f2;
+  }
+}
+
+@keyframes profile-menu-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+
+// ==========================================
+// DYNAMIC PAGE CONTENT
+// ==========================================
 
 .workspace-content {
   position: relative;
@@ -595,13 +776,19 @@ a:focus-visible {
   min-width: 0;
   min-height: 0;
 
-  overflow-y: auto;
-  overflow-x: hidden;
-
   background: var(--background);
 
+  overflow-x: hidden;
+  overflow-y: auto;
+
+  overscroll-behavior: contain;
   scrollbar-width: thin;
 }
+
+
+// ==========================================
+// PROFILE LOADING ERROR
+// ==========================================
 
 .layout-error {
   display: flex;
@@ -622,7 +809,7 @@ a:focus-visible {
   font-size: 12px;
 
   button {
-    padding: 5px 10px;
+    padding: 6px 10px;
 
     border: 1px solid #f3caca;
     border-radius: 6px;
@@ -630,47 +817,282 @@ a:focus-visible {
     background: #ffffff;
     color: #b42318;
 
+    font-size: 12px;
     cursor: pointer;
   }
 }
 
-// =========================================
-// LARGE DESKTOP
-// =========================================
 
-@media (min-width: 1600px) {
+// ==========================================
+// LOGOUT CONFIRMATION DIALOG
+// ==========================================
 
-  .navigation-item {
-    font-size: 13px;
-    min-height: 40px;
-  }
+.logout-dialog {
+  position: fixed;
+  inset: 0;
 
-  .breadcrumb {
-    font-size: 13px;
-  }
+  width: min(420px, calc(100% - 32px));
+  max-width: 420px;
 
-  .profile-information {
+  max-height: calc(100dvh - 32px);
 
-    strong {
-      font-size: 13px;
-    }
+  margin: auto;
+  padding: 0;
 
-    span {
-      font-size: 12px;
-    }
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+
+  background: #ffffff;
+  color: var(--text-primary);
+
+  font-family: 'Inter', sans-serif;
+
+  overflow-y: auto;
+
+  box-shadow:
+    0 16px 40px rgba(15, 23, 42, 0.12);
+}
+
+.logout-dialog:not([open]) {
+  display: none;
+}
+
+.logout-dialog[open] {
+  animation: logout-modal-enter 180ms ease-out;
+}
+
+.logout-dialog::backdrop {
+  background: rgba(15, 23, 42, 0.42);
+
+  animation: logout-backdrop-enter 180ms ease-out;
+}
+
+.logout-modal {
+  width: 100%;
+  min-width: 0;
+
+  background: #ffffff;
+  border-radius: 14px;
+}
+
+
+// ==========================================
+// LOGOUT MODAL HEADER
+// ==========================================
+
+.logout-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 12px;
+
+  padding: 24px 24px 0;
+
+  h2 {
+    margin: 0;
+
+    color: var(--text-primary);
+
+    font-size: 18px;
+    font-weight: 650;
+
+    line-height: 1.4;
+    letter-spacing: -0.3px;
   }
 }
 
-// =========================================
-// TABLET
-// =========================================
+.logout-close-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 
-@media (max-width: 1000px) {
+  width: 28px;
+  height: 28px;
 
-  :host {
-    --sidebar-width: 230px;
-    --collapsed-width: 68px;
+  padding: 0;
+
+  flex-shrink: 0;
+
+  border: none;
+  border-radius: 6px;
+
+  background: transparent;
+  color: var(--text-secondary);
+
+  cursor: pointer;
+
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+
+  ion-icon {
+    font-size: 20px;
   }
+
+  &:hover:not(:disabled) {
+    background: #f1f5f9;
+    color: var(--text-primary);
+  }
+}
+
+
+// ==========================================
+// LOGOUT MODAL BODY
+// ==========================================
+
+.logout-modal-body {
+  padding: 14px 24px 24px;
+
+  p {
+    margin: 0;
+
+    color: var(--text-secondary);
+
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 1.75;
+  }
+}
+
+.logout-modal-error {
+  margin-top: 16px;
+  padding: 12px;
+
+  border: 1px solid #f3caca;
+  border-radius: 8px;
+
+  background: #fff3f3;
+  color: #b42318;
+
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+
+// ==========================================
+// LOGOUT MODAL FOOTER
+// ==========================================
+
+.logout-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+
+  gap: 8px;
+
+  padding: 16px 24px 20px;
+
+  border-top: 1px solid #e5e9f0;
+}
+
+.logout-cancel-button,
+.logout-confirm-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 8px;
+
+  min-width: 90px;
+  min-height: 38px;
+
+  padding: 9px 16px;
+
+  border-radius: 9px;
+
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+
+  white-space: nowrap;
+
+  cursor: pointer;
+
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    opacity 150ms ease;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.logout-cancel-button {
+  border: 1px solid var(--border-color);
+
+  background: #ffffff;
+  color: #344054;
+
+  &:hover:not(:disabled) {
+    background: #f8fafc;
+  }
+}
+
+.logout-confirm-button {
+  border: 1px solid #c93434;
+
+  background: #c93434;
+  color: #ffffff;
+
+  &:hover:not(:disabled) {
+    background: #b42318;
+    border-color: #b42318;
+  }
+}
+
+.logout-spinner {
+  width: 14px;
+  height: 14px;
+
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+
+  animation: logout-spin 0.8s linear infinite;
+}
+
+
+// ==========================================
+// MODAL ANIMATIONS
+// ==========================================
+
+@keyframes logout-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes logout-modal-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes logout-backdrop-enter {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+
+// ==========================================
+// RESPONSIVE LAYOUT
+// ==========================================
+
+@media (max-width: 1100px) {
 
   .academic-period,
   .header-divider {
@@ -678,60 +1100,154 @@ a:focus-visible {
   }
 
   .workspace-header {
-    padding: 12px 18px;
+    padding: 0 24px;
   }
+
 }
 
-// =========================================
-// SMALL SCREENS
-// =========================================
-
-@media (max-width: 700px) {
+@media (max-width: 900px) {
 
   :host {
-    --sidebar-width: 205px;
-    --collapsed-width: 60px;
+    --sidebar-width: 228px;
   }
 
   .workspace-header {
-    padding: 10px 14px;
-    gap: 10px;
+    padding: 0 20px;
+    gap: 12px;
   }
 
-  .header-profile .profile-information {
+  .profile-information {
+    max-width: 150px;
+  }
+
+}
+
+@media (max-width: 768px) {
+
+  :host {
+    --sidebar-width: 210px;
+    --collapsed-width: 64px;
+  }
+
+  .workspace-header {
+    padding: 0 16px;
+  }
+
+  .breadcrumb-brand,
+  .breadcrumb-divider {
     display: none;
   }
 
-  .breadcrumb {
-    font-size: 11px;
+  .profile-information {
+    display: none;
+  }
+
+  .profile-trigger {
     gap: 6px;
   }
 
-  .breadcrumb-brand {
-    display: none;
+  .sidebar-brand {
+    padding: 10px 12px;
   }
 
-  .breadcrumb > ion-icon {
-    display: none;
-  }
-
-  .brand-information span {
-    font-size: 8px;
-    letter-spacing: 0.8px;
+  .navigation-item {
+    gap: 10px;
+    padding: 10px;
   }
 
   .sidebar-collapsed {
 
     .sidebar-navigation {
-      padding: 12px 6px;
+      padding: 18px 8px;
+    }
+
+  }
+
+}
+
+@media (max-width: 480px) {
+
+  :host {
+    --sidebar-width: 185px;
+    --collapsed-width: 58px;
+  }
+
+  .workspace-header {
+    padding: 0 12px;
+    gap: 8px;
+  }
+
+  .breadcrumb {
+    font-size: 12px;
+  }
+
+  .sidebar-navigation {
+    padding: 16px 8px;
+  }
+
+  .navigation-item {
+    font-size: 11px;
+    gap: 8px;
+  }
+
+  .brand-information {
+
+    strong {
+      font-size: 14px;
+    }
+
+    span {
+      font-size: 9px;
+    }
+
+  }
+
+  .profile-menu {
+    max-width: calc(100vw - 84px);
+  }
+
+  .logout-modal-header {
+    padding: 20px 20px 0;
+
+    h2 {
+      font-size: 17px;
     }
   }
+
+  .logout-modal-body {
+    padding: 14px 20px 20px;
+  }
+
+  .logout-modal-footer {
+    padding: 16px 20px 20px;
+  }
+
+  .logout-cancel-button,
+  .logout-confirm-button {
+    flex: 1;
+    min-width: 0;
+    min-height: 42px;
+  }
+
+  .layout-error {
+    margin: 12px;
+    flex-wrap: wrap;
+  }
+
 }
+
+
+// ==========================================
+// REDUCED MOTION
+// ==========================================
 
 @media (prefers-reduced-motion: reduce) {
 
-  .coordinator-layout,
-  .navigation-item {
-    transition: none;
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
   }
+
 }

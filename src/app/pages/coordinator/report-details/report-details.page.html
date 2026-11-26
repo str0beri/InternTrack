@@ -1,13 +1,457 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-title>report-details</ion-title>
-  </ion-toolbar>
-</ion-header>
+<div class="report-details-page">
 
-<ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">report-details</ion-title>
-    </ion-toolbar>
-  </ion-header>
-</ion-content>
+  <!-- BACK NAVIGATION -->
+
+  <button
+    type="button"
+    class="back-button"
+    (click)="goBack()"
+  >
+    <ion-icon name="arrow-back-outline"></ion-icon>
+    Weekly reports
+  </button>
+
+  <!-- LOADING STATE -->
+
+  <section
+    class="state-card"
+    *ngIf="isLoading"
+    aria-live="polite"
+  >
+    <div class="loading-spinner"></div>
+    <h3>Loading weekly report</h3>
+  </section>
+
+  <!-- ERROR STATE -->
+
+  <section
+    class="state-card"
+    *ngIf="!isLoading && errorMessage"
+    role="alert"
+  >
+    <h3>Unable to load weekly report</h3>
+
+    <p>{{ errorMessage }}</p>
+
+    <button
+      type="button"
+      class="secondary-button"
+      (click)="retryLoad()"
+    >
+      Try again
+    </button>
+  </section>
+
+  <!-- REPORT DETAILS -->
+
+  <ng-container *ngIf="!isLoading && !errorMessage">
+    <ng-container *ngIf="report as currentReport">
+
+      <!-- STUDENT PROFILE -->
+
+      <section class="profile-card">
+
+        <div class="profile-main">
+
+          <div
+            class="profile-avatar"
+            [ngClass]="avatarColor"
+            aria-hidden="true"
+          >
+            {{ studentInitials }}
+          </div>
+
+          <div class="profile-information">
+
+            <div class="profile-title">
+
+              <h1>{{ studentName }}</h1>
+
+              <span
+                class="status-badge"
+                [ngClass]="statusClass"
+              >
+                {{ statusLabel }}
+              </span>
+
+            </div>
+
+            <p class="profile-meta">
+              {{ studentId }}
+
+              <span class="meta-separator">·</span>
+
+              {{ reportingWeek }} accomplishment report
+            </p>
+
+            <p class="profile-meta">
+              {{ companyName }}
+
+              <span class="meta-separator">·</span>
+
+              {{ reportingPeriod }}
+            </p>
+
+          </div>
+
+        </div>
+
+        <div class="profile-actions">
+
+          <button
+            type="button"
+            class="secondary-button"
+            [disabled]="!student?.id"
+            (click)="openStudentRecord()"
+          >
+            View student record
+          </button>
+
+        </div>
+
+      </section>
+
+      <!-- DETAILS LAYOUT -->
+
+      <div class="details-grid">
+
+        <!-- MAIN COLUMN -->
+
+        <main class="main-column">
+
+          <!-- ACCOMPLISHMENTS -->
+
+          <section class="content-card">
+
+            <header class="card-header">
+              <h2>Submitted accomplishments</h2>
+            </header>
+
+            <div class="card-body">
+
+              <div class="content-section">
+
+                <div
+                  class="submitted-text"
+                  *ngIf="hasAccomplishments"
+                >{{ accomplishments }}</div>
+
+                <p
+                  class="empty-text"
+                  *ngIf="!hasAccomplishments"
+                >
+                  No accomplishments were recorded.
+                </p>
+
+              </div>
+
+            </div>
+
+          </section>
+
+          <!-- STUDENT REFLECTION -->
+
+          <section class="content-card">
+
+            <header class="card-header">
+              <h2>Student reflection</h2>
+            </header>
+
+            <div class="card-body">
+
+              <div
+                class="submitted-text"
+                *ngIf="hasReflection"
+              >{{ studentReflection }}</div>
+
+              <p
+                class="empty-text"
+                *ngIf="!hasReflection"
+              >
+                No student reflection was recorded.
+              </p>
+
+            </div>
+
+          </section>
+
+          <!-- SUPERVISOR FEEDBACK -->
+
+          <section class="content-card">
+
+            <header class="card-header">
+              <h2>Supervisor feedback</h2>
+            </header>
+
+            <div class="card-body">
+
+              <ng-container *ngIf="hasFeedback">
+
+                <div class="feedback-heading">
+
+                  <div class="feedback-author">
+
+                    <strong>
+                      {{ supervisorName }}
+                    </strong>
+
+                    <span>
+                      {{
+                        formatDate(
+                          currentReport.reviewed_at,
+                          'Review date not recorded'
+                        )
+                      }}
+                    </span>
+
+                  </div>
+
+                </div>
+
+                <div class="feedback-content">
+
+                  <div class="submitted-text">{{ supervisorFeedback }}</div>
+
+                </div>
+
+              </ng-container>
+
+              <p
+                class="empty-text"
+                *ngIf="!hasFeedback"
+              >
+                No supervisor feedback yet.
+              </p>
+
+            </div>
+
+          </section>
+
+        </main>
+
+        <!-- RIGHT COLUMN -->
+
+        <aside class="side-column">
+
+          <!-- REPORT INFORMATION -->
+
+          <section class="content-card">
+
+            <header class="card-header">
+              <h2>Report information</h2>
+            </header>
+
+            <div class="information-body">
+
+              <div class="information-row">
+
+                <span class="information-label">
+                  {{ supervisorLabel }}
+                </span>
+
+                <span class="information-value">
+                  {{ supervisorName }}
+                </span>
+
+              </div>
+
+              <div class="information-row">
+
+                <span class="information-label">
+                  Reporting week
+                </span>
+
+                <span class="information-value">
+                  {{ reportingWeek }}
+                </span>
+
+              </div>
+
+              <div class="information-row">
+
+                <span class="information-label">
+                  Reporting period
+                </span>
+
+                <span class="information-value">
+                  {{ reportingPeriod }}
+                </span>
+
+              </div>
+
+            </div>
+
+          </section>
+
+          <!-- REVIEW STATUS -->
+
+          <section class="content-card">
+
+            <header class="card-header">
+              <h2>Review status</h2>
+            </header>
+
+            <div class="review-body">
+
+              <div class="information-row status-row">
+
+                <span class="information-label">
+                  Current status
+                </span>
+
+                <span
+                  class="status-badge"
+                  [ngClass]="statusClass"
+                >
+                  {{ statusLabel }}
+                </span>
+
+              </div>
+
+              <div
+                class="review-message"
+                [ngClass]="statusClass"
+              >
+                <p>{{ reviewMessage }}</p>
+              </div>
+
+              <!-- APPROVED REPORTS -->
+
+              <div
+                class="report-progress"
+                *ngIf="reportCountAvailable"
+              >
+
+                <div class="progress-heading">
+
+                  <span>Approved reports</span>
+
+                  <strong>
+                    {{ approvedReportCount }}
+                    /
+                    {{ submittedReportCount }}
+                  </strong>
+
+                </div>
+
+                <div
+                  class="progress-track"
+                  role="progressbar"
+                  aria-label="Approved weekly reports"
+                  [attr.aria-valuenow]="approvedReportCount"
+                  [attr.aria-valuemin]="0"
+                  [attr.aria-valuemax]="submittedReportCount || 1"
+                >
+
+                  <div
+                    class="progress-fill"
+                    [style.width.%]="
+                      submittedReportCount > 0
+                        ? (approvedReportCount / submittedReportCount) * 100
+                        : 0
+                    "
+                  ></div>
+
+                </div>
+
+              </div>
+
+              <div
+                class="report-progress unavailable-progress"
+                *ngIf="!reportCountAvailable"
+              >
+                <p>Report totals are currently unavailable.</p>
+              </div>
+
+              <p class="readonly-notice">
+                Reports are approved or returned by the
+                company supervisor.
+              </p>
+
+            </div>
+
+          </section>
+
+          <!-- REVIEW ACTIVITY -->
+
+          <section class="content-card">
+
+            <header class="card-header">
+              <h2>Review activity</h2>
+            </header>
+
+            <div class="activity-body">
+
+              <div
+                class="timeline"
+                *ngIf="
+                  currentReport.submitted_at ||
+                  currentReport.reviewed_at
+                "
+              >
+
+                <!-- SUBMISSION -->
+
+                <div
+                  class="timeline-item"
+                  *ngIf="currentReport.submitted_at"
+                >
+
+                  <span class="timeline-dot"></span>
+
+                  <strong>Latest submission</strong>
+
+                  <p>{{ studentName }}</p>
+
+                  <p class="timeline-date">
+                    {{ formatDate(currentReport.submitted_at) }}
+                  </p>
+
+                </div>
+
+                <!-- REVIEW -->
+
+                <div
+                  class="timeline-item"
+                  *ngIf="currentReport.reviewed_at"
+                >
+
+                  <span
+                    class="timeline-dot reviewed"
+                    [ngClass]="statusClass"
+                  ></span>
+
+                  <strong>Latest review</strong>
+
+                  <p>{{ supervisorName }}</p>
+
+                  <p class="timeline-date">
+                    {{ formatDate(currentReport.reviewed_at) }}
+                  </p>
+
+                </div>
+
+              </div>
+
+              <p
+                class="empty-text"
+                *ngIf="
+                  !currentReport.submitted_at &&
+                  !currentReport.reviewed_at
+                "
+              >
+                No review activity recorded.
+              </p>
+
+            </div>
+
+          </section>
+
+        </aside>
+
+      </div>
+
+    </ng-container>
+  </ng-container>
+
+</div>

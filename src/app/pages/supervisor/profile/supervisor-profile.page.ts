@@ -1,3 +1,4 @@
+
 import {
   ChangeDetectorRef,
   Component,
@@ -29,6 +30,18 @@ interface SupervisorProfile {
   account_status: string | null;
 }
 
+interface EditProfileForm {
+  fullName: string;
+  contactNumber: string;
+}
+
+interface ProfileUpdateResult {
+  success: boolean;
+  message: string;
+  full_name: string;
+  contact_number: string | null;
+}
+
 @Component({
   selector: 'app-supervisor-profile',
   standalone: true,
@@ -52,6 +65,13 @@ export class ProfilePage implements OnInit, OnDestroy {
   @ViewChild('logoutDialog')
   logoutDialog?: ElementRef<HTMLDialogElement>;
 
+  @ViewChild('editProfileDialog')
+  editProfileDialog?: ElementRef<HTMLDialogElement>;
+
+  // =========================================
+  // PROFILE STATE
+  // =========================================
+
   profile: SupervisorProfile | null = null;
 
   assignedInterns: number | null = null;
@@ -62,13 +82,36 @@ export class ProfilePage implements OnInit, OnDestroy {
   accountEmail = '';
   lastSignIn = 'Not available';
 
+  // =========================================
+  // EDIT PROFILE STATE
+  // =========================================
+
+  editForm: EditProfileForm = {
+    fullName: '',
+    contactNumber: ''
+  };
+
+  savingProfile = false;
+  profileError = '';
+  profileSuccess = '';
+
+  // =========================================
+  // PASSWORD STATE
+  // =========================================
+
   currentPassword = '';
   newPassword = '';
   confirmPassword = '';
 
+  showCurrentPassword = false;
+
   saving = false;
   passwordError = '';
   passwordSuccess = '';
+
+  // =========================================
+  // LOGOUT STATE
+  // =========================================
 
   loggingOut = false;
   logoutError = '';
@@ -77,6 +120,10 @@ export class ProfilePage implements OnInit, OnDestroy {
   private loadVersion = 0;
   private activeUserId: string | null = null;
 
+  // =========================================
+  // LIFECYCLE
+  // =========================================
+
   ngOnInit(): void {
     void this.loadProfile();
   }
@@ -84,7 +131,13 @@ export class ProfilePage implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroyed = true;
     this.loadVersion++;
+
     this.clearPasswordFields();
+
+    this.editForm = {
+      fullName: '',
+      contactNumber: ''
+    };
   }
 
   // =========================================
@@ -93,7 +146,11 @@ export class ProfilePage implements OnInit, OnDestroy {
 
   async loadProfile(): Promise<void> {
 
-    if (this.saving || this.loggingOut) {
+    if (
+      this.saving ||
+      this.savingProfile ||
+      this.loggingOut
+    ) {
       return;
     }
 
@@ -111,6 +168,9 @@ export class ProfilePage implements OnInit, OnDestroy {
     this.passwordError = '';
     this.passwordSuccess = '';
 
+    this.profileError = '';
+    this.profileSuccess = '';
+
     this.clearPasswordFields();
     this.refreshView();
 
@@ -118,22 +178,29 @@ export class ProfilePage implements OnInit, OnDestroy {
 
       await this.authService.waitForInitialization();
 
-      if (this.destroyed || version !== this.loadVersion) {
+      if (
+        this.destroyed ||
+        version !== this.loadVersion
+      ) {
         return;
       }
 
       if (!this.authService.isOnline()) {
+
         throw new Error(
           'An internet connection is required to access Settings.'
         );
+
       }
 
       if (
         !this.authService.isAuthenticated() ||
         !this.authService.isSupervisor()
       ) {
+
         this.authService.redirectBasedOnRole();
         return;
+
       }
 
       const currentUser = this.authService.getCurrentUser();
@@ -144,7 +211,7 @@ export class ProfilePage implements OnInit, OnDestroy {
 
       const userId = currentUser.id;
 
-      // Validate the authenticated user with Supabase.
+      // Verify authenticated user.
 
       const {
         data: userData,
@@ -160,12 +227,14 @@ export class ProfilePage implements OnInit, OnDestroy {
         !userData.user ||
         userData.user.id !== userId
       ) {
+
         throw new Error(
           'Unable to verify your session. Please sign in again.'
         );
+
       }
 
-      // Retrieve the actual supervisor profile.
+      // Retrieve supervisor profile.
 
       const {
         data: supervisor,
@@ -192,26 +261,34 @@ export class ProfilePage implements OnInit, OnDestroy {
       }
 
       if (supervisorError) {
+
         console.error(
           'Supervisor profile error:',
           supervisorError.message
         );
 
-        throw new Error('Unable to load your supervisor profile.');
+        throw new Error(
+          'Unable to load your supervisor profile.'
+        );
+
       }
 
       if (!supervisor) {
+
         throw new Error(
           'Your supervisor profile could not be found. ' +
           'Please contact your OJT Coordinator.'
         );
+
       }
 
       if (supervisor.account_status !== 'active') {
+
         throw new Error(
           'Your supervisor account is not active. ' +
           'Please contact your OJT Coordinator.'
         );
+
       }
 
       this.profile = supervisor as SupervisorProfile;
@@ -258,9 +335,11 @@ export class ProfilePage implements OnInit, OnDestroy {
           const records = assignments || [];
 
           for (const assignment of records) {
+
             if (assignment.student_id) {
               studentIds.add(assignment.student_id);
             }
+
           }
 
           if (records.length === 0) {
@@ -274,6 +353,10 @@ export class ProfilePage implements OnInit, OnDestroy {
         this.assignedInterns = studentIds.size;
 
       } catch (error) {
+
+        if (!this.isCurrentRequest(version, userId)) {
+          return;
+        }
 
         console.warn(
           'Unable to retrieve assigned interns:',
@@ -306,8 +389,24 @@ export class ProfilePage implements OnInit, OnDestroy {
         !this.destroyed &&
         version === this.loadVersion
       ) {
+
+        if (
+          this.activeUserId &&
+          this.authService.getCurrentUser()?.id !== this.activeUserId
+        ) {
+
+          this.profile = null;
+          this.activeUserId = null;
+          this.assignedInterns = null;
+
+          this.loadError =
+            'Your session has changed. Please sign in again.';
+
+        }
+
         this.loading = false;
         this.refreshView();
+
       }
 
     }
@@ -326,7 +425,29 @@ export class ProfilePage implements OnInit, OnDestroy {
       return 'CS';
     }
 
-    const parts = name.split(/\s+/);
+    const titles = new Set([
+      'engr',
+      'engineer',
+      'dr',
+      'mr',
+      'mrs',
+      'ms',
+      'prof',
+      'atty'
+    ]);
+
+    const parts = name
+      .split(/\s+/)
+      .filter(Boolean);
+
+    while (
+      parts.length > 1 &&
+      titles.has(
+        parts[0].toLowerCase().replace(/\./g, '')
+      )
+    ) {
+      parts.shift();
+    }
 
     if (parts.length === 1) {
       return parts[0].slice(0, 2).toUpperCase();
@@ -386,6 +507,7 @@ export class ProfilePage implements OnInit, OnDestroy {
       !this.destroyed &&
       version === this.loadVersion &&
       this.authService.getCurrentUser()?.id === userId &&
+      this.authService.isAuthenticated() &&
       this.authService.isSupervisor() &&
       this.authService.isOnline()
     );
@@ -408,6 +530,311 @@ export class ProfilePage implements OnInit, OnDestroy {
   }
 
   // =========================================
+  // EDIT PROFILE VALIDATION
+  // =========================================
+
+  get canSaveProfile(): boolean {
+
+    if (
+      !this.profile ||
+      this.savingProfile ||
+      this.saving ||
+      this.loggingOut
+    ) {
+      return false;
+    }
+
+    const fullName = this.editForm.fullName.trim();
+    const contactNumber = this.editForm.contactNumber.trim();
+
+    if (
+      fullName.length < 2 ||
+      fullName.length > 150
+    ) {
+      return false;
+    }
+
+    if (contactNumber.length > 30) {
+      return false;
+    }
+
+    if (
+      contactNumber &&
+      !/^[0-9+() .-]+$/.test(contactNumber)
+    ) {
+      return false;
+    }
+
+    const nameChanged =
+      fullName !== this.profile.full_name.trim();
+
+    const contactChanged =
+      contactNumber !==
+      (this.profile.contact_number || '').trim();
+
+    return nameChanged || contactChanged;
+
+  }
+
+  // =========================================
+  // OPEN EDIT PROFILE
+  // =========================================
+
+  openEditProfile(): void {
+
+    if (
+      !this.profile ||
+      this.saving ||
+      this.savingProfile ||
+      this.loggingOut
+    ) {
+      return;
+    }
+
+    this.profileError = '';
+    this.profileSuccess = '';
+
+    this.editForm = {
+      fullName: this.profile.full_name,
+      contactNumber: this.profile.contact_number || ''
+    };
+
+    const dialog = this.editProfileDialog?.nativeElement;
+
+    if (dialog && !dialog.open) {
+
+      dialog.showModal();
+
+    }
+
+    this.refreshView();
+
+  }
+
+  // =========================================
+  // CLOSE EDIT PROFILE
+  // =========================================
+
+  closeEditProfile(): void {
+
+    if (this.savingProfile) {
+      return;
+    }
+
+    this.editProfileDialog?.nativeElement.close();
+
+    this.profileError = '';
+
+    this.editForm = {
+      fullName: '',
+      contactNumber: ''
+    };
+
+    this.refreshView();
+
+  }
+
+  onEditDialogCancel(event: Event): void {
+
+    event.preventDefault();
+
+    if (!this.savingProfile) {
+      this.closeEditProfile();
+    }
+
+  }
+
+  // =========================================
+  // SAVE PROFILE
+  // =========================================
+
+  async saveProfile(): Promise<void> {
+
+    if (
+      this.savingProfile ||
+      this.saving ||
+      this.loggingOut ||
+      !this.profile
+    ) {
+      return;
+    }
+
+    this.profileError = '';
+    this.profileSuccess = '';
+
+    if (!this.authService.isOnline()) {
+
+      this.profileError =
+        'Connect to the internet before updating your profile.';
+
+      this.refreshView();
+      return;
+
+    }
+
+    const userId = this.activeUserId;
+
+    if (
+      !userId ||
+      !this.hasActiveSupervisorSession(userId)
+    ) {
+
+      this.profileError =
+        'Your session is unavailable. Please sign in again.';
+
+      this.refreshView();
+      return;
+
+    }
+
+    const fullName = this.editForm.fullName.trim();
+
+    const contactNumber =
+      this.editForm.contactNumber.trim();
+
+    if (
+      fullName.length < 2 ||
+      fullName.length > 150
+    ) {
+
+      this.profileError = 'Enter a valid full name.';
+      this.refreshView();
+      return;
+
+    }
+
+    if (
+      contactNumber.length > 30 ||
+      (
+        contactNumber &&
+        !/^[0-9+() .-]+$/.test(contactNumber)
+      )
+    ) {
+
+      this.profileError = 'Enter a valid contact number.';
+      this.refreshView();
+      return;
+
+    }
+
+    if (!this.canSaveProfile) {
+      return;
+    }
+
+    this.savingProfile = true;
+    this.refreshView();
+
+    try {
+
+      // Confirm the authenticated account.
+
+      const {
+        data: userData,
+        error: userError
+      } = await this.supabase.auth.getUser();
+
+      if (
+        userError ||
+        userData.user?.id !== userId ||
+        !this.hasActiveSupervisorSession(userId)
+      ) {
+
+        throw new Error(
+          'Unable to verify your account. Please sign in again.'
+        );
+
+      }
+
+      // The database function uses auth.uid()
+      // to identify the supervisor securely.
+
+      const {
+        data,
+        error
+      } = await this.supabase.rpc(
+        'update_own_supervisor_profile',
+        {
+          p_full_name: fullName,
+          p_contact_number: contactNumber || null
+        }
+      );
+
+      if (error) {
+
+        console.error(
+          'Profile update error:',
+          error.message
+        );
+
+        throw new Error(
+          'Unable to update your profile. Please try again.'
+        );
+
+      }
+
+      const result = data as ProfileUpdateResult | null;
+
+      if (
+        !result?.success ||
+        typeof result.full_name !== 'string'
+      ) {
+
+        throw new Error(
+          'Unable to confirm your profile update.'
+        );
+
+      }
+
+      if (
+        this.destroyed ||
+        this.activeUserId !== userId ||
+        this.authService.getCurrentUser()?.id !== userId ||
+        !this.profile
+      ) {
+        return;
+      }
+
+      // Update the visible profile immediately.
+
+      this.profile = {
+        ...this.profile,
+        full_name: result.full_name,
+        contact_number: result.contact_number
+      };
+
+      this.profileSuccess =
+        'Your profile has been updated successfully.';
+
+      this.editProfileDialog?.nativeElement.close();
+
+      this.editForm = {
+        fullName: '',
+        contactNumber: ''
+      };
+
+    } catch (error) {
+
+      if (
+        !this.destroyed &&
+        this.authService.getCurrentUser()?.id === userId
+      ) {
+
+        this.profileError = error instanceof Error
+          ? error.message
+          : 'Unable to update your profile. Please try again.';
+
+      }
+
+    } finally {
+
+      this.savingProfile = false;
+      this.refreshView();
+
+    }
+
+  }
+
+  // =========================================
   // CHANGE PASSWORD
   // =========================================
 
@@ -415,6 +842,7 @@ export class ProfilePage implements OnInit, OnDestroy {
 
     if (
       this.saving ||
+      this.savingProfile ||
       this.loggingOut ||
       !this.profile
     ) {
@@ -425,9 +853,13 @@ export class ProfilePage implements OnInit, OnDestroy {
     this.passwordSuccess = '';
 
     if (!this.authService.isOnline()) {
+
       this.passwordError =
         'Connect to the internet before changing your password.';
+
+      this.refreshView();
       return;
+
     }
 
     const userId = this.activeUserId;
@@ -436,9 +868,13 @@ export class ProfilePage implements OnInit, OnDestroy {
       !userId ||
       !this.hasActiveSupervisorSession(userId)
     ) {
+
       this.passwordError =
         'Your session is unavailable. Please sign in again.';
+
+      this.refreshView();
       return;
+
     }
 
     if (
@@ -446,27 +882,55 @@ export class ProfilePage implements OnInit, OnDestroy {
       !this.newPassword ||
       !this.confirmPassword
     ) {
+
       this.passwordError =
         'Please complete all password fields.';
+
+      this.refreshView();
       return;
+
     }
 
     if (this.newPassword.length < 8) {
+
       this.passwordError =
         'Your new password must contain at least 8 characters.';
+
+      this.refreshView();
       return;
+
+    }
+
+    if (
+      new TextEncoder().encode(this.newPassword).length > 72
+    ) {
+
+      this.passwordError =
+        'Your new password is too long.';
+
+      this.refreshView();
+      return;
+
     }
 
     if (this.newPassword !== this.confirmPassword) {
+
       this.passwordError =
         'The new passwords do not match.';
+
+      this.refreshView();
       return;
+
     }
 
     if (this.currentPassword === this.newPassword) {
+
       this.passwordError =
         'Your new password must be different from your current password.';
+
+      this.refreshView();
       return;
+
     }
 
     const currentPassword = this.currentPassword;
@@ -493,13 +957,15 @@ export class ProfilePage implements OnInit, OnDestroy {
         userData.user.id !== userId ||
         !this.hasActiveSupervisorSession(userId)
       ) {
+
         throw new Error(
           'Unable to verify your account. Please sign in again.'
         );
+
       }
 
-      // Temporary client prevents password verification
-      // from replacing the application's main session.
+      // Use a temporary client so password verification
+      // does not replace the main application session.
 
       verificationClient = createClient(
         this.supabaseService.getUrl(),
@@ -525,9 +991,11 @@ export class ProfilePage implements OnInit, OnDestroy {
       if (verificationError) {
 
         if (verificationError.code === 'invalid_credentials') {
+
           throw new Error(
             'Your current password is incorrect.'
           );
+
         }
 
         throw new Error(
@@ -541,9 +1009,11 @@ export class ProfilePage implements OnInit, OnDestroy {
         verificationData.user?.id !== userId ||
         !this.hasActiveSupervisorSession(userId)
       ) {
+
         throw new Error(
           'Your account session has changed. Please sign in again.'
         );
+
       }
 
       // Update only the verified user's password.
@@ -555,10 +1025,12 @@ export class ProfilePage implements OnInit, OnDestroy {
       });
 
       if (updateError) {
+
         throw new Error(
           updateError.message ||
           'Unable to update your password.'
         );
+
       }
 
       if (
@@ -571,12 +1043,15 @@ export class ProfilePage implements OnInit, OnDestroy {
       this.clearPasswordFields();
 
       this.passwordSuccess =
-        'Your password has been updated successfully. ' +
+        'Password updated successfully. ' +
         'Use your new password the next time you sign in.';
 
     } catch (error) {
 
-      if (!this.destroyed) {
+      if (
+        !this.destroyed &&
+        this.authService.getCurrentUser()?.id === userId
+      ) {
 
         this.passwordError = error instanceof Error
           ? error.message
@@ -598,16 +1073,20 @@ export class ProfilePage implements OnInit, OnDestroy {
             });
 
           if (error) {
+
             console.warn(
               'Temporary session cleanup failed:',
               error.message
             );
+
           }
 
         } catch {
+
           console.warn(
             'Unable to clean up temporary verification session.'
           );
+
         }
 
       }
@@ -620,9 +1099,13 @@ export class ProfilePage implements OnInit, OnDestroy {
   }
 
   private clearPasswordFields(): void {
+
     this.currentPassword = '';
     this.newPassword = '';
     this.confirmPassword = '';
+
+    this.showCurrentPassword = false;
+
   }
 
   // =========================================
@@ -631,7 +1114,11 @@ export class ProfilePage implements OnInit, OnDestroy {
 
   openLogoutDialog(): void {
 
-    if (this.saving || this.loggingOut) {
+    if (
+      this.saving ||
+      this.savingProfile ||
+      this.loggingOut
+    ) {
       return;
     }
 
@@ -643,6 +1130,8 @@ export class ProfilePage implements OnInit, OnDestroy {
       dialog.showModal();
     }
 
+    this.refreshView();
+
   }
 
   closeLogoutDialog(): void {
@@ -652,7 +1141,9 @@ export class ProfilePage implements OnInit, OnDestroy {
     }
 
     this.logoutDialog?.nativeElement.close();
+
     this.logoutError = '';
+    this.refreshView();
 
   }
 
@@ -664,18 +1155,30 @@ export class ProfilePage implements OnInit, OnDestroy {
 
   }
 
+  // =========================================
+  // LOGOUT
+  // =========================================
+
   async logout(): Promise<void> {
 
-    if (this.loggingOut || this.saving) {
+    if (
+      this.loggingOut ||
+      this.saving ||
+      this.savingProfile
+    ) {
       return;
     }
 
     this.logoutError = '';
 
     if (!this.authService.isOnline()) {
+
       this.logoutError =
         'Connect to the internet before logging out.';
+
+      this.refreshView();
       return;
+
     }
 
     this.loggingOut = true;
@@ -685,18 +1188,17 @@ export class ProfilePage implements OnInit, OnDestroy {
 
       this.clearPasswordFields();
 
-      // Existing AuthService handles session revocation,
-      // identity cleanup and navigation to Login.
-
       await this.authService.signOut();
 
       this.logoutDialog?.nativeElement.close();
 
       if (!this.destroyed) {
+
         await this.router.navigate(
           ['/login'],
           { replaceUrl: true }
         );
+
       }
 
     } catch (error) {

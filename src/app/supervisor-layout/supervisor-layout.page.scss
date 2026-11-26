@@ -1,3 +1,4 @@
+
 // ==========================================
 // DESIGN TOKENS
 // ==========================================
@@ -5,14 +6,15 @@
 :host {
   --primary: #3157d5;
   --primary-light: #e9edfc;
-
+  --orange: #ff9638;
   --background: #f5f6fc;
   --surface: #ffffff;
   --border: #dce2ed;
-
   --text-primary: #101828;
   --text-secondary: #64748b;
   --text-muted: #8490a3;
+  --danger: #b42318;
+  --danger-hover: #912018;
 
   display: block;
 
@@ -20,8 +22,8 @@
   height: 100%;
 
   font-family: 'Inter', sans-serif;
-  color: var(--text-primary);
 
+  color: var(--text-primary);
   background: var(--background);
 
   color-scheme: light;
@@ -102,6 +104,7 @@ svg {
 
   width: 100%;
   min-width: 0;
+
   height: 100%;
   min-height: 0;
 
@@ -114,14 +117,12 @@ svg {
 
 
 // ==========================================
-// BRANDING
+// SIDEBAR BRANDING
 // ==========================================
 
 .sidebar-brand {
   display: flex;
   align-items: center;
-
-  gap: 10px;
 
   height: var(--header-height);
   min-height: var(--header-height);
@@ -132,6 +133,47 @@ svg {
 
   flex-shrink: 0;
 }
+
+
+// ==========================================
+// BRAND TOGGLE BUTTON
+// ==========================================
+
+.brand-toggle {
+  display: flex;
+  align-items: center;
+
+  gap: 10px;
+
+  width: 100%;
+  min-width: 0;
+
+  padding: 0;
+
+  border: none;
+  border-radius: 6px;
+
+  background: transparent;
+
+  text-align: left;
+
+  cursor: pointer;
+
+  transition: opacity 150ms ease;
+}
+
+.brand-toggle:hover {
+  opacity: 0.85;
+}
+
+.brand-toggle:active {
+  opacity: 0.7;
+}
+
+
+// ==========================================
+// BRAND LOGO
+// ==========================================
 
 .brand-logo {
   display: block;
@@ -144,30 +186,48 @@ svg {
   flex-shrink: 0;
 }
 
+
+// ==========================================
+// BRAND TEXT
+// ==========================================
+
 .brand-text {
   display: flex;
   flex-direction: column;
 
   flex: 1;
+
   min-width: 0;
 
   gap: 4px;
 }
 
 .brand-name {
-  color: var(--text-primary);
+  display: block;
 
-  font-size: 15px;
-  font-weight: 600;
+  font-family: 'Surgena', sans-serif;
+
+  font-size: 21px;
+  font-weight: 400;
 
   line-height: 1.2;
-  letter-spacing: -0.3px;
+  letter-spacing: -0.5px;
 
   white-space: nowrap;
 }
 
+.brand-intern {
+  color: var(--primary);
+}
+
+.brand-track {
+  color: var(--orange);
+}
+
 .brand-role {
   color: var(--text-secondary);
+
+  font-family: 'Inter', sans-serif;
 
   font-size: 9px;
   font-weight: 500;
@@ -181,39 +241,6 @@ svg {
 
 
 // ==========================================
-// COLLAPSE BUTTON
-// ==========================================
-
-.collapse-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  width: 28px;
-  height: 28px;
-
-  padding: 0;
-
-  flex-shrink: 0;
-
-  border: none;
-  border-radius: 6px;
-
-  background: transparent;
-  color: var(--text-secondary);
-
-  transition:
-    background-color 150ms ease,
-    color 150ms ease;
-}
-
-.collapse-button:hover {
-  background: var(--background);
-  color: var(--primary);
-}
-
-
-// ==========================================
 // SIDEBAR NAVIGATION
 // ==========================================
 
@@ -222,6 +249,7 @@ svg {
   flex-direction: column;
 
   flex: 1;
+
   min-height: 0;
 
   padding: 18px 11px;
@@ -301,17 +329,20 @@ svg {
 
 .navigation-text {
   flex: 1;
+
   min-width: 0;
 
   white-space: nowrap;
 }
 
-.navigation-item:hover {
+.navigation-item:hover:not(:disabled) {
   background: #f5f7fb;
   color: var(--primary);
+
+  text-decoration: none;
 }
 
-.navigation-item:hover ion-icon {
+.navigation-item:hover:not(:disabled) ion-icon {
   color: var(--primary);
 }
 
@@ -359,107 +390,6 @@ svg {
 
 
 // ==========================================
-// SIDEBAR PROFILE
-// ==========================================
-
-.sidebar-bottom {
-  margin-top: auto;
-
-  padding: 11px;
-
-  border-top: 1px solid var(--border);
-
-  flex-shrink: 0;
-}
-
-.sidebar-profile {
-  display: flex;
-  align-items: center;
-
-  gap: 10px;
-
-  width: 100%;
-  min-width: 0;
-
-  padding: 8px;
-
-  border-radius: 12px;
-
-  background: #f6f7fa;
-
-  transition: background-color 150ms ease;
-}
-
-.sidebar-profile:hover {
-  background: var(--primary-light);
-}
-
-.sidebar-profile-text {
-  display: flex;
-  flex-direction: column;
-
-  gap: 3px;
-
-  min-width: 0;
-}
-
-
-// ==========================================
-// AVATAR
-// ==========================================
-
-.avatar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  width: 30px;
-  height: 30px;
-
-  flex-shrink: 0;
-
-  border-radius: 50%;
-
-  background: #fceede;
-  color: #a35b09;
-
-  font-size: 11px;
-  font-weight: 500;
-
-  line-height: 1;
-}
-
-
-// ==========================================
-// PROFILE TEXT
-// ==========================================
-
-.profile-name {
-  color: var(--text-primary);
-
-  font-size: 12px;
-  font-weight: 500;
-
-  line-height: 1.3;
-
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.profile-role {
-  color: var(--text-secondary);
-
-  font-size: 11px;
-  font-weight: 400;
-
-  line-height: 1.3;
-
-  white-space: nowrap;
-}
-
-
-// ==========================================
 // COLLAPSED SIDEBAR
 // ==========================================
 
@@ -471,11 +401,18 @@ svg {
     padding: 10px 0;
   }
 
+  .brand-toggle {
+    justify-content: center;
+
+    gap: 0;
+
+    width: 44px;
+    min-height: 40px;
+  }
+
   .brand-text,
-  .collapse-button,
   .navigation-label,
-  .navigation-text,
-  .sidebar-profile-text {
+  .navigation-text {
     display: none;
   }
 
@@ -515,57 +452,6 @@ svg {
     border-top: 1px solid var(--border);
   }
 
-  .sidebar-bottom {
-    padding: 0;
-  }
-
-  .sidebar-profile {
-    justify-content: center;
-
-    min-height: 53px;
-
-    padding: 10px 0;
-
-    background: transparent;
-
-    border-radius: 0;
-  }
-
-  .sidebar-profile:hover {
-    background: #f6f7fa;
-  }
-
-}
-
-
-// ==========================================
-// EXPAND BUTTON
-// ==========================================
-
-.expand-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  width: 100%;
-  height: 48px;
-
-  padding: 0;
-
-  border: none;
-  border-top: 1px solid var(--border);
-
-  background: transparent;
-  color: var(--text-secondary);
-
-  transition:
-    background-color 150ms ease,
-    color 150ms ease;
-}
-
-.expand-button:hover {
-  background: var(--background);
-  color: var(--primary);
 }
 
 
@@ -607,6 +493,7 @@ svg {
   border-bottom: 1px solid var(--border);
 
   position: relative;
+
   z-index: 20;
 
   flex-shrink: 0;
@@ -637,7 +524,10 @@ svg {
 }
 
 .breadcrumb-divider {
-  color: #b1bac8;
+  width: 14px;
+  height: 14px;
+
+  color: #94a3b8;
 
   flex-shrink: 0;
 }
@@ -716,6 +606,61 @@ svg {
   min-width: 0;
 }
 
+
+// ==========================================
+// HEADER AVATAR
+// ==========================================
+
+.avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 30px;
+  height: 30px;
+
+  flex-shrink: 0;
+
+  border-radius: 50%;
+
+  background: #fceede;
+  color: #a35b09;
+
+  font-size: 11px;
+  font-weight: 500;
+
+  line-height: 1;
+}
+
+
+// ==========================================
+// HEADER PROFILE TEXT
+// ==========================================
+
+.profile-name {
+  color: var(--text-primary);
+
+  font-size: 12px;
+  font-weight: 500;
+
+  line-height: 1.3;
+
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.profile-role {
+  color: var(--text-secondary);
+
+  font-size: 11px;
+  font-weight: 400;
+
+  line-height: 1.3;
+
+  white-space: nowrap;
+}
+
 .profile-chevron {
   margin-left: 4px;
 
@@ -778,6 +723,10 @@ svg {
   font-weight: 500;
 
   text-align: left;
+
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
 }
 
 .profile-dropdown ion-icon {
@@ -785,52 +734,18 @@ svg {
 }
 
 .profile-dropdown a:hover,
-.profile-dropdown button:hover {
+.profile-dropdown button:hover:not(:disabled) {
   background: var(--background);
+
+  text-decoration: none;
 }
 
 .profile-dropdown .logout-option {
-  color: #b42318;
+  color: var(--danger);
 }
 
-.profile-dropdown .logout-option:hover {
+.profile-dropdown .logout-option:hover:not(:disabled) {
   background: #fef3f2;
-}
-
-
-// ==========================================
-// LAYOUT ERROR MESSAGE
-// ==========================================
-
-.layout-error {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-
-  gap: 12px;
-
-  padding: 12px 24px;
-
-  background: #fef3f2;
-  color: #b42318;
-
-  border-bottom: 1px solid #fecdca;
-
-  font-size: 12px;
-
-  flex-shrink: 0;
-}
-
-.layout-error button {
-  padding: 4px 8px;
-
-  background: transparent;
-  color: inherit;
-
-  border: none;
-
-  font-size: 12px;
-  font-weight: 500;
 }
 
 
@@ -856,6 +771,197 @@ svg {
 
 
 // ==========================================
+// LOGOUT CONFIRMATION DIALOG
+// ==========================================
+
+.logout-dialog {
+  position: fixed;
+
+  inset: 0;
+
+  width: min(480px, calc(100% - 32px));
+  max-height: calc(100dvh - 40px);
+
+  margin: auto;
+  padding: 26px;
+
+  overflow-y: auto;
+
+  background: var(--surface);
+  color: var(--text-primary);
+
+  border: 1px solid var(--border);
+  border-radius: 14px;
+
+  font-family: 'Inter', Arial, sans-serif;
+
+  box-shadow: 0 15px 45px rgba(16, 24, 40, 0.12);
+
+  &::backdrop {
+    background: rgba(16, 24, 40, 0.45);
+  }
+
+  h2 {
+    margin: 0 0 8px;
+
+    color: var(--text-primary);
+
+    font-size: 19px;
+    font-weight: 650;
+
+    line-height: 1.5;
+    letter-spacing: -0.4px;
+  }
+}
+
+.logout-dialog:not([open]) {
+  display: none;
+}
+
+
+// ==========================================
+// DIALOG DESCRIPTION
+// ==========================================
+
+.logout-dialog .dialog-description {
+  margin: 0;
+
+  color: var(--text-secondary);
+
+  font-size: 13px;
+  font-weight: 400;
+
+  line-height: 1.7;
+}
+
+
+// ==========================================
+// DIALOG ACTIONS
+// ==========================================
+
+.logout-dialog .dialog-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+
+  gap: 8px;
+
+  margin-top: 24px;
+  padding-top: 18px;
+
+  border-top: 1px solid var(--border);
+}
+
+
+// ==========================================
+// DIALOG BUTTONS
+// ==========================================
+
+.logout-dialog .dialog-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  min-height: 36px;
+
+  padding: 9px 16px;
+
+  border: 1px solid transparent;
+  border-radius: 10px;
+
+  font-family: inherit;
+
+  font-size: 13px;
+  font-weight: 500;
+
+  line-height: 1.4;
+
+  white-space: nowrap;
+
+  cursor: pointer;
+
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease;
+
+  &:disabled {
+    opacity: 0.5;
+
+    cursor: not-allowed;
+  }
+}
+
+
+// ==========================================
+// CANCEL BUTTON
+// ==========================================
+
+.logout-dialog .cancel-button {
+  background: var(--surface);
+
+  border-color: #d4dce9;
+
+  color: var(--text-primary);
+
+  &:hover:not(:disabled) {
+    background: #f5f7fc;
+
+    border-color: #c3cde0;
+  }
+}
+
+
+// ==========================================
+// CONFIRM LOGOUT BUTTON
+// ==========================================
+
+.logout-dialog .confirm-button {
+  background: var(--danger);
+
+  border-color: var(--danger);
+
+  color: #ffffff;
+
+  &:hover:not(:disabled) {
+    background: var(--danger-hover);
+
+    border-color: var(--danger-hover);
+
+    color: #ffffff;
+
+    opacity: 1;
+  }
+
+  &:focus-visible {
+    outline-color: var(--danger);
+  }
+}
+
+
+// ==========================================
+// DIALOG ERROR
+// ==========================================
+
+.logout-dialog .dialog-error {
+  margin-top: 16px;
+  padding: 12px 14px;
+
+  background: #fef3f2;
+  color: var(--danger);
+
+  border: 1px solid #f2c9c6;
+  border-radius: 9px;
+
+  font-size: 12px;
+
+  line-height: 1.6;
+
+  overflow-wrap: anywhere;
+}
+
+
+// ==========================================
 // DROPDOWN ANIMATION
 // ==========================================
 
@@ -863,11 +969,13 @@ svg {
 
   from {
     opacity: 0;
+
     transform: translateY(-5px);
   }
 
   to {
     opacity: 1;
+
     transform: translateY(0);
   }
 
@@ -924,8 +1032,13 @@ svg {
     font-size: 12px;
   }
 
+  .brand-name {
+    font-size: 19px;
+  }
+
   .brand-role {
     font-size: 8px;
+
     letter-spacing: 0.5px;
   }
 
@@ -934,8 +1047,11 @@ svg {
     height: 30px;
   }
 
-  .sidebar-brand {
+  .brand-toggle {
     gap: 8px;
+  }
+
+  .sidebar-brand {
     padding: 10px 11px;
   }
 
@@ -949,63 +1065,27 @@ svg {
 @media (max-width: 480px) {
 
   .supervisor-layout {
-    grid-template-columns: 60px minmax(0, 1fr);
+    --sidebar-width: 210px;
   }
 
-  .sidebar-brand {
+  .supervisor-layout.sidebar-collapsed {
+    --sidebar-width: 60px;
+  }
+
+  .sidebar-collapsed .sidebar-brand {
     justify-content: center;
 
     padding: 10px 0;
   }
 
-  .brand-text,
-  .collapse-button,
-  .navigation-label,
-  .navigation-text,
-  .sidebar-profile-text,
-  .active-indicator,
-  .expand-button {
-    display: none !important;
-  }
-
-  .sidebar-navigation {
-    padding: 15px 7px;
-  }
-
-  .navigation-item {
+  .sidebar-collapsed .brand-toggle {
     justify-content: center;
-
-    padding: 8px;
 
     gap: 0;
   }
 
-  .navigation-item ion-icon {
-    width: 18px;
-    height: 18px;
-
-    font-size: 18px;
-  }
-
-  .account-navigation {
-    margin-top: 22px;
-    padding-top: 16px;
-
-    border-top: 1px solid var(--border);
-  }
-
-  .sidebar-bottom {
-    padding: 0;
-  }
-
-  .sidebar-profile {
-    justify-content: center;
-
-    min-height: 53px;
-
-    padding: 10px 0;
-
-    background: transparent;
+  .sidebar-collapsed .sidebar-navigation {
+    padding: 15px 7px;
   }
 
   .breadcrumb-root,
@@ -1015,6 +1095,40 @@ svg {
 
   .topbar {
     padding: 0 12px;
+
+    gap: 8px;
+  }
+
+  .topbar-right {
+    gap: 8px;
+  }
+
+  .header-profile {
+    gap: 4px;
+  }
+
+  .profile-chevron {
+    margin-left: 0;
+  }
+
+  .profile-dropdown {
+    width: min(200px, calc(100vw - 24px));
+  }
+
+  .logout-dialog {
+    padding: 20px;
+
+    h2 {
+      font-size: 17px;
+    }
+  }
+
+  .logout-dialog .dialog-actions {
+    flex-wrap: wrap;
+  }
+
+  .logout-dialog .dialog-button {
+    flex: 1;
   }
 
 }
@@ -1031,6 +1145,72 @@ svg {
   *::after {
     transition: none !important;
     animation: none !important;
+  }
+
+}
+
+// ==========================================
+// SIDEBAR SPACING REFINEMENT
+// ==========================================
+
+.supervisor-layout {
+  --header-height: 76px;
+}
+
+.sidebar-brand {
+  padding: 16px 20px;
+}
+
+.brand-toggle {
+  gap: 14px;
+  align-items: center;
+}
+
+.brand-logo {
+  width: 36px;
+  height: 36px;
+}
+
+.brand-text {
+  gap: 5px;
+}
+
+.brand-name {
+  font-size: 21px;
+  line-height: 1.2;
+  letter-spacing: -0.5px;
+}
+
+.brand-role {
+  font-size: 9px;
+  line-height: 1.4;
+  letter-spacing: 0.8px;
+}
+
+.sidebar-navigation {
+  padding: 24px 11px;
+}
+
+.navigation-label {
+  margin-bottom: 10px;
+}
+
+// COLLAPSED SIDEBAR
+
+.sidebar-collapsed {
+
+  .sidebar-brand {
+    padding: 16px 0;
+    justify-content: center;
+  }
+
+  .brand-toggle {
+    gap: 0;
+    justify-content: center;
+  }
+
+  .sidebar-navigation {
+    padding-top: 24px;
   }
 
 }

@@ -1,13 +1,514 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-title>reports-monitoring</ion-title>
-  </ion-toolbar>
-</ion-header>
+<div class="reports-monitoring-page">
 
-<ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">reports-monitoring</ion-title>
-    </ion-toolbar>
-  </ion-header>
-</ion-content>
+  <!-- PAGE HEADER -->
+  <header class="page-header">
+
+    <h1>Weekly Reports</h1>
+
+    <p>Monitor submitted weekly accomplishment reports.</p>
+
+  </header>
+
+  <!-- LOADING STATE -->
+  <section
+    class="state-card"
+    *ngIf="isLoading"
+    role="status"
+    aria-live="polite">
+
+    <div class="loading-spinner"></div>
+
+    <p>Loading weekly reports...</p>
+
+  </section>
+
+  <!-- ERROR STATE -->
+  <section
+    class="state-card"
+    *ngIf="!isLoading && errorMessage"
+    role="alert">
+
+    <h3>Unable to load weekly reports</h3>
+
+    <p>{{ errorMessage }}</p>
+
+    <button
+      type="button"
+      class="secondary-button"
+      (click)="retryLoad()">
+
+      Try again
+
+    </button>
+
+  </section>
+
+  <!-- REPORTS TABLE -->
+  <section
+    class="table-card"
+    *ngIf="!isLoading && !errorMessage">
+
+    <!-- FILTER TOOLBAR -->
+    <div class="table-toolbar">
+
+      <div class="filter-controls">
+
+        <!-- SEARCH -->
+        <div class="search-field">
+
+          <ion-icon
+            name="search-outline"
+            class="search-icon"
+            aria-hidden="true">
+          </ion-icon>
+
+          <input
+            type="search"
+            placeholder="Search by name or student ID"
+            aria-label="Search by student name or ID"
+            [(ngModel)]="searchQuery"
+            (ngModelChange)="onFilterChange()"
+          />
+
+        </div>
+
+        <!-- COMPANY FILTER -->
+        <div class="select-field company-filter">
+
+          <select
+            aria-label="Filter by company"
+            [(ngModel)]="selectedCompany"
+            (ngModelChange)="onFilterChange()">
+
+            <option value="all">
+              All companies
+            </option>
+
+            <option
+              *ngFor="let company of companyOptions"
+              [value]="company">
+
+              {{ company }}
+
+            </option>
+
+          </select>
+
+          <ion-icon
+            name="chevron-down-outline"
+            aria-hidden="true">
+          </ion-icon>
+
+        </div>
+
+        <!-- WEEK FILTER -->
+        <div class="select-field week-filter">
+
+          <select
+            aria-label="Filter by reporting week"
+            [(ngModel)]="selectedWeek"
+            (ngModelChange)="onFilterChange()">
+
+            <option value="all">
+              All weeks
+            </option>
+
+            <option
+              *ngFor="let week of weekOptions"
+              [value]="week">
+
+              Week {{ week }}
+
+            </option>
+
+          </select>
+
+          <ion-icon
+            name="chevron-down-outline"
+            aria-hidden="true">
+          </ion-icon>
+
+        </div>
+
+        <!-- STATUS FILTER -->
+        <div class="select-field status-filter">
+
+          <select
+            aria-label="Filter by report status"
+            [(ngModel)]="selectedStatus"
+            (ngModelChange)="onFilterChange()">
+
+            <option value="all">
+              All statuses
+            </option>
+
+            <option value="pending_review">
+              Pending review
+            </option>
+
+            <option value="approved">
+              Approved
+            </option>
+
+            <option value="returned">
+              Returned for revision
+            </option>
+
+          </select>
+
+          <ion-icon
+            name="chevron-down-outline"
+            aria-hidden="true">
+          </ion-icon>
+
+        </div>
+
+      </div>
+
+      <!-- TOOLBAR RIGHT -->
+      <div class="toolbar-right">
+
+        <button
+          *ngIf="hasActiveFilters"
+          type="button"
+          class="clear-button"
+          (click)="clearFilters()">
+
+          Clear filters
+
+        </button>
+
+        <span class="record-count">
+
+          {{ filteredCount }}
+          {{ filteredCount === 1 ? 'report' : 'reports' }}
+
+        </span>
+
+      </div>
+
+    </div>
+
+    <!-- TABLE -->
+    <div
+      class="table-scroll"
+      *ngIf="filteredCount > 0">
+
+      <table
+        class="reports-table"
+        aria-label="Submitted weekly reports">
+
+        <!-- COLUMN WIDTHS -->
+        <colgroup>
+
+          <col class="col-student" />
+          <col class="col-company" />
+          <col class="col-week" />
+          <col class="col-period" />
+          <col class="col-submitted" />
+          <col class="col-status" />
+          <col class="col-action" />
+
+        </colgroup>
+
+        <!-- TABLE HEADERS -->
+        <thead>
+
+          <tr>
+
+            <th scope="col">
+              Student
+            </th>
+
+            <th scope="col">
+              Company
+            </th>
+
+            <th scope="col">
+              Reporting week
+            </th>
+
+            <th scope="col">
+              Reporting period
+            </th>
+
+            <th scope="col">
+              Submitted
+            </th>
+
+            <th scope="col">
+              Status
+            </th>
+
+            <th
+              scope="col"
+              class="action-heading"
+              aria-label="Report actions">
+            </th>
+
+          </tr>
+
+        </thead>
+
+        <!-- TABLE BODY -->
+        <tbody>
+
+          <tr
+            *ngFor="
+              let report of paginatedReports;
+              trackBy: trackByReport
+            ">
+
+            <!-- STUDENT -->
+            <td>
+
+              <div class="student-cell">
+
+                <div
+                  class="avatar"
+                  [ngClass]="report.avatarColor"
+                  aria-hidden="true">
+
+                  {{ report.initials }}
+
+                </div>
+
+                <div class="student-info">
+
+                  <span
+                    class="student-name"
+                    [title]="report.fullName">
+
+                    {{ report.fullName }}
+
+                  </span>
+
+                  <span class="student-id">
+
+                    {{ report.studentId }}
+
+                  </span>
+
+                </div>
+
+              </div>
+
+            </td>
+
+            <!-- COMPANY -->
+            <td class="company-cell">
+
+              {{ report.companyName }}
+
+            </td>
+
+            <!-- REPORTING WEEK -->
+            <td class="week-cell">
+
+              Week {{ report.week }}
+
+            </td>
+
+            <!-- REPORTING PERIOD -->
+            <td class="period-cell">
+
+              {{ report.period }}
+
+            </td>
+
+            <!-- SUBMITTED DATE -->
+            <td class="submitted-cell">
+
+              {{ formatDate(report.submittedAt) }}
+
+            </td>
+
+            <!-- STATUS -->
+            <td class="status-cell">
+
+              <span
+                class="status-text"
+                [ngClass]="getStatusClass(report.status)"
+                [title]="getStatusLabel(report.status)">
+
+                {{
+                  report.status === 'returned'
+                    ? 'Returned'
+                    : getStatusLabel(report.status)
+                }}
+
+              </span>
+
+            </td>
+
+            <!-- VIEW ACTION -->
+            <td class="action-cell">
+
+              <button
+                type="button"
+                class="view-button"
+                [attr.aria-label]="
+                  'View week ' +
+                  report.week +
+                  ' report of ' +
+                  report.fullName
+                "
+                (click)="viewReport(report)">
+
+                <span>View</span>
+
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true">
+
+                  <path d="m9 18 6-6-6-6" />
+
+                </svg>
+
+              </button>
+
+            </td>
+
+          </tr>
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+    <!-- EMPTY STATE -->
+    <div
+      class="empty-state"
+      *ngIf="filteredCount === 0">
+
+      <h3>
+
+        {{
+          hasActiveFilters
+            ? 'No matching reports'
+            : 'No submitted reports yet'
+        }}
+
+      </h3>
+
+      <p>
+
+        {{
+          hasActiveFilters
+            ? 'Try changing your search or filters.'
+            : 'Submitted weekly reports will appear here.'
+        }}
+
+      </p>
+
+      <button
+        *ngIf="hasActiveFilters"
+        type="button"
+        class="secondary-button"
+        (click)="clearFilters()">
+
+        Clear filters
+
+      </button>
+
+    </div>
+
+    <!-- PAGINATION -->
+    <footer
+      class="table-footer"
+      *ngIf="filteredCount > 0">
+
+      <p class="pagination-summary">
+
+        Showing
+
+        <strong>
+          {{ showingFrom }}–{{ showingTo }}
+        </strong>
+
+        of
+
+        <strong>
+          {{ filteredCount }}
+        </strong>
+
+        {{ filteredCount === 1 ? 'report' : 'reports' }}
+
+      </p>
+
+      <nav
+        class="pagination"
+        aria-label="Weekly reports pagination">
+
+        <!-- PREVIOUS PAGE -->
+        <button
+          type="button"
+          class="page-button"
+          aria-label="Previous page"
+          [disabled]="currentPage === 1"
+          (click)="previousPage()">
+
+          <ion-icon
+            name="chevron-back-outline"
+            aria-hidden="true">
+          </ion-icon>
+
+        </button>
+
+        <!-- PAGE NUMBERS -->
+        <ng-container *ngFor="let page of pageNumbers">
+
+          <span
+            *ngIf="page === '...'"
+            class="pagination-ellipsis"
+            aria-hidden="true">
+
+            ...
+
+          </span>
+
+          <button
+            *ngIf="page !== '...'"
+            type="button"
+            class="page-button"
+            [class.active]="currentPage === page"
+            [attr.aria-current]="
+              currentPage === page ? 'page' : null
+            "
+            [attr.aria-label]="'Page ' + page"
+            (click)="goToPage(page)">
+
+            {{ page }}
+
+          </button>
+
+        </ng-container>
+
+        <!-- NEXT PAGE -->
+        <button
+          type="button"
+          class="page-button"
+          aria-label="Next page"
+          [disabled]="currentPage === totalPages"
+          (click)="nextPage()">
+
+          <ion-icon
+            name="chevron-forward-outline"
+            aria-hidden="true">
+          </ion-icon>
+
+        </button>
+
+      </nav>
+
+    </footer>
+
+  </section>
+
+</div>

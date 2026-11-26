@@ -1,13 +1,629 @@
-<ion-header [translucent]="true">
-  <ion-toolbar>
-    <ion-title>reports-records</ion-title>
-  </ion-toolbar>
-</ion-header>
+<div class="reports-records-page">
 
-<ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">reports-records</ion-title>
-    </ion-toolbar>
-  </ion-header>
-</ion-content>
+  <!-- PAGE HEADER -->
+  <header class="page-header">
+    <div class="page-heading">
+      <h1>Reports &amp; Records</h1>
+      <p>View and export institutional internship records.</p>
+    </div>
+  </header>
+
+  <!-- LOADING STATE -->
+  <div
+    class="state-card"
+    *ngIf="isLoading"
+    role="status"
+    aria-live="polite">
+
+    <div class="loading-spinner"></div>
+    <p>Loading institutional records...</p>
+
+  </div>
+
+  <!-- ERROR STATE -->
+  <div
+    class="state-card"
+    *ngIf="!isLoading && errorMessage"
+    role="alert">
+
+    <h3>Unable to load records</h3>
+    <p>{{ errorMessage }}</p>
+
+    <button
+      type="button"
+      class="button button-secondary"
+      (click)="retryLoad()">
+      Try again
+    </button>
+
+  </div>
+
+  <!-- REPORT WORKSPACE -->
+  <div
+    class="reports-workspace"
+    *ngIf="!isLoading && !errorMessage">
+
+    <!-- REPORT NAVIGATION AND FILTERS -->
+    <section class="navigation-card panel">
+
+      <!-- HORIZONTAL REPORT TABS -->
+      <nav
+        class="report-tabs"
+        aria-label="Report categories">
+
+        <button
+          *ngFor="
+            let report of reportLibrary;
+            trackBy: trackByReport
+          "
+          type="button"
+          class="report-tab"
+          [class.active]="selectedReport === report.id"
+          [attr.aria-pressed]="selectedReport === report.id"
+          (click)="selectReport(report.id)">
+
+          {{ report.title }}
+
+        </button>
+
+      </nav>
+
+      <!-- FILTERS -->
+      <div class="filter-card">
+
+        <div class="filter-grid">
+
+          <!-- COMPANY FILTER -->
+          <div class="select-wrapper">
+
+            <select
+              aria-label="Filter by company"
+              [(ngModel)]="selectedCompany"
+              (ngModelChange)="onFilterChange()">
+
+              <option value="all">
+                All companies
+              </option>
+
+              <option
+                *ngFor="let company of companyOptions"
+                [value]="company">
+
+                {{ company }}
+
+              </option>
+
+            </select>
+
+            <ion-icon
+              name="chevron-down-outline"
+              aria-hidden="true">
+            </ion-icon>
+
+          </div>
+
+          <!-- STUDENT FILTER -->
+          <div class="select-wrapper">
+
+            <select
+              aria-label="Filter by student"
+              [(ngModel)]="selectedStudent"
+              (ngModelChange)="onFilterChange()">
+
+              <option value="all">
+                All students
+              </option>
+
+              <option
+                *ngFor="let student of studentOptions"
+                [value]="student.id">
+
+                {{ student.full_name }}
+                ({{ student.student_id }})
+
+              </option>
+
+            </select>
+
+            <ion-icon
+              name="chevron-down-outline"
+              aria-hidden="true">
+            </ion-icon>
+
+          </div>
+
+          <!-- STATUS FILTER -->
+          <div class="select-wrapper">
+
+            <select
+              aria-label="Filter by status"
+              [(ngModel)]="selectedStatus"
+              (ngModelChange)="onFilterChange()">
+
+              <option value="all">
+                All statuses
+              </option>
+
+              <option
+                *ngFor="let status of statusOptions"
+                [value]="status">
+
+                {{ status }}
+
+              </option>
+
+            </select>
+
+            <ion-icon
+              name="chevron-down-outline"
+              aria-hidden="true">
+            </ion-icon>
+
+          </div>
+
+          <!-- CLEAR FILTERS -->
+          <button
+            *ngIf="hasActiveFilters"
+            type="button"
+            class="reset-button"
+            (click)="resetFilters()">
+
+            Clear filters
+
+          </button>
+
+        </div>
+
+        <!-- DATE RANGE FILTER -->
+        <div
+          class="date-filter-row"
+          *ngIf="showDateFilter">
+
+          <span class="date-filter-label">
+            Date range
+          </span>
+
+          <input
+            type="date"
+            class="date-input"
+            aria-label="Start date"
+            [(ngModel)]="startDate"
+            [attr.max]="endDate || null"
+            (ngModelChange)="onFilterChange()"
+          />
+
+          <span class="date-separator">
+            to
+          </span>
+
+          <input
+            type="date"
+            class="date-input"
+            aria-label="End date"
+            [(ngModel)]="endDate"
+            [attr.min]="startDate || null"
+            (ngModelChange)="onFilterChange()"
+          />
+
+        </div>
+
+        <!-- INVALID DATE RANGE -->
+        <div
+          class="filter-error"
+          role="alert"
+          *ngIf="invalidDateRange">
+
+          The end date must be on or after the start date.
+
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- EXPORT ERROR -->
+    <div
+      class="error-banner"
+      role="alert"
+      *ngIf="exportError">
+
+      {{ exportError }}
+
+    </div>
+
+    <!-- REPORT PREVIEW -->
+    <section class="report-preview panel">
+
+      <!-- REPORT HEADER -->
+      <div class="report-header">
+
+        <div class="report-heading">
+
+          <h2>{{ activeReport.title }}</h2>
+
+          <p>{{ activeReport.description }}</p>
+
+        </div>
+
+        <div class="report-actions">
+
+          <button
+            type="button"
+            class="button button-secondary export-button"
+            [disabled]="!canExport"
+            (click)="exportCsv()">
+
+            Export CSV
+
+          </button>
+
+          <button
+            type="button"
+            class="button button-primary export-button"
+            [disabled]="!canExport || isExporting"
+            (click)="printReport()">
+
+            {{
+              isExporting
+                ? 'Generating PDF...'
+                : 'Print / Save PDF'
+            }}
+
+          </button>
+
+        </div>
+
+      </div>
+
+      <!-- REPORT METADATA -->
+      <div class="report-meta">
+
+        <span class="institution-name">
+
+          {{ schoolName }}
+
+        </span>
+
+        <span class="record-count">
+
+          {{ filteredCount }}
+          {{ filteredCount === 1 ? 'record' : 'records' }}
+
+        </span>
+
+      </div>
+
+      <!-- REPORT TABLE -->
+      <div
+        class="table-container"
+        *ngIf="filteredCount > 0">
+
+        <table
+          class="report-table"
+          [ngClass]="'table-' + selectedReport"
+          [attr.aria-label]="activeReport.title">
+
+          <thead>
+
+            <tr>
+
+              <th
+                *ngFor="let column of activeReport.columns"
+                scope="col">
+
+                {{ column }}
+
+              </th>
+
+            </tr>
+
+          </thead>
+
+          <tbody>
+
+            <tr
+              *ngFor="
+                let row of paginatedRows;
+                trackBy: trackByRow
+              ">
+
+              <td
+                *ngFor="
+                  let cell of row.cells;
+                  let columnIndex = index
+                ">
+
+                <span
+                  [class.status-text]="
+                    (activeReport.columns[columnIndex] || '')
+                      .toLowerCase()
+                      .includes('status')
+                  "
+                  [attr.data-status]="
+                    (activeReport.columns[columnIndex] || '')
+                      .toLowerCase()
+                      .includes('status')
+                      ? cell
+                      : null
+                  ">
+
+                  {{ cell }}
+
+                </span>
+
+              </td>
+
+            </tr>
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+      <!-- EMPTY STATE -->
+      <div
+        class="empty-state"
+        *ngIf="filteredCount === 0">
+
+        <h3>
+
+          {{
+            invalidDateRange
+              ? 'Invalid date range'
+              : hasActiveFilters
+                ? 'No matching records'
+                : 'No records available'
+          }}
+
+        </h3>
+
+        <p *ngIf="invalidDateRange">
+
+          Please select a valid date range.
+
+        </p>
+
+        <p *ngIf="!invalidDateRange && hasActiveFilters">
+
+          Try adjusting your filters.
+
+        </p>
+
+        <p
+          *ngIf="
+            !invalidDateRange &&
+            !hasActiveFilters &&
+            selectedReport !== 'completion'
+          ">
+
+          Records will appear here once available.
+
+        </p>
+
+        <p
+          *ngIf="
+            !invalidDateRange &&
+            !hasActiveFilters &&
+            selectedReport === 'completion'
+          ">
+
+          No student has reached their required verified
+          internship hours yet.
+
+        </p>
+
+        <button
+          *ngIf="hasActiveFilters"
+          type="button"
+          class="button button-secondary"
+          (click)="resetFilters()">
+
+          Clear filters
+
+        </button>
+
+      </div>
+
+      <!-- PAGINATION -->
+      <footer
+        class="pagination-footer"
+        *ngIf="filteredCount > 0">
+
+        <p class="pagination-summary">
+
+          Showing
+
+          <strong>
+            {{ showingFrom }}–{{ showingTo }}
+          </strong>
+
+          of
+
+          <strong>{{ filteredCount }}</strong>
+
+          {{ filteredCount === 1 ? 'record' : 'records' }}
+
+        </p>
+
+        <nav
+          class="pagination-controls"
+          aria-label="Report pagination">
+
+          <button
+            type="button"
+            class="pagination-button"
+            aria-label="Previous page"
+            [disabled]="currentPage === 1"
+            (click)="previousPage()">
+
+            <ion-icon
+              name="chevron-back-outline"
+              aria-hidden="true">
+            </ion-icon>
+
+          </button>
+
+          <button
+            *ngFor="
+              let page of pageNumbers;
+              trackBy: trackByPage
+            "
+            type="button"
+            class="pagination-button"
+            [class.active]="currentPage === page"
+            [attr.aria-current]="
+              currentPage === page ? 'page' : null
+            "
+            [attr.aria-label]="'Page ' + page"
+            (click)="goToPage(page)">
+
+            {{ page }}
+
+          </button>
+
+          <button
+            type="button"
+            class="pagination-button"
+            aria-label="Next page"
+            [disabled]="currentPage === totalPages"
+            (click)="nextPage()">
+
+            <ion-icon
+              name="chevron-forward-outline"
+              aria-hidden="true">
+            </ion-icon>
+
+          </button>
+
+        </nav>
+
+      </footer>
+
+      <!-- REPORT FOOTER -->
+      <div class="report-footer">
+
+        <span>
+          Export includes all filtered records.
+        </span>
+
+        <span class="generated-date">
+          Generated {{ generatedDate }}
+        </span>
+
+      </div>
+
+    </section>
+
+    <!-- REPORT NOTE -->
+    <p
+      class="report-note"
+      *ngIf="reportNote">
+
+      {{ reportNote }}
+
+    </p>
+
+    <!-- COMPLETION REVIEW QUEUE -->
+    <section
+      class="completion-queue panel"
+      *ngIf="selectedReport === 'completion'">
+
+      <div class="queue-header">
+
+        <h2>Completion Review Queue</h2>
+
+        <p>
+          Review internship requirements before confirming completion.
+        </p>
+
+      </div>
+
+      <!-- COMPLETION CANDIDATES -->
+      <div
+        class="queue-list"
+        *ngIf="completionQueue.length > 0">
+
+        <div
+          class="queue-item"
+          *ngFor="
+            let summary of completionQueue;
+            trackBy: trackByStudent
+          ">
+
+          <div class="queue-student">
+
+            <h3>{{ summary.student.full_name }}</h3>
+
+            <p>
+
+              {{ summary.student.student_id }}
+
+              <span class="separator">·</span>
+
+              {{ formatNumber(summary.verified) }}
+              verified hours
+
+              <span class="separator">·</span>
+
+              {{ summary.approved }}
+
+              {{
+                summary.approved === 1
+                  ? 'approved report'
+                  : 'approved reports'
+              }}
+
+            </p>
+
+          </div>
+
+          <div class="queue-actions">
+
+            <button
+              type="button"
+              class="button button-secondary review-button"
+              (click)="reviewStudent(summary)">
+
+              <span>Review</span>
+
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true">
+
+                <path d="m9 18 6-6-6-6" />
+
+              </svg>
+
+            </button>
+
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- EMPTY COMPLETION QUEUE -->
+      <div
+        class="queue-empty"
+        *ngIf="completionQueue.length === 0">
+
+        <h3>No students awaiting review</h3>
+
+        <p>
+          Students who reach their required verified hours
+          will appear here.
+        </p>
+
+      </div>
+
+    </section>
+
+  </div>
+
+</div>

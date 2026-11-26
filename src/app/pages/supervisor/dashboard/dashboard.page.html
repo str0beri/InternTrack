@@ -1,70 +1,82 @@
+
 <div class="dashboard-container">
 
   @if (loading) {
+
     <div class="state-container">
       <div class="spinner"></div>
       <p>Loading dashboard...</p>
     </div>
+
   } @else if (loadError) {
+
     <div class="state-container">
       <h2>Unable to load dashboard</h2>
       <p>{{ loadError }}</p>
-      <button class="button primary" (click)="loadDashboardData()">
+
+      <button
+        type="button"
+        class="button primary"
+        (click)="loadDashboardData()">
         Try again
       </button>
     </div>
+
   } @else {
 
+    <!-- Welcome banner -->
+
     <header class="dashboard-header">
+
+      <div class="welcome-decoration" aria-hidden="true">
+        <span class="shape shape-blue"></span>
+        <span class="shape shape-purple"></span>
+        <span class="shape shape-orange"></span>
+      </div>
+
       <div class="greeting">
-        <span class="eyebrow">COMPANY SUPERVISOR</span>
 
-        <h1>{{ greeting }}, {{ firstName }}.</h1>
-
-        <p>
-          {{ attendanceDate }} · You have
-          {{ metrics.pendingAttendance + metrics.incompleteAttendance }}
-          attendance records and {{ metrics.reportsToReview }}
-          weekly reports waiting for review.
+        <p class="welcome-date">
+          {{ attendanceDate }}
         </p>
+
+        <h1>{{ greeting }}, {{ firstName }}!</h1>
+
+        <p class="welcome-description">
+          Here's your internship overview.
+        </p>
+
+        <div class="header-actions">
+
+          <a
+            class="button primary"
+            routerLink="/supervisor/attendance">
+            Review attendance
+          </a>
+
+          <a
+            class="button secondary"
+            routerLink="/supervisor/reports">
+            Weekly reports
+          </a>
+
+        </div>
+
       </div>
 
-      <div class="header-actions">
-        <a class="button secondary"
-           routerLink="/supervisor/reports">
-
-          <svg viewBox="0 0 24 24" fill="none"
-               stroke="currentColor" stroke-width="1.7"
-               stroke-linecap="round" stroke-linejoin="round">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-            <path d="M14 2v6h6M8 12h8M8 16h8"/>
-          </svg>
-
-          Weekly reports
-        </a>
-
-        <a class="button primary"
-           routerLink="/supervisor/attendance">
-
-          <svg viewBox="0 0 24 24" fill="none"
-               stroke="currentColor" stroke-width="1.7"
-               stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="5" width="18" height="16" rx="2"/>
-            <path d="M16 3v4M8 3v4M3 10h18M9 15l2 2 4-4"/>
-          </svg>
-
-          Review attendance
-        </a>
-      </div>
     </header>
 
     <!-- Summary cards -->
 
-    <section class="summary-grid">
+    <section
+      class="summary-grid"
+      aria-label="Internship summary">
 
       @for (card of summaryCards; track card.label) {
-        <article class="summary-card"
-                 [attr.data-color]="card.color">
+
+        <article
+          class="summary-card"
+          [attr.data-color]="card.color">
 
           <span class="summary-label">
             {{ card.label }}
@@ -75,19 +87,25 @@
           </strong>
 
           <p class="summary-description">
+
             @if (card.highlight) {
               <span class="warning-text">
                 {{ card.highlight }}
               </span>
             }
+
             {{ card.description }}
+
           </p>
 
-          <a class="text-link" [routerLink]="card.route">
+          <a
+            class="text-link"
+            [routerLink]="card.route">
             {{ card.linkLabel }}
           </a>
 
         </article>
+
       }
 
     </section>
@@ -102,46 +120,63 @@
 
         <div class="panel-header">
           <h2>Needs attention</h2>
-          <p>Items that require your action today.</p>
         </div>
 
         <div class="attention-list">
 
           @for (item of attentionItems; track item.title) {
-            <a class="attention-item"
-               [routerLink]="item.route">
 
-              <span class="attention-dot"
-                    [attr.data-color]="item.color">
-              </span>
+            <a
+              class="attention-item"
+              [routerLink]="item.route">
 
               <div class="attention-information">
+
                 <h3>{{ item.title }}</h3>
+
                 <p>{{ item.description }}</p>
+
               </div>
 
-              <span class="attention-count">
+              <span
+                class="attention-count"
+                [attr.data-color]="item.color">
+
                 {{ item.count }}
+
               </span>
 
-              <svg class="chevron"
-                   viewBox="0 0 24 24"
-                   fill="none"
-                   stroke="currentColor"
-                   stroke-width="1.8"
-                   stroke-linecap="round"
-                   stroke-linejoin="round">
+              <svg
+                class="chevron"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true">
+
                 <path d="m9 18 6-6-6-6"/>
+
               </svg>
 
             </a>
+
+          } @empty {
+
+            <div class="attention-empty">
+
+              <strong>You're all caught up!</strong>
+
+              <p>
+                No pending items require your attention.
+              </p>
+
+            </div>
+
           }
 
         </div>
-
-        <footer class="panel-footer">
-          Each item opens the corresponding management page.
-        </footer>
 
       </article>
 
@@ -150,12 +185,15 @@
       <article class="panel attendance-panel">
 
         <div class="panel-header">
+
           <h2>Today's attendance</h2>
+
           <p>
             {{ metrics.presentToday }} of
             {{ metrics.totalInterns }}
-            assigned interns have checked in.
+            assigned interns checked in.
           </p>
+
         </div>
 
         <div class="table-wrapper">
@@ -163,12 +201,14 @@
           <table class="attendance-table">
 
             <thead>
+
               <tr>
                 <th>Student</th>
                 <th>Time in</th>
                 <th>Time out</th>
                 <th class="status-column">Status</th>
               </tr>
+
             </thead>
 
             <tbody>
@@ -176,15 +216,21 @@
               @for (intern of attendanceList; track intern.id) {
 
                 <tr>
+
                   <td>
+
                     <div class="student-profile">
 
-                      <div class="avatar"
-                           [attr.data-color]="intern.avatarColor">
+                      <div
+                        class="avatar"
+                        [attr.data-color]="intern.avatarColor">
+
                         {{ intern.initials }}
+
                       </div>
 
                       <div class="student-information">
+
                         <span class="student-name">
                           {{ intern.name }}
                         </span>
@@ -192,35 +238,49 @@
                         <span class="student-id">
                           {{ intern.studentId }}
                         </span>
+
                       </div>
 
                     </div>
+
                   </td>
 
                   <td>{{ intern.timeIn }}</td>
+
                   <td>{{ intern.timeOut }}</td>
 
                   <td class="status-column">
-                    <span class="status-badge"
-                          [attr.data-status]="intern.statusClass">
-                      <span class="status-dot"></span>
+
+                    <span
+                      class="status-text"
+                      [attr.data-status]="intern.statusClass">
+
                       {{ intern.status }}
+
                     </span>
+
                   </td>
+
                 </tr>
 
               } @empty {
 
                 <tr>
+
                   <td colspan="4">
+
                     <div class="empty-state">
+
                       <strong>No attendance records yet</strong>
+
                       <p>
-                        Today's synchronized attendance
-                        records will appear here.
+                        Attendance records for today will appear here once synced.
                       </p>
+
                     </div>
+
                   </td>
+
                 </tr>
 
               }
@@ -232,11 +292,28 @@
         </div>
 
         <footer class="attendance-footer">
-          <a class="text-link"
-             routerLink="/supervisor/attendance">
+
+          <a
+            class="text-link"
+            routerLink="/supervisor/attendance">
+
             View all attendance
-            <span aria-hidden="true">›</span>
+
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true">
+
+              <path d="m9 18 6-6-6-6"/>
+
+            </svg>
+
           </a>
+
         </footer>
 
       </article>

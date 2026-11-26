@@ -1,131 +1,84 @@
+
 <div
   class="coordinator-layout"
   [class.sidebar-collapsed]="isSidebarCollapsed">
 
-  <!-- =====================================
-       SIDEBAR
-       ===================================== -->
+  <!-- Sidebar -->
 
   <aside class="sidebar">
 
-    <!-- Brand -->
+    <!-- Branding -->
 
     <div class="sidebar-brand">
 
-      <a
-        class="brand-link"
-        routerLink="/coordinator/dashboard"
-        aria-label="InternTrack Dashboard">
+      <button
+        type="button"
+        class="brand-toggle"
+        [attr.aria-label]="isSidebarCollapsed
+          ? 'Expand sidebar'
+          : 'Collapse sidebar'"
+        [attr.title]="isSidebarCollapsed
+          ? 'Expand sidebar'
+          : 'Collapse sidebar'"
+        [attr.aria-expanded]="!isSidebarCollapsed"
+        aria-controls="coordinator-navigation"
+        (click)="toggleSidebar()">
 
-        <div class="brand-logo">
-          <ion-icon name="school-outline"></ion-icon>
-        </div>
+        <img
+          src="assets/interntrack_logo.png"
+          class="brand-logo"
+          alt="InternTrack">
 
-        @if (!isSidebarCollapsed) {
+        <svg
+          class="brand-toggle-icon"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.7"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true">
 
-          <div class="brand-information">
-            <strong>InternTrack</strong>
-            <span>OJT COORDINATOR</span>
-          </div>
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <path d="M9 3v18"/>
 
-        }
+          @if (isSidebarCollapsed) {
+            <path d="m13 9 3 3-3 3"/>
+          } @else {
+            <path d="m16 9-3 3 3 3"/>
+          }
 
-      </a>
+        </svg>
+
+      </button>
 
       @if (!isSidebarCollapsed) {
 
-        <button
-          type="button"
-          class="collapse-button"
-          title="Collapse sidebar"
-          aria-label="Collapse sidebar"
-          [attr.aria-expanded]="!isSidebarCollapsed"
-          (click)="toggleSidebar()">
+        <a
+          class="brand-information"
+          routerLink="/coordinator/dashboard">
 
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.7"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true">
+          <strong>InternTrack</strong>
+          <span>OJT Coordinator</span>
 
-            <rect
-              x="3"
-              y="4"
-              width="18"
-              height="16"
-              rx="2">
-            </rect>
-
-            <path d="M9 4v16"></path>
-            <path d="m16 9-3 3 3 3"></path>
-
-          </svg>
-
-        </button>
+        </a>
 
       }
 
     </div>
 
-    <!-- Expand sidebar -->
-
-    @if (isSidebarCollapsed) {
-
-      <div class="expand-container">
-
-        <button
-          type="button"
-          class="collapse-button"
-          title="Expand sidebar"
-          aria-label="Expand sidebar"
-          [attr.aria-expanded]="!isSidebarCollapsed"
-          (click)="toggleSidebar()">
-
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.7"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true">
-
-            <rect
-              x="3"
-              y="4"
-              width="18"
-              height="16"
-              rx="2">
-            </rect>
-
-            <path d="M9 4v16"></path>
-            <path d="m13 9 3 3-3 3"></path>
-
-          </svg>
-
-        </button>
-
-      </div>
-
-    }
 
     <!-- Navigation -->
 
     <nav
+      id="coordinator-navigation"
       class="sidebar-navigation"
       aria-label="Coordinator navigation">
 
       <div class="navigation-group">
 
         @if (!isSidebarCollapsed) {
-
-          <p class="navigation-label">
-            WORKSPACE
-          </p>
-
+          <p class="navigation-label">WORKSPACE</p>
         }
 
         @for (item of workspaceNavigation; track item.route) {
@@ -137,14 +90,17 @@
             [routerLinkActiveOptions]="{ exact: false }"
             ariaCurrentWhenActive="page"
             [attr.aria-label]="item.label"
-            [attr.title]="isSidebarCollapsed ? item.label : null">
+            [attr.title]="isSidebarCollapsed
+              ? item.label
+              : null">
 
-            <ion-icon [name]="item.icon"></ion-icon>
+            <ion-icon
+              [name]="item.icon"
+              aria-hidden="true">
+            </ion-icon>
 
             @if (!isSidebarCollapsed) {
-
               <span>{{ item.label }}</span>
-
             }
 
           </a>
@@ -153,18 +109,16 @@
 
       </div>
 
+
       <div class="navigation-divider"></div>
+
 
       <!-- Account navigation -->
 
       <div class="navigation-group">
 
         @if (!isSidebarCollapsed) {
-
-          <p class="navigation-label">
-            ACCOUNT
-          </p>
-
+          <p class="navigation-label">ACCOUNT</p>
         }
 
         <a
@@ -173,14 +127,15 @@
           routerLinkActive="active"
           ariaCurrentWhenActive="page"
           aria-label="Settings"
-          title="Settings">
+          [attr.title]="isSidebarCollapsed ? 'Settings' : null">
 
-          <ion-icon name="settings-outline"></ion-icon>
+          <ion-icon
+            name="settings-outline"
+            aria-hidden="true">
+          </ion-icon>
 
           @if (!isSidebarCollapsed) {
-
             <span>Settings</span>
-
           }
 
         </a>
@@ -189,18 +144,18 @@
           type="button"
           class="navigation-item logout-button"
           aria-label="Log Out"
-          title="Log Out"
+          aria-haspopup="dialog"
+          [attr.title]="isSidebarCollapsed ? 'Log Out' : null"
           [disabled]="isLoggingOut"
-          (click)="logout()">
+          (click)="openLogoutModal()">
 
-          <ion-icon name="log-out-outline"></ion-icon>
+          <ion-icon
+            name="log-out-outline"
+            aria-hidden="true">
+          </ion-icon>
 
           @if (!isSidebarCollapsed) {
-
-            <span>
-              {{ isLoggingOut ? 'Logging out...' : 'Log Out' }}
-            </span>
-
+            <span>Log Out</span>
           }
 
         </button>
@@ -209,42 +164,14 @@
 
     </nav>
 
-    <!-- Sidebar profile -->
-
-    <div class="sidebar-footer">
-
-      <div
-        class="sidebar-profile"
-        [attr.title]="coordinatorName">
-
-        <div class="profile-avatar">
-          {{ coordinatorInitials }}
-        </div>
-
-        @if (!isSidebarCollapsed) {
-
-          <div class="profile-information">
-
-            <strong>{{ coordinatorName }}</strong>
-            <span>OJT Coordinator</span>
-
-          </div>
-
-        }
-
-      </div>
-
-    </div>
-
   </aside>
 
-  <!-- =====================================
-       MAIN WORKSPACE
-       ===================================== -->
+
+  <!-- Main workspace -->
 
   <div class="main-workspace">
 
-    <!-- Header -->
+    <!-- Top header -->
 
     <header class="workspace-header">
 
@@ -256,10 +183,19 @@
           InternTrack
         </span>
 
-        <ion-icon
-          name="chevron-forward-outline"
+        <svg
+          class="breadcrumb-divider"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.8"
+          stroke-linecap="round"
+          stroke-linejoin="round"
           aria-hidden="true">
-        </ion-icon>
+
+          <path d="m9 18 6-6-6-6"/>
+
+        </svg>
 
         <span class="breadcrumb-current">
           {{ currentPageTitle }}
@@ -267,41 +203,104 @@
 
       </div>
 
-      <div class="header-right">
 
-        <!-- Academic period -->
+      <!-- Header right -->
+
+      <div class="header-right">
 
         @if (academicYear && semester) {
 
-          <div class="academic-period">
+          <span class="academic-period">
+            AY {{ academicYear }} · {{ semester }}
+          </span>
 
-            <strong>{{ academicYear }}</strong>
-
-            <span class="period-divider"></span>
-
-            <span>{{ semester }}</span>
-
-          </div>
-
-          <div class="header-divider"></div>
+          <span class="header-divider"></span>
 
         }
 
-        <!-- Coordinator identity -->
 
-        <div class="header-profile">
+        <!-- Coordinator profile -->
 
-          <div class="profile-avatar">
-            {{ coordinatorInitials }}
-          </div>
+        <div
+          class="profile-dropdown"
+          #profileDropdown>
 
-          <div class="profile-information">
+          <button
+            #profileTrigger
+            type="button"
+            class="profile-trigger"
+            [class.menu-open]="isProfileMenuOpen"
+            [attr.aria-expanded]="isProfileMenuOpen"
+            [attr.aria-controls]="isProfileMenuOpen
+              ? 'coordinator-profile-menu'
+              : null"
+            aria-label="Account options"
+            [disabled]="isLoggingOut"
+            (click)="toggleProfileMenu()">
 
-            <strong>{{ coordinatorName }}</strong>
+            <div class="profile-avatar">
+              {{ coordinatorInitials }}
+            </div>
 
-            <span>OJT Coordinator</span>
+            <div class="profile-information">
 
-          </div>
+              <strong>{{ coordinatorName }}</strong>
+
+              <span>OJT Coordinator</span>
+
+            </div>
+
+            <ion-icon
+              class="profile-chevron"
+              name="chevron-down-outline"
+              [class.rotated]="isProfileMenuOpen"
+              aria-hidden="true">
+            </ion-icon>
+
+          </button>
+
+
+          <!-- Profile dropdown -->
+
+          @if (isProfileMenuOpen) {
+
+            <div
+              class="profile-menu"
+              id="coordinator-profile-menu">
+
+              <a
+                class="profile-menu-item"
+                routerLink="/coordinator/settings"
+                (click)="closeProfileMenu()">
+
+                <ion-icon
+                  name="settings-outline"
+                  aria-hidden="true">
+                </ion-icon>
+
+                <span>Account Settings</span>
+
+              </a>
+
+              <button
+                type="button"
+                class="profile-menu-item profile-menu-logout"
+                aria-haspopup="dialog"
+                [disabled]="isLoggingOut"
+                (click)="openProfileLogout()">
+
+                <ion-icon
+                  name="log-out-outline"
+                  aria-hidden="true">
+                </ion-icon>
+
+                <span>Log Out</span>
+
+              </button>
+
+            </div>
+
+          }
 
         </div>
 
@@ -309,17 +308,10 @@
 
     </header>
 
+
     <!-- Main page content -->
 
     <main class="workspace-content">
-
-      @if (logoutError) {
-
-        <div class="layout-error" role="alert">
-          {{ logoutError }}
-        </div>
-
-      }
 
       @if (profileError) {
 
@@ -346,3 +338,103 @@
   </div>
 
 </div>
+
+
+<!-- Logout confirmation -->
+
+<dialog
+  #logoutDialog
+  class="logout-dialog"
+  aria-labelledby="logout-title"
+  aria-describedby="logout-description"
+  (cancel)="onLogoutCancel($event)"
+  (click)="onLogoutBackdropClick($event)">
+
+  <div
+    class="logout-modal"
+    [attr.aria-busy]="isLoggingOut">
+
+    <div class="logout-modal-header">
+
+      <h2 id="logout-title">
+        Log out of InternTrack?
+      </h2>
+
+      <button
+        type="button"
+        class="logout-close-button"
+        aria-label="Close logout confirmation"
+        [disabled]="isLoggingOut"
+        (click)="closeLogoutModal()">
+
+        <ion-icon
+          name="close-outline"
+          aria-hidden="true">
+        </ion-icon>
+
+      </button>
+
+    </div>
+
+
+    <div class="logout-modal-body">
+
+      <p id="logout-description">
+
+        Are you sure you want to log out?
+        You will need to sign in again to access your workspace.
+
+      </p>
+
+      @if (logoutError) {
+
+        <div class="logout-modal-error" role="alert">
+          {{ logoutError }}
+        </div>
+
+      }
+
+    </div>
+
+
+    <div class="logout-modal-footer">
+
+      <button
+        type="button"
+        class="logout-cancel-button"
+        autofocus
+        [disabled]="isLoggingOut"
+        (click)="closeLogoutModal()">
+
+        Cancel
+
+      </button>
+
+      <button
+        type="button"
+        class="logout-confirm-button"
+        [disabled]="isLoggingOut"
+        (click)="logout()">
+
+        @if (isLoggingOut) {
+
+          <span
+            class="logout-spinner"
+            aria-hidden="true">
+          </span>
+
+          Logging out...
+
+        } @else {
+
+          Log out
+
+        }
+
+      </button>
+
+    </div>
+
+  </div>
+
+</dialog>

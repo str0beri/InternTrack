@@ -9,32 +9,10 @@
       <h1>Attendance</h1>
 
       <p>
-        Review synchronized attendance records from the student app.
-        Each record includes time-in and time-out capture with GPS
-        location; only verified records count toward official
-        rendered hours.
+        View and verify your interns' attendance records.
       </p>
 
     </div>
-
-    @if (!loading && !loadError) {
-
-      <div class="attendance-summary">
-
-        <span class="summary-pending">
-          <span class="summary-dot"></span>
-          {{ pendingCount }} pending
-        </span>
-
-        <span class="summary-separator">·</span>
-
-        <span class="summary-incomplete">
-          {{ incompleteCount }} incomplete
-        </span>
-
-      </div>
-
-    }
 
   </header>
 
@@ -173,19 +151,6 @@
 
         <div class="record-count">
 
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.6"
-            stroke-linecap="round"
-            aria-hidden="true">
-
-            <path d="M4 6h16M4 12h16M4 18h16"></path>
-            <path d="M8 3v6M16 9v6M10 15v6"></path>
-
-          </svg>
-
           {{ totalRecords }}
           {{ totalRecords === 1 ? 'record' : 'records' }}
 
@@ -196,7 +161,9 @@
       @if (invalidDateRange) {
 
         <div class="filter-error">
+
           The start date must not be later than the end date.
+
         </div>
 
       }
@@ -281,7 +248,9 @@
                 <!-- Time in -->
 
                 <td class="time-cell">
+
                   {{ record.timeIn }}
+
                 </td>
 
                 <!-- Time out -->
@@ -297,7 +266,9 @@
                 <!-- Duration -->
 
                 <td class="duration-cell">
+
                   {{ record.duration }}
+
                 </td>
 
                 <!-- Status -->
@@ -305,10 +276,8 @@
                 <td>
 
                   <span
-                    class="status-badge"
+                    class="status-text"
                     [ngClass]="record.status">
-
-                    <span class="status-dot"></span>
 
                     {{ record.statusLabel }}
 
@@ -439,7 +408,8 @@
               stroke="currentColor"
               stroke-width="1.8"
               stroke-linecap="round"
-              stroke-linejoin="round">
+              stroke-linejoin="round"
+              aria-hidden="true">
 
               <path d="m15 18-6-6 6-6"></path>
 
@@ -479,7 +449,8 @@
               stroke="currentColor"
               stroke-width="1.8"
               stroke-linecap="round"
-              stroke-linejoin="round">
+              stroke-linejoin="round"
+              aria-hidden="true">
 
               <path d="m9 18 6-6-6-6"></path>
 

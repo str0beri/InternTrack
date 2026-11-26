@@ -1,48 +1,34 @@
 <div class="intern-details-container">
-
   <!-- BACK NAVIGATION -->
   <a class="back-link" routerLink="/supervisor/interns">
-
     <svg viewBox="0 0 24 24" fill="none"
       stroke="currentColor" stroke-width="1.7"
       stroke-linecap="round" stroke-linejoin="round">
       <path d="m12 19-7-7 7-7M5 12h14"></path>
     </svg>
-
     My Interns
-
   </a>
-
   <!-- LOADING STATE -->
   @if (loading) {
-
     <div class="state-card">
       <div class="loading-spinner"></div>
       <p>Loading intern details...</p>
     </div>
-
   } @else if (loadError) {
-
     <div class="state-card">
       <h3>Unable to load intern details</h3>
       <p>{{ loadError }}</p>
-
       <button class="primary-button"
         type="button"
         (click)="loadData()">
         Try again
       </button>
     </div>
-
   } @else if (intern; as student) {
-
     <!-- PAGE HEADER -->
     <header class="page-header">
-
       <div class="heading-information">
-
         <h1>{{ student.name }}</h1>
-
         <p>
           {{ student.course }}
           <span class="separator">·</span>
@@ -50,210 +36,138 @@
           <span class="separator">·</span>
           {{ student.department }}
         </p>
-
       </div>
-
       <div class="header-actions">
-
         <span class="status-badge"
           [ngClass]="student.statusClass">
-
           <span class="status-dot"></span>
           {{ student.status }}
-
         </span>
-
         <button
           type="button"
           class="secondary-button"
-          disabled
-          title="Supervisor DTR export is not yet available">
-
+          (click)="downloadDTR()"
+          [disabled]="downloadingDTR"
+          title="Download semester Daily Time Record">
           <svg viewBox="0 0 24 24" fill="none"
             stroke="currentColor" stroke-width="1.7"
             stroke-linecap="round"
             stroke-linejoin="round">
-
             <path d="M12 3v12m-5-5 5 5 5-5"></path>
             <path d="M5 16v4h14v-4"></path>
-
           </svg>
-
-          Download DTR
-
+          {{ downloadingDTR ? 'Downloading...' : 'Download DTR' }}
         </button>
-
-        <button
-          type="button"
-          class="primary-button"
-          disabled
-          title="Evaluation module is not yet available">
-
-          Evaluate intern
-
-        </button>
-
       </div>
-
     </header>
-
-
     <!-- INTERNSHIP PROGRESS -->
     <section class="progress-card">
-
       <div class="progress-main">
-
         <div class="student-avatar">
           {{ student.initials }}
         </div>
-
         <div class="progress-information">
-
           <div class="progress-top">
-
             <span class="eyebrow">
               Internship progress
             </span>
-
             <span class="internship-period">
               {{ student.startDate }} – {{ student.endDate }}
             </span>
-
           </div>
-
           <div class="progress-summary">
-
             <div class="hours-summary">
-
               <strong>
                 {{ student.verifiedHours | number:'1.0-2' }}
               </strong>
-
               <span>
                 of {{ student.requiredHours }} verified hours
               </span>
-
             </div>
-
             <span class="percentage-badge">
               {{ student.progress | number:'1.0-0' }}%
             </span>
-
           </div>
-
           <div class="progress-track"
             role="progressbar"
             aria-label="Internship progress"
             aria-valuemin="0"
             aria-valuemax="100"
             [attr.aria-valuenow]="student.progress">
-
             <div class="progress-fill"
               [style.width.%]="student.progress">
             </div>
-
           </div>
-
         </div>
-
       </div>
-
       <div class="progress-statistics">
-
         <div class="statistic">
           <span class="field-label">Verified</span>
           <strong>
             {{ student.verifiedHours | number:'1.0-2' }} h
           </strong>
         </div>
-
         <div class="statistic">
           <span class="field-label">Provisional</span>
           <strong class="warning-text">
             {{ student.provisionalHours | number:'1.0-2' }} h
           </strong>
         </div>
-
         <div class="statistic">
           <span class="field-label">Remaining</span>
           <strong>
             {{ student.remainingHours | number:'1.0-2' }} h
           </strong>
         </div>
-
         <div class="statistic">
           <span class="field-label">Required</span>
           <strong>{{ student.requiredHours }} h</strong>
         </div>
-
       </div>
-
     </section>
-
-
     <!-- PAGE TABS -->
     <nav class="page-tabs" aria-label="Intern details sections">
-
       @for (tab of tabs; track tab.id) {
-
         <button
           type="button"
           class="tab-button"
           [class.active]="activeTab === tab.id"
           [attr.aria-current]="activeTab === tab.id ? 'true' : null"
           (click)="setTab(tab.id)">
-
           {{ tab.label }}
-
         </button>
-
       }
-
     </nav>
-
-
     <!-- OVERVIEW TAB -->
     @if (activeTab === 'overview') {
-
       <div class="overview-grid">
-
         <!-- LEFT COLUMN -->
         <div class="main-column">
-
           <!-- INTERNSHIP PLACEMENT -->
           <section class="information-card">
-
             <header class="card-header">
-
               <h2>Internship placement</h2>
-
               <p>Assigned internship information.</p>
-
             </header>
-
             <div class="information-grid">
-
               <div class="information-field">
                 <span class="field-label">Company</span>
                 <span class="field-value">
                   {{ student.companyName }}
                 </span>
               </div>
-
               <div class="information-field">
                 <span class="field-label">Department</span>
                 <span class="field-value">
                   {{ student.department }}
                 </span>
               </div>
-
               <div class="information-field">
                 <span class="field-label">Position</span>
                 <span class="field-value">
                   Not provided
                 </span>
               </div>
-
               <div class="information-field">
                 <span class="field-label">
                   Company supervisor
@@ -262,7 +176,6 @@
                   {{ student.supervisorName }}
                 </span>
               </div>
-
               <div class="information-field">
                 <span class="field-label">
                   Internship start
@@ -271,7 +184,6 @@
                   {{ student.startDate }}
                 </span>
               </div>
-
               <div class="information-field">
                 <span class="field-label">
                   Internship end
@@ -280,7 +192,6 @@
                   {{ student.endDate }}
                 </span>
               </div>
-
               <div class="information-field">
                 <span class="field-label">
                   Required hours
@@ -289,7 +200,6 @@
                   {{ student.requiredHours }} hours
                 </span>
               </div>
-
               <div class="information-field">
                 <span class="field-label">
                   Work arrangement
@@ -298,215 +208,133 @@
                   Not provided
                 </span>
               </div>
-
             </div>
-
           </section>
-
-
           <!-- ACADEMIC INFORMATION -->
           <section class="information-card">
-
             <header class="card-header">
               <h2>Academic information</h2>
             </header>
-
             <div class="information-grid">
-
               <div class="information-field">
                 <span class="field-label">School</span>
                 <span class="field-value">
                   {{ student.schoolName }}
                 </span>
               </div>
-
               <div class="information-field">
                 <span class="field-label">Course</span>
                 <span class="field-value">
                   {{ student.course }}
                 </span>
               </div>
-
               <div class="information-field">
                 <span class="field-label">Student ID</span>
                 <span class="field-value">
                   {{ student.id }}
                 </span>
               </div>
-
               <div class="information-field">
                 <span class="field-label">Student email</span>
                 <span class="field-value">
                   {{ student.email }}
                 </span>
               </div>
-
             </div>
-
           </section>
-
         </div>
-
-
         <!-- RIGHT COLUMN -->
         <div class="side-column">
-
           <!-- ATTENDANCE SUMMARY -->
           <section class="information-card">
-
             <header class="card-header">
               <h2>Attendance at a glance</h2>
             </header>
-
             <div class="summary-list">
-
               <div class="summary-row">
                 <span>Verified records</span>
                 <strong>{{ verifiedRecords }}</strong>
               </div>
-
               <div class="summary-row">
                 <span>Pending verification</span>
                 <strong class="warning-text">
                   {{ pendingRecords }}
                 </strong>
               </div>
-
               <div class="summary-row">
                 <span>Incomplete records</span>
                 <strong>{{ incompleteRecords }}</strong>
               </div>
-
               <div class="summary-row summary-divider">
                 <span>Provisional hours</span>
                 <strong>
                   {{ student.provisionalHours | number:'1.0-2' }} h
                 </strong>
               </div>
-
             </div>
-
           </section>
-
-
-          <!-- EVALUATION SUMMARY -->
-          <section class="information-card">
-
-            <header class="card-header">
-              <h2>Evaluation</h2>
-            </header>
-
-            <p class="muted-text">
-              Evaluation functionality is not yet available.
-            </p>
-
-            <button
-              type="button"
-              class="secondary-button full-width"
-              (click)="setTab('evaluations')">
-
-              View evaluation section
-
-            </button>
-
-          </section>
-
-
+    
           <!-- LATEST WEEKLY REPORT -->
           <section class="information-card">
-
             <header class="card-header">
               <h2>Latest weekly report</h2>
             </header>
-
             @if (latestReport; as report) {
-
               <div class="latest-report">
-
                 <div class="latest-report-heading">
-
                   <strong>Week {{ report.week }}</strong>
-
                   <span class="status-badge"
                     [ngClass]="reportStatusClass(report.status)">
-
                     {{ reportStatusLabel(report.status) }}
-
                   </span>
-
                 </div>
-
                 <p>
                   {{ formatDate(report.start_date) }}
                   –
                   {{ formatDate(report.end_date) }}
                 </p>
-
                 <button
                   type="button"
                   class="text-button"
                   (click)="openReport(report)">
-
                   Open report
-
                   <svg viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" stroke-width="1.7"
                     stroke-linecap="round"
                     stroke-linejoin="round">
                     <path d="m9 6 6 6-6 6"></path>
                   </svg>
-
                 </button>
-
               </div>
-
             } @else {
-
               <p class="muted-text">
                 No submitted weekly reports yet.
               </p>
-
             }
-
           </section>
-
         </div>
-
       </div>
-
     }
-
-
     <!-- ATTENDANCE HISTORY TAB -->
     @if (activeTab === 'attendance') {
-
       <section class="table-card">
-
         <div class="table-toolbar">
-
           <div>
             <h2>Attendance history</h2>
             <p>{{ filteredAttendance.length }} records</p>
           </div>
-
           <select
             aria-label="Filter attendance records"
             [(ngModel)]="attendanceFilter">
-
             <option value="all">All statuses</option>
             <option value="verified">Verified</option>
             <option value="provisional">Pending verification</option>
             <option value="incomplete">Incomplete</option>
             <option value="rejected">Rejected</option>
-
           </select>
-
         </div>
-
         <div class="table-wrapper">
-
           <table>
-
             <thead>
               <tr>
                 <th>Date</th>
@@ -517,25 +345,17 @@
                 <th>Status</th>
               </tr>
             </thead>
-
             <tbody>
-
               @for (record of filteredAttendance; track record.id) {
-
                 <tr>
-
                   <td>
                     {{ formatDate(record.attendance_date) }}
                   </td>
-
                   <td>
                     {{ formatDay(record.attendance_date) }}
                   </td>
-
                   <td>{{ formatTime(record.time_in) }}</td>
-
                   <td>{{ formatTime(record.time_out) }}</td>
-
                   <td>
                     @if (record.time_in && record.time_out) {
                       {{ calculateHours(record) | number:'1.0-2' }} h
@@ -543,24 +363,15 @@
                       —
                     }
                   </td>
-
                   <td>
-
                     <span class="status-badge"
                       [ngClass]="attendanceStatus(record)">
-
                       <span class="status-dot"></span>
-
                       {{ attendanceStatusLabel(record) }}
-
                     </span>
-
                   </td>
-
                 </tr>
-
               } @empty {
-
                 <tr>
                   <td colspan="6">
                     <div class="empty-state">
@@ -569,64 +380,40 @@
                     </div>
                   </td>
                 </tr>
-
               }
-
             </tbody>
-
           </table>
-
         </div>
-
         <div class="table-footer">
-
           <span>
             Only verified hours count toward internship progress.
           </span>
-
           <a routerLink="/supervisor/attendance"
             class="text-button">
-
             Go to attendance verification
-
           </a>
-
         </div>
-
       </section>
-
     }
-
-
     <!-- WEEKLY REPORTS TAB -->
     @if (activeTab === 'reports') {
-
       <section class="table-card">
-
         <div class="table-toolbar">
-
           <div>
             <h2>Weekly accomplishment reports</h2>
             <p>{{ filteredReports.length }} reports</p>
           </div>
-
           <select
             aria-label="Filter weekly reports"
             [(ngModel)]="reportFilter">
-
             <option value="all">All statuses</option>
             <option value="pending_review">Pending review</option>
             <option value="approved">Approved</option>
             <option value="returned">Returned</option>
-
           </select>
-
         </div>
-
         <div class="table-wrapper">
-
           <table>
-
             <thead>
               <tr>
                 <th>Week</th>
@@ -636,51 +423,34 @@
                 <th>Action</th>
               </tr>
             </thead>
-
             <tbody>
-
               @for (report of filteredReports; track report.id) {
-
                 <tr>
-
                   <td class="medium-text">
                     Week {{ report.week }}
                   </td>
-
                   <td>
                     {{ formatDate(report.start_date) }}
                     –
                     {{ formatDate(report.end_date) }}
                   </td>
-
                   <td>{{ formatDate(report.submitted_at) }}</td>
-
                   <td>
                     <span class="status-badge"
                       [ngClass]="reportStatusClass(report.status)">
-
                       {{ reportStatusLabel(report.status) }}
-
                     </span>
                   </td>
-
                   <td>
-
                     <button
                       type="button"
                       class="secondary-button small-button"
                       (click)="openReport(report)">
-
                       View report
-
                     </button>
-
                   </td>
-
                 </tr>
-
               } @empty {
-
                 <tr>
                   <td colspan="5">
                     <div class="empty-state">
@@ -689,121 +459,57 @@
                     </div>
                   </td>
                 </tr>
-
               }
-
             </tbody>
-
           </table>
-
         </div>
-
         <div class="table-footer">
-
           <span>
             Review and provide feedback in Weekly Reports.
           </span>
-
           <a routerLink="/supervisor/reports"
             class="text-button">
-
             Go to weekly reports
-
           </a>
-
         </div>
-
       </section>
-
-
       <!-- SELECTED REPORT -->
       @if (selectedReport; as report) {
-
         <section class="information-card report-details">
-
           <header class="report-details-header">
-
             <div>
               <h2>Week {{ report.week }} report</h2>
-
               <p>
                 {{ formatDate(report.start_date) }}
                 –
                 {{ formatDate(report.end_date) }}
               </p>
             </div>
-
             <button
               type="button"
               class="secondary-button"
               (click)="closeReport()">
-
               Close
-
             </button>
-
           </header>
-
           <div class="report-content">
-
             <h3>Accomplishments</h3>
-
             <p>
               {{ report.accomplishments || 'Not provided' }}
             </p>
-
             <h3>Reflection</h3>
-
             <p>
               {{ report.reflection || 'Not provided' }}
             </p>
-
             @if (report.feedback) {
-
               <div class="feedback-panel">
-
                 <h3>Supervisor feedback</h3>
-
                 <p>{{ report.feedback }}</p>
-
               </div>
-
             }
-
           </div>
-
         </section>
-
       }
-
     }
-
-
-    <!-- EVALUATIONS TAB -->
-    @if (activeTab === 'evaluations') {
-
-      <section class="information-card">
-
-        <header class="card-header">
-          <h2>Internship evaluation</h2>
-          <p>Performance assessment and evaluation records.</p>
-        </header>
-
-        <div class="empty-state">
-
-          <h3>Evaluation module not yet available</h3>
-
-          <p>
-            Evaluation records will appear here once
-            the evaluation module is implemented.
-          </p>
-
-        </div>
-
-      </section>
-
-    }
-
   }
-
 </div>

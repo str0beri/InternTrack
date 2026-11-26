@@ -1,9 +1,12 @@
+
 import {
   Component,
   inject,
   OnInit,
   HostListener,
-  ChangeDetectorRef
+  ChangeDetectorRef,
+  ElementRef,
+  ViewChild
 } from '@angular/core';
 
 import { IonIcon } from '@ionic/angular';
@@ -38,7 +41,6 @@ import { filter } from 'rxjs';
 import { AuthService } from '../services/auth.service';
 import { SupabaseService } from '../services/supabase.service';
 
-
 // ==========================================
 // NAVIGATION INTERFACE
 // ==========================================
@@ -48,7 +50,6 @@ interface SupervisorNavItem {
   route: string;
   icon: string;
 }
-
 
 // ==========================================
 // SUPERVISOR LAYOUT COMPONENT
@@ -91,6 +92,12 @@ export class SupervisorLayoutComponent implements OnInit {
   private readonly supabase =
     this.supabaseService.getClient();
 
+  // ==========================================
+  // LOGOUT DIALOG
+  // ==========================================
+
+  @ViewChild('logoutDialog')
+  private logoutDialog?: ElementRef<HTMLDialogElement>;
 
   // ==========================================
   // LAYOUT STATE
@@ -104,13 +111,11 @@ export class SupervisorLayoutComponent implements OnInit {
 
   logoutError = '';
 
-
   // ==========================================
   // CURRENT PAGE
   // ==========================================
 
   currentPageTitle = 'Dashboard';
-
 
   // ==========================================
   // SUPERVISOR INFORMATION
@@ -120,18 +125,13 @@ export class SupervisorLayoutComponent implements OnInit {
 
   supervisorInitials = '...';
 
-
   // ==========================================
   // ACADEMIC INFORMATION
   // ==========================================
 
-  // These will be connected to the actual
-  // academic period data source once confirmed.
-
   academicYear = '';
 
   semester = '';
-
 
   // ==========================================
   // SIDEBAR PREFERENCE
@@ -139,7 +139,6 @@ export class SupervisorLayoutComponent implements OnInit {
 
   private readonly sidebarStorageKey =
     'interntrack.supervisor.sidebarCollapsed';
-
 
   // ==========================================
   // WORKSPACE NAVIGATION
@@ -171,19 +170,13 @@ export class SupervisorLayoutComponent implements OnInit {
       icon: 'document-text-outline'
     }
 
-    // Evaluations will be added here after
-    // confirming its existing route.
-
   ];
-
 
   // ==========================================
   // CONSTRUCTOR
   // ==========================================
 
   constructor() {
-
-    // Register navigation icons.
 
     addIcons({
       gridOutline,
@@ -196,24 +189,15 @@ export class SupervisorLayoutComponent implements OnInit {
       chevronDownOutline
     });
 
-
-    // Set the initial breadcrumb.
-
     this.updatePageTitle(this.router.url);
-
-
-    // Listen for navigation changes.
 
     this.router.events
       .pipe(
-
         filter(
           (event): event is NavigationEnd =>
             event instanceof NavigationEnd
         ),
-
         takeUntilDestroyed()
-
       )
       .subscribe(event => {
 
@@ -229,7 +213,6 @@ export class SupervisorLayoutComponent implements OnInit {
 
   }
 
-
   // ==========================================
   // INITIALIZATION
   // ==========================================
@@ -242,16 +225,13 @@ export class SupervisorLayoutComponent implements OnInit {
 
   }
 
-
   // ==========================================
-  // LOAD ACTUAL SUPERVISOR INFORMATION
+  // LOAD SUPERVISOR INFORMATION
   // ==========================================
 
   async loadSupervisorInfo(): Promise<void> {
 
     try {
-
-      // Get the currently authenticated user.
 
       const userId =
         this.authService.getCurrentUser()?.id;
@@ -266,26 +246,14 @@ export class SupervisorLayoutComponent implements OnInit {
 
       }
 
-
-      // Retrieve the actual supervisor account
-      // using the existing Supabase table.
-
       const {
         data: supervisor,
         error
       } = await this.supabase
-
         .from('company_supervisors')
-
         .select('full_name')
-
         .eq('user_id', userId)
-
         .single();
-
-
-      // Ignore results if the authenticated
-      // account changed during the request.
 
       if (
         this.authService.getCurrentUser()?.id !== userId
@@ -293,15 +261,9 @@ export class SupervisorLayoutComponent implements OnInit {
         return;
       }
 
-
-      // Handle Supabase errors.
-
       if (error) {
         throw error;
       }
-
-
-      // Display the supervisor's actual name.
 
       if (supervisor) {
 
@@ -338,7 +300,6 @@ export class SupervisorLayoutComponent implements OnInit {
 
   }
 
-
   // ==========================================
   // GENERATE SUPERVISOR INITIALS
   // ==========================================
@@ -350,17 +311,33 @@ export class SupervisorLayoutComponent implements OnInit {
       .split(/\s+/)
       .filter(Boolean);
 
+    const titles = new Set([
+      'engr',
+      'engineer',
+      'dr',
+      'mr',
+      'mrs',
+      'ms',
+      'prof',
+      'atty'
+    ]);
 
-    // Empty name.
+    // Ignore professional titles.
+
+    while (
+      parts.length > 1 &&
+      titles.has(
+        parts[0].toLowerCase().replace(/\./g, '')
+      )
+    ) {
+      parts.shift();
+    }
 
     if (parts.length === 0) {
 
       return 'S';
 
     }
-
-
-    // Single name.
 
     if (parts.length === 1) {
 
@@ -370,19 +347,12 @@ export class SupervisorLayoutComponent implements OnInit {
 
     }
 
-
-    // First name and last name initials.
-
     return (
-
       parts[0][0] +
-
       parts[parts.length - 1][0]
-
     ).toUpperCase();
 
   }
-
 
   // ==========================================
   // UPDATE BREADCRUMB PAGE TITLE
@@ -391,13 +361,8 @@ export class SupervisorLayoutComponent implements OnInit {
   private updatePageTitle(url: string): void {
 
     const path = url
-
       .split(/[?#]/)[0]
-
       .replace(/\/+$/, '');
-
-
-    // Find the current workspace page.
 
     const activePage =
       this.workspaceNavigation.find(item =>
@@ -408,9 +373,6 @@ export class SupervisorLayoutComponent implements OnInit {
 
       );
 
-
-    // Workspace page title.
-
     if (activePage) {
 
       this.currentPageTitle = activePage.label;
@@ -419,15 +381,9 @@ export class SupervisorLayoutComponent implements OnInit {
 
     }
 
-
-    // Existing profile route displayed as Settings.
-
     if (
-
       path === '/supervisor/profile' ||
-
       path.startsWith('/supervisor/profile/')
-
     ) {
 
       this.currentPageTitle = 'Settings';
@@ -436,15 +392,9 @@ export class SupervisorLayoutComponent implements OnInit {
 
     }
 
-
-    // Evaluations page title.
-
     if (
-
       path === '/supervisor/evaluations' ||
-
       path.startsWith('/supervisor/evaluations/')
-
     ) {
 
       this.currentPageTitle = 'Evaluations';
@@ -452,9 +402,6 @@ export class SupervisorLayoutComponent implements OnInit {
       return;
 
     }
-
-
-    // Default supervisor route.
 
     if (path === '/supervisor') {
 
@@ -464,13 +411,9 @@ export class SupervisorLayoutComponent implements OnInit {
 
     }
 
-
-    // Fallback page title.
-
     this.currentPageTitle = 'Supervisor Workspace';
 
   }
-
 
   // ==========================================
   // TOGGLE SIDEBAR
@@ -481,33 +424,23 @@ export class SupervisorLayoutComponent implements OnInit {
     this.isSidebarCollapsed =
       !this.isSidebarCollapsed;
 
-
-    // Save the sidebar preference.
-
     try {
 
       localStorage.setItem(
-
         this.sidebarStorageKey,
-
         String(this.isSidebarCollapsed)
-
       );
 
     } catch (error) {
 
       console.warn(
-
         'Unable to save sidebar preference:',
-
         error
-
       );
 
     }
 
   }
-
 
   // ==========================================
   // RESTORE SIDEBAR STATE
@@ -518,13 +451,8 @@ export class SupervisorLayoutComponent implements OnInit {
     try {
 
       const savedState = localStorage.getItem(
-
         this.sidebarStorageKey
-
       );
-
-
-      // Restore the last selected sidebar state.
 
       if (savedState !== null) {
 
@@ -534,9 +462,6 @@ export class SupervisorLayoutComponent implements OnInit {
         return;
 
       }
-
-
-      // Initially collapse on smaller screens.
 
       this.isSidebarCollapsed =
         window.innerWidth <= 700;
@@ -549,7 +474,6 @@ export class SupervisorLayoutComponent implements OnInit {
 
   }
 
-
   // ==========================================
   // TOGGLE PROFILE DROPDOWN
   // ==========================================
@@ -558,11 +482,14 @@ export class SupervisorLayoutComponent implements OnInit {
 
     event.stopPropagation();
 
+    if (this.isLoggingOut) {
+      return;
+    }
+
     this.isProfileMenuOpen =
       !this.isProfileMenuOpen;
 
   }
-
 
   // ==========================================
   // CLOSE PROFILE DROPDOWN
@@ -573,7 +500,6 @@ export class SupervisorLayoutComponent implements OnInit {
     this.isProfileMenuOpen = false;
 
   }
-
 
   // ==========================================
   // OUTSIDE CLICK
@@ -590,7 +516,6 @@ export class SupervisorLayoutComponent implements OnInit {
 
   }
 
-
   // ==========================================
   // ESCAPE KEY
   // ==========================================
@@ -606,31 +531,106 @@ export class SupervisorLayoutComponent implements OnInit {
 
   }
 
-
   // ==========================================
-  // LOGOUT
+  // OPEN LOGOUT CONFIRMATION
   // ==========================================
 
-  async logout(): Promise<void> {
-
-    // Prevent repeated logout requests.
+  openLogoutDialog(): void {
 
     if (this.isLoggingOut) {
       return;
     }
 
-    this.isLoggingOut = true;
-
     this.logoutError = '';
+
+    const dialog = this.logoutDialog?.nativeElement;
+
+    if (dialog && !dialog.open) {
+
+      dialog.showModal();
+
+    }
 
     this.closeProfileMenu();
 
+    this.cdr.markForCheck();
+
+  }
+
+  // ==========================================
+  // CLOSE LOGOUT CONFIRMATION
+  // ==========================================
+
+  closeLogoutDialog(): void {
+
+    if (this.isLoggingOut) {
+      return;
+    }
+
+    this.logoutDialog?.nativeElement.close();
+
+    this.logoutError = '';
+
+    this.cdr.markForCheck();
+
+  }
+
+  // ==========================================
+  // HANDLE DIALOG CANCEL
+  // ==========================================
+
+  onLogoutDialogCancel(event: Event): void {
+
+    event.preventDefault();
+
+    if (!this.isLoggingOut) {
+
+      this.closeLogoutDialog();
+
+    }
+
+  }
+
+  // ==========================================
+  // CONFIRM LOGOUT
+  // ==========================================
+
+  async logout(): Promise<void> {
+
+    if (this.isLoggingOut) {
+      return;
+    }
+
+    // Logout requires an open confirmation dialog.
+
+    if (!this.logoutDialog?.nativeElement.open) {
+      return;
+    }
+
+    this.logoutError = '';
+
+    if (!this.authService.isOnline()) {
+
+      this.logoutError =
+        'Connect to the internet before logging out.';
+
+      this.cdr.markForCheck();
+
+      return;
+
+    }
+
+    this.isLoggingOut = true;
+
+    this.closeProfileMenu();
+
+    this.cdr.markForCheck();
+
     try {
 
-      // Retain the existing authentication
-      // service and logout implementation.
-
       await this.authService.signOut();
+
+      this.logoutDialog?.nativeElement.close();
 
     } catch (error) {
 
