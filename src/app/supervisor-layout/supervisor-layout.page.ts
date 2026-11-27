@@ -392,17 +392,6 @@ export class SupervisorLayoutComponent implements OnInit {
 
     }
 
-    if (
-      path === '/supervisor/evaluations' ||
-      path.startsWith('/supervisor/evaluations/')
-    ) {
-
-      this.currentPageTitle = 'Evaluations';
-
-      return;
-
-    }
-
     if (path === '/supervisor') {
 
       this.currentPageTitle = 'Dashboard';
