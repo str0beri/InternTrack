@@ -31,9 +31,10 @@ import {
 
 import { SupabaseService } from '../../../services/supabase.service';
 
+import { createReportTemplate } from '../../../utils/report-template';
+
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
-import type { TDocumentDefinitions } from 'pdfmake/interfaces';
 
 (pdfMake as any).vfs =
   (pdfFonts as any).pdfMake?.vfs ??
@@ -150,7 +151,7 @@ export class ReportsRecordsPage implements OnInit {
   readonly reportLibrary: ReportDefinition[] = [
     {
       id: 'master-list',
-      title: 'Student internship master list',
+      title: 'Student Internship Master List',
       description:
         'Registration, academic, and placement details for every intern.',
       icon: 'list-outline',
@@ -165,7 +166,7 @@ export class ReportsRecordsPage implements OnInit {
     },
     {
       id: 'assignments',
-      title: 'Internship assignment records',
+      title: 'Internship Assignment Records',
       description:
         'Active and historical placements, including reassignments.',
       icon: 'business-outline',
@@ -195,7 +196,7 @@ export class ReportsRecordsPage implements OnInit {
     },
     {
       id: 'hours-summary',
-      title: 'Internship hours summary',
+      title: 'Internship Hours Summary',
       description:
         'Required, verified, provisional, and remaining hours per intern.',
       icon: 'time-outline',
@@ -210,7 +211,7 @@ export class ReportsRecordsPage implements OnInit {
     },
     {
       id: 'weekly-compliance',
-      title: 'Weekly report compliance',
+      title: 'Weekly Report Compliance',
       description:
         'Approved and submitted weekly reports for each student.',
       icon: 'document-text-outline',
@@ -225,7 +226,7 @@ export class ReportsRecordsPage implements OnInit {
     },
     {
       id: 'completion',
-      title: 'Internship completion records',
+      title: 'Internship Completion Records',
       description:
         'Interns who have reached their required verified hours.',
       icon: 'checkmark-circle-outline',
@@ -1235,7 +1236,7 @@ export class ReportsRecordsPage implements OnInit {
   // =========================================
   // PDF EXPORT
   // =========================================
-
+  
   printReport(): void {
 
     if (!this.canExport) {
@@ -1247,10 +1248,12 @@ export class ReportsRecordsPage implements OnInit {
 
     try {
 
-      const headers = this.activeReport.columns;
+      const report = this.activeReport;
+
       const rows = this.filteredRows;
 
       const filterDescription = [
+
         this.selectedCompany === 'all'
           ? 'All companies'
           : this.selectedCompany,
@@ -1266,7 +1269,8 @@ export class ReportsRecordsPage implements OnInit {
           ? 'All statuses'
           : this.selectedStatus,
 
-        this.startDate || this.endDate
+        this.showDateFilter &&
+        (this.startDate || this.endDate)
           ? `Date range: ${this.startDate || 'Any'} to ${
               this.endDate || 'Any'
             }`
@@ -1274,140 +1278,40 @@ export class ReportsRecordsPage implements OnInit {
 
       ].filter(Boolean).join(' | ');
 
-      const documentDefinition: TDocumentDefinitions = {
+      const documentDefinition = createReportTemplate({
 
-        pageSize: 'A4',
-        pageOrientation: 'landscape',
+        schoolName: this.schoolName,
 
-        pageMargins: [35, 40, 35, 45],
+        title: report.title,
 
-        defaultStyle: {
-          fontSize: 9,
-          color: '#172033'
-        },
+        description: report.description,
 
-        content: [
+        columns: report.columns,
 
-          {
-            text: this.schoolName,
-            alignment: 'center',
-            bold: true,
-            fontSize: 15,
-            margin: [0, 0, 0, 5]
-          },
+        rows: rows.map(row => row.cells),
 
-          {
-            text: 'InternTrack | OJT Coordinator',
-            alignment: 'center',
-            fontSize: 10,
-            color: '#64748b',
-            margin: [0, 0, 0, 18]
-          },
+        filters: filterDescription,
 
-          {
-            text: this.activeReport.title,
-            bold: true,
-            fontSize: 14,
-            margin: [0, 0, 0, 5]
-          },
+        generatedDate: this.formatDate(
+          new Date().toISOString()
+        ),
 
-          {
-            text: this.activeReport.description,
-            color: '#64748b',
-            margin: [0, 0, 0, 8]
-          },
+        note: this.reportNote,
 
-          {
-            text: filterDescription,
-            fontSize: 9,
-            margin: [0, 0, 0, 5]
-          },
+        reportType: this.selectedReport
 
-          {
-            text:
-              `Total records: ${rows.length} | Generated: ${
-                this.formatDate(new Date().toISOString())
-              }`,
-            color: '#64748b',
-            margin: [0, 0, 0, 12]
-          },
+      });
 
-          {
-            table: {
-
-              headerRows: 1,
-
-              widths: headers.map(() => '*'),
-
-              body: [
-
-                headers.map(header => ({
-                  text: header.toUpperCase(),
-                  bold: true,
-                  color: '#ffffff',
-                  fillColor: '#3157d5',
-                  fontSize: 8
-                })),
-
-                ...rows.map(row =>
-                  row.cells.map(cell => ({
-                    text: cell,
-                    margin: [0, 3, 0, 3] as [
-                      number,
-                      number,
-                      number,
-                      number
-                    ]
-                  }))
-                )
-
-              ]
-
-            },
-
-            layout: 'lightHorizontalLines'
-
-          },
-
-          {
-            text: this.reportNote,
-            fontSize: 8,
-            color: '#64748b',
-            margin: [0, 12, 0, 0]
-          }
-
-        ],
-
-        footer: (currentPage, pageCount) => ({
-
-          columns: [
-
-            {
-              text: 'InternTrack | Institutional internship records',
-              fontSize: 8,
-              color: '#64748b'
-            },
-
-            {
-              text: `Page ${currentPage} of ${pageCount}`,
-              alignment: 'right',
-              fontSize: 8,
-              color: '#64748b'
-            }
-
-          ],
-
-          margin: [35, 10, 35, 0]
-
-        })
-
-      };
-
-      pdfMake.createPdf(documentDefinition).open();
+      pdfMake
+        .createPdf(documentDefinition)
+        .open();
 
     } catch (error) {
 
-      console.error('PDF generation failed:', error);
+      console.error(
+        'PDF generation failed:',
+        error
+      );
 
       this.exportError =
         'Unable to generate the PDF report. Please try again.';
@@ -1415,11 +1319,13 @@ export class ReportsRecordsPage implements OnInit {
     } finally {
 
       this.isExporting = false;
+
       this.cdr.detectChanges();
 
     }
 
   }
+
 
   // =========================================
   // REPORT NOTES

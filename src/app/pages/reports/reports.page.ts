@@ -24,7 +24,8 @@ import {
   timeOutline,
   cloudOfflineOutline,
   refreshOutline,
-  documentTextOutline
+  documentTextOutline,
+  arrowBackOutline
 } from 'ionicons/icons';
 
 import type { Subscription } from 'rxjs';
@@ -235,6 +236,18 @@ export class ReportsPage
   selectedFilter: ReportFilter = 'all';
 
   // =========================================
+  // REPORT EDITOR STATE
+  // =========================================
+
+  activeReport: WeeklyReport | null = null;
+
+  editorAccomplishments = '';
+  editorReflection = '';
+
+  private editorUserId = '';
+  private editorStudentId = '';
+
+  // =========================================
   // REPORT DATA
   // =========================================
 
@@ -250,7 +263,6 @@ export class ReportsPage
   // =========================================
 
   constructor() {
-
     addIcons({
       addOutline,
       createOutline,
@@ -260,7 +272,8 @@ export class ReportsPage
       timeOutline,
       cloudOfflineOutline,
       refreshOutline,
-      documentTextOutline
+      documentTextOutline,
+      arrowBackOutline
     });
   }
 
@@ -417,6 +430,8 @@ export class ReportsPage
   // =========================================
 
   private resetState(): void {
+
+    this.resetReportEditor();
 
     this.loadVersion++;
 
@@ -1901,209 +1916,366 @@ export class ReportsPage
     if (
       !this.canEditReport(report) ||
       !this.isCurrentIdentity() ||
+      this.dialogOpen ||
+      this.isSaving ||
+      this.isSubmitting
+    ) {
+      return;
+    }
+
+    this.initializeReportEditor(report);
+  }
+
+  // =========================================
+  // INITIALIZE REPORT EDITOR
+  // =========================================
+
+  private initializeReportEditor(
+    report: WeeklyReport
+  ): void {
+
+    this.activeReport = { ...report };
+
+    this.editorAccomplishments =
+      report.accomplishments || '';
+
+    this.editorReflection =
+      report.reflection || '';
+
+    this.editorUserId = this.currentUserId;
+    this.editorStudentId = this.studentId;
+
+    this.refresh();
+    this.scrollReportsToTop();
+  }
+
+  // =========================================
+  // SCROLL TO TOP
+  // =========================================
+
+  private scrollReportsToTop(): void {
+
+    requestAnimationFrame(() => {
+
+      const content =
+        document.querySelector<HTMLIonContentElement>(
+          'app-reports ion-content'
+        );
+
+      if (content) {
+        void content.scrollToTop(0);
+      }
+
+    });
+  }
+
+  // =========================================
+  // EDITOR IDENTITY
+  // =========================================
+
+  private isCurrentEditorIdentity(): boolean {
+
+    return (
+      !!this.activeReport &&
+      this.isCurrentIdentity(
+        this.editorUserId,
+        this.editorStudentId
+      )
+    );
+  }
+
+  // =========================================
+  // READ-ONLY STATUS
+  // =========================================
+
+  get isReadOnlyReport(): boolean {
+
+    if (!this.activeReport) {
+      return true;
+    }
+
+    const latest =
+      this.allReports.find(
+        report => report.week === this.activeReport?.week
+      ) ?? this.activeReport;
+
+    return !this.canEditReport(latest);
+  }
+
+  // =========================================
+  // EDITOR FORM VALUES
+  // =========================================
+
+  updateEditorAccomplishments(
+    event: Event
+  ): void {
+
+    const target =
+      event.target as HTMLTextAreaElement;
+
+    this.editorAccomplishments =
+      target.value;
+  }
+
+  updateEditorReflection(
+    event: Event
+  ): void {
+
+    const target =
+      event.target as HTMLTextAreaElement;
+
+    this.editorReflection =
+      target.value;
+  }
+
+  // =========================================
+  // BUILD EDITOR REPORT
+  // =========================================
+
+  private buildEditorReport(): WeeklyReport | null {
+
+    if (
+      !this.activeReport ||
+      !this.isCurrentEditorIdentity()
+    ) {
+      return null;
+    }
+
+    return {
+      ...this.activeReport,
+
+      accomplishments:
+        this.editorAccomplishments.trim(),
+
+      reflection:
+        this.editorReflection.trim()
+    };
+  }
+
+  // =========================================
+  // EDITOR SUBMISSION AVAILABILITY
+  // =========================================
+
+  get canSubmitEditor(): boolean {
+
+    const report =
+      this.buildEditorReport();
+
+    if (
+      !report ||
+      this.isReadOnlyReport ||
+      this.dialogOpen
+    ) {
+      return false;
+    }
+
+    return this.canSubmitReport(report);
+  }
+
+  // =========================================
+  // UNSAVED EDITOR CHANGES
+  // =========================================
+
+  get hasUnsavedEditorChanges(): boolean {
+
+    if (!this.activeReport) {
+      return false;
+    }
+
+    return (
+      this.editorAccomplishments !==
+        (this.activeReport.accomplishments || '') ||
+
+      this.editorReflection !==
+        (this.activeReport.reflection || '')
+    );
+  }
+
+  // =========================================
+  // SAVE EDITOR DRAFT
+  // =========================================
+
+  async saveEditorDraft(): Promise<void> {
+
+    if (
+      this.isSaving ||
+      this.isSubmitting ||
+      this.dialogOpen ||
+      this.isReadOnlyReport
+    ) {
+      return;
+    }
+
+    const report =
+      this.buildEditorReport();
+
+    if (!report) {
+      return;
+    }
+
+    await this.saveDraft(report);
+
+    if (!this.isCurrentEditorIdentity()) {
+      return;
+    }
+
+    this.refreshEditorFromRecords(report);
+  }
+
+  // =========================================
+  // SUBMIT EDITOR REPORT
+  // =========================================
+
+  async submitEditorReport(): Promise<void> {
+
+    if (!this.canSubmitEditor) {
+      return;
+    }
+
+    const report =
+      this.buildEditorReport();
+
+    if (!report) {
+      return;
+    }
+
+    await this.confirmSubmission(report);
+
+    if (!this.isCurrentEditorIdentity()) {
+      return;
+    }
+
+    this.refreshEditorFromRecords(report);
+  }
+
+  // =========================================
+  // REFRESH EDITOR AFTER SAVE OR SUBMISSION
+  // =========================================
+
+  private refreshEditorFromRecords(
+    attemptedReport: WeeklyReport
+  ): void {
+
+    const latest =
+      this.allReports.find(
+        report => report.week === attemptedReport.week
+      );
+
+    if (!latest) {
+      return;
+    }
+
+    if (
+      latest.status === 'pending_review' ||
+      latest.status === 'approved'
+    ) {
+
+      this.initializeReportEditor(latest);
+      return;
+    }
+
+    const contentMatches =
+      (latest.accomplishments || '').trim() ===
+        (attemptedReport.accomplishments || '').trim() &&
+
+      (latest.reflection || '').trim() ===
+        (attemptedReport.reflection || '').trim();
+
+    if (contentMatches) {
+
+      this.activeReport = { ...latest };
+
+      this.editorAccomplishments =
+        latest.accomplishments || '';
+
+      this.editorReflection =
+        latest.reflection || '';
+
+    }
+
+    this.refresh();
+  }
+
+  // =========================================
+  // CLOSE REPORT EDITOR
+  // =========================================
+
+  async closeReportEditor(): Promise<void> {
+
+    if (
+      this.isSaving ||
+      this.isSubmitting ||
       this.dialogOpen
     ) {
       return;
     }
 
-    this.dialogOpen = true;
-
-    const userId = this.currentUserId;
-
-    const studentId = this.studentId;
-
-    let action:
-      'save' | 'submit' | null = null;
-
-    let formData: {
-      accomplishments: string;
-      reflection: string;
-    } | null = null;
-
-    try {
-
-      const feedback =
-        report.status === 'returned' &&
-        report.feedback
-
-          ? `Supervisor feedback: ${report.feedback}`
-
-          : 'Record your weekly tasks, accomplishments, and learning experiences.';
-
-      const alert =
-        await this.alertController.create({
-
-          header:
-            `Week ${report.week} Report`,
-
-          subHeader:
-            report.period,
-
-          message:
-            feedback,
-
-          backdropDismiss: false,
-
-          inputs: [
-
-            {
-
-              name: 'accomplishments',
-
-              type: 'textarea',
-
-              placeholder:
-                'Weekly accomplishments',
-
-              value:
-                report.accomplishments || ''
-            },
-
-            {
-
-              name: 'reflection',
-
-              type: 'textarea',
-
-              placeholder:
-                'Student reflection',
-
-              value:
-                report.reflection || ''
-            }
-          ],
-
-          buttons: [
-
-            {
-
-              text: 'Cancel',
-
-              role: 'cancel'
-            },
-
-            {
-
-              text: 'Save Draft',
-
-              handler: data => {
-
-                formData = {
-
-                  accomplishments:
-                    String(
-                      data.accomplishments || ''
-                    ).trim(),
-
-                  reflection:
-                    String(
-                      data.reflection || ''
-                    ).trim()
-                };
-
-                action = 'save';
-
-                return true;
-              }
-            },
-
-            ...(this.canUseServer()
-
-              ? [{
-
-                  text: 'Submit',
-
-                  handler: (data: any) => {
-
-                    formData = {
-
-                      accomplishments:
-                        String(
-                          data.accomplishments || ''
-                        ).trim(),
-
-                      reflection:
-                        String(
-                          data.reflection || ''
-                        ).trim()
-                    };
-
-                    action = 'submit';
-
-                    return true;
-                  }
-                }]
-
-              : [])
-          ]
-        });
-
-      await alert.present();
-
-      await alert.onDidDismiss();
-
-    } finally {
-
-      this.dialogOpen = false;
-    }
-
     if (
-      !action ||
-      !formData ||
-      !this.isCurrentIdentity(
-        userId,
-        studentId
-      )
+      this.hasUnsavedEditorChanges &&
+      !this.isReadOnlyReport
     ) {
-      return;
-    }
 
-    const values = formData as {
+      this.dialogOpen = true;
 
-      accomplishments: string;
-
-      reflection: string;
-    };
-
-    const updatedReport: WeeklyReport = {
-
-      ...report,
-
-      accomplishments:
-        values.accomplishments,
-
-      reflection:
-        values.reflection
-    };
-
-    if (action === 'save') {
-
-      await this.saveDraft(updatedReport);
-
-    } else {
-
-      // Save entered text locally before
-      // attempting submission.
       try {
 
-        this.storeLocalDraft(updatedReport);
+        const alert =
+          await this.alertController.create({
 
-      } catch (error) {
+            header: 'Unsaved Changes',
 
-        await this.showAlert(
+            message:
+              'You have unsaved changes. Leave without saving?',
 
-          'Unable to Save Draft',
+            backdropDismiss: false,
 
-          this.getErrorMessage(error)
-        );
+            buttons: [
+              {
+                text: 'Keep Editing',
+                role: 'cancel'
+              },
+              {
+                text: 'Discard Changes',
+                role: 'destructive'
+              }
+            ]
+          });
 
-        return;
+        await alert.present();
+
+        const result =
+          await alert.onDidDismiss();
+
+        if (result.role !== 'destructive') {
+          return;
+        }
+
+      } finally {
+
+        this.dialogOpen = false;
+
       }
 
-      await this.confirmSubmission(
-        updatedReport
-      );
     }
+
+    this.resetReportEditor();
+    this.refresh();
+    this.scrollReportsToTop();
+  }
+
+  // =========================================
+  // RESET REPORT EDITOR
+  // =========================================
+
+  private resetReportEditor(): void {
+
+    this.activeReport = null;
+
+    this.editorAccomplishments = '';
+    this.editorReflection = '';
+
+    this.editorUserId = '';
+    this.editorStudentId = '';
   }
 
   // =========================================
@@ -2976,101 +3148,23 @@ export class ReportsPage
     report: WeeklyReport
   ): Promise<void> {
 
-    if (this.dialogOpen) {
+    if (
+      this.dialogOpen ||
+      this.isSaving ||
+      this.isSubmitting ||
+      !this.isCurrentIdentity()
+    ) {
       return;
     }
 
-    this.dialogOpen = true;
-
-    try {
-
-      let message =
-
-        `Status: ${this.getStatusLabel(report.status)}` +
-
-        '\n\nAccomplishments:\n' +
-
-        (
-          report.accomplishments ||
-          'No accomplishments recorded.'
-        ) +
-
-        '\n\nStudent Reflection:\n' +
-
-        (
-          report.reflection ||
-          'No reflection recorded.'
-        );
-
-      if (report.feedback) {
-
-        message +=
-
-          '\n\nSupervisor Feedback:\n' +
-
-          report.feedback;
-      }
-
-      if (report.supervisorName) {
-
-        message +=
-
-          '\n\nSupervisor:\n' +
-
-          report.supervisorName;
-      }
-
-      if (report.submittedAt) {
-
-        message +=
-
-          '\n\nSubmitted:\n' +
-
-          this.formatTimestamp(
-            report.submittedAt
-          );
-      }
-
-      if (report.reviewedAt) {
-
-        message +=
-
-          '\n\nReviewed:\n' +
-
-          this.formatTimestamp(
-            report.reviewedAt
-          );
-      }
-
-      const alert =
-        await this.alertController.create({
-
-          header:
-            `Week ${report.week} Report`,
-
-          subHeader:
-            report.period,
-
-          message,
-
-          buttons: ['Close']
-        });
-
-      await alert.present();
-
-      await alert.onDidDismiss();
-
-    } finally {
-
-      this.dialogOpen = false;
-    }
+    this.initializeReportEditor(report);
   }
 
   // =========================================
   // TIMESTAMP FORMAT
   // =========================================
 
-  private formatTimestamp(
+  formatTimestamp(
     value: string
   ): string {
 

@@ -1,5 +1,6 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
+import { Capacitor } from '@capacitor/core';
 
 import { AuthService } from '../services/auth.service';
 
@@ -8,19 +9,19 @@ export const authGuard: CanActivateFn = async (route, state) => {
   const authService = inject(AuthService);
   const router = inject(Router);
 
-  // Wait for authentication initialization
+  const isNativeApp = Capacitor.isNativePlatform();
+
   await authService.waitForInitialization();
 
-  // Check authenticated session
   if (!authService.isAuthenticated()) {
     return router.createUrlTree(['/login']);
   }
 
-  // Retrieve identity from AuthService
   const userRole = authService.getUserRole();
   const url = state.url;
 
-  // Reject missing or invalid roles
+  // Validate account role.
+
   if (
     userRole !== 'student_intern' &&
     userRole !== 'company_supervisor' &&
@@ -29,38 +30,56 @@ export const authGuard: CanActivateFn = async (route, state) => {
     return router.createUrlTree(['/login']);
   }
 
-  // Restrict offline access to student interns
-  if (!authService.isOnline() || authService.isOfflineSession()) {
+  // Native application: Student interns only.
 
-    if (userRole !== 'student_intern') {
+  if (isNativeApp && userRole !== 'student_intern') {
+    return router.createUrlTree(['/login']);
+  }
+
+  // Web application: Staff accounts only.
+
+  if (!isNativeApp && userRole === 'student_intern') {
+    return router.createUrlTree(['/login']);
+  }
+
+  // Offline access: Native student application only.
+
+  if (
+    !authService.isOnline() ||
+    authService.isOfflineSession()
+  ) {
+
+    if (!isNativeApp || userRole !== 'student_intern') {
       return router.createUrlTree(['/login']);
     }
   }
 
-  // Student routes
+  // Student intern routes.
+
   if (url.startsWith('/tabs')) {
 
-    if (userRole !== 'student_intern') {
+    if (!isNativeApp || userRole !== 'student_intern') {
       return router.createUrlTree(['/login']);
     }
   }
 
-  // Supervisor routes
+  // Company supervisor routes.
+
   if (url.startsWith('/supervisor')) {
 
-    if (userRole !== 'company_supervisor') {
+    if (isNativeApp || userRole !== 'company_supervisor') {
       return router.createUrlTree(['/login']);
     }
   }
 
-  // Coordinator routes
+  // OJT coordinator routes.
+
   if (url.startsWith('/coordinator')) {
 
-    if (userRole !== 'ojt_coordinator') {
+    if (isNativeApp || userRole !== 'ojt_coordinator') {
       return router.createUrlTree(['/login']);
     }
   }
 
-  // Allow authorized access
   return true;
 };

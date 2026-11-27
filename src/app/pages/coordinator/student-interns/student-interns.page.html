@@ -1,427 +1,180 @@
-<div class="student-interns-page">
-
-  <!-- Page header -->
-  <header class="page-heading">
-    <div class="heading-content">
-
+<div class="students-page">
+  <!-- Page heading -->
+  <header class="page-header">
+    <div class="page-heading">
       <h1>Student Interns</h1>
-
-      <p *ngIf="!isLoading && !errorMessage">
-        {{ totalStudents }}
-        registered {{ totalStudents === 1 ? 'student intern' : 'student interns' }}
-        · {{ awaitingAssignments }} awaiting assignment.
-      </p>
-
-      <p *ngIf="isLoading">
-        Loading student interns...
-      </p>
-
-      <p *ngIf="!isLoading && errorMessage">
-        Manage student internship records.
-      </p>
-
+      <p>{{ totalStudents }} registered student interns <span class="separator">·</span> {{ awaitingAssignments }} awaiting assignment.</p>
     </div>
+    <button type="button" class="btn-primary" (click)="openAddStudentModal()" [disabled]="isLoading || isCreatingStudent">
+      <ion-icon name="add-outline"></ion-icon><span>Add Student Intern</span>
+    </button>
   </header>
 
-  <section class="table-card">
+  <div class="feedback-banner success-banner" *ngIf="successMessage" role="status">
+    <ion-icon name="checkmark-circle-outline"></ion-icon>
+    <span>{{ successMessage }}</span>
+    <button type="button" class="dismiss-button" aria-label="Dismiss message" (click)="dismissSuccessMessage()"><ion-icon name="close-outline"></ion-icon></button>
+  </div>
 
-    <!-- Filters -->
-    <div class="filter-toolbar">
-
-      <div class="filters">
-
-        <div class="search-field">
-
-          <ion-icon name="search-outline"></ion-icon>
-
-          <input
-            type="search"
-            placeholder="Search by student name or ID"
-            aria-label="Search student interns"
-            [(ngModel)]="searchTerm"
-            (ngModelChange)="onFilterChange()"
-          />
-
+  <section class="records-card">
+    <!-- All controls use the Company Supervisors toolbar layout -->
+    <div class="table-toolbar">
+      <div class="toolbar-filters">
+        <div class="search-container">
+          <ion-icon class="search-icon" name="search-outline"></ion-icon>
+          <input class="search-input" type="search" placeholder="Search by student name or ID" aria-label="Search student interns"
+            [(ngModel)]="searchTerm" (ngModelChange)="onFilterChange()" />
         </div>
-
-        <div class="select-field">
-
-          <select
-            aria-label="Filter by course"
-            [(ngModel)]="selectedCourse"
-            (ngModelChange)="onFilterChange()">
-
+        <div class="filter-container course-filter">
+          <select class="filter-select" aria-label="Filter by course" [(ngModel)]="selectedCourse" (ngModelChange)="onFilterChange()">
             <option value="all">All courses</option>
-
-            <option
-              *ngFor="let course of courses"
-              [value]="course">
-
-              {{ course }}
-
-            </option>
-
+            <option *ngFor="let course of courses" [value]="course">{{ course }}</option>
           </select>
-
-          <ion-icon name="chevron-down-outline"></ion-icon>
-
+          <ion-icon class="filter-icon" name="chevron-down-outline"></ion-icon>
         </div>
-
-        <div class="select-field">
-
-          <select
-            aria-label="Filter by company"
-            [(ngModel)]="selectedCompany"
-            (ngModelChange)="onFilterChange()">
-
+        <div class="filter-container company-filter">
+          <select class="filter-select" aria-label="Filter by company" [(ngModel)]="selectedCompany" (ngModelChange)="onFilterChange()">
             <option value="all">All companies</option>
-
-            <option
-              *ngFor="let company of companies"
-              [value]="company">
-
-              {{ company }}
-
-            </option>
-
-            <option value="Unassigned">
-              Unassigned
-            </option>
-
+            <option value="Unassigned">Unassigned</option>
+            <option *ngFor="let company of companies" [value]="company">{{ company }}</option>
           </select>
-
-          <ion-icon name="chevron-down-outline"></ion-icon>
-
+          <ion-icon class="filter-icon" name="chevron-down-outline"></ion-icon>
         </div>
-
-        <div class="select-field status-filter">
-
-          <select
-            aria-label="Filter by status"
-            [(ngModel)]="selectedStatus"
-            (ngModelChange)="onFilterChange()">
-
+        <div class="filter-container status-filter">
+          <select class="filter-select" aria-label="Filter by internship status" [(ngModel)]="selectedStatus" (ngModelChange)="onFilterChange()">
             <option value="all">All statuses</option>
             <option value="ongoing">Ongoing</option>
             <option value="unassigned">Unassigned</option>
+            <option value="not_started">Not started</option>
             <option value="needs_follow_up">Needs follow-up</option>
             <option value="hours_completed">Hours completed</option>
-            <option value="not_started">Not started</option>
             <option value="inactive">Inactive</option>
-
           </select>
-
-          <ion-icon name="chevron-down-outline"></ion-icon>
-
+          <ion-icon class="filter-icon" name="chevron-down-outline"></ion-icon>
         </div>
-
+        <button class="clear-filters-link" type="button" *ngIf="searchTerm || selectedCourse !== 'all' || selectedCompany !== 'all' || selectedStatus !== 'all'" (click)="resetFilters()">Clear filters</button>
       </div>
-
-      <span
-        class="record-count"
-        *ngIf="!isLoading && !errorMessage">
-
-        {{ filteredStudents.length }}
-        {{ filteredStudents.length === 1 ? 'record' : 'records' }}
-
-      </span>
-
+      <span class="toolbar-count">{{ filteredStudents.length }} {{ filteredStudents.length === 1 ? 'student' : 'students' }}</span>
     </div>
 
-    <!-- Loading state -->
-    <div
-      class="empty-state"
-      *ngIf="isLoading"
-      role="status">
-
-      <div class="loading-spinner"></div>
-
-      <p>Loading student interns...</p>
-
+    <!-- Loading / error / empty states -->
+    <div class="page-state" *ngIf="isLoading" role="status">
+      <div class="loading-spinner"></div><h3>Loading student interns</h3><p>Please wait while we retrieve student records.</p>
     </div>
-
-    <!-- Error state -->
-    <div
-      class="empty-state"
-      *ngIf="!isLoading && errorMessage"
-      role="alert">
-
-      <h3>Unable to load records</h3>
-
-      <p>{{ errorMessage }}</p>
-
-      <button
-        type="button"
-        class="secondary-button"
-        (click)="loadStudents()">
-
-        Try again
-
-      </button>
-
+    <div class="page-state" *ngIf="!isLoading && errorMessage" role="alert">
+      <div class="state-icon error-icon"><ion-icon name="alert-circle-outline"></ion-icon></div>
+      <h3>Unable to load records</h3><p>{{ errorMessage }}</p>
+      <button type="button" class="btn-secondary" (click)="loadStudents()">Try again</button>
     </div>
-
-    <!-- Student table -->
-    <div
-      class="table-wrapper"
-      tabindex="0"
-      role="region"
-      aria-label="Student intern records"
-      *ngIf="!isLoading && !errorMessage && filteredStudents.length">
-
-      <table class="students-table">
-
-        <thead>
-          <tr>
-            <th>Student</th>
-            <th>Student ID</th>
-            <th>Course &amp; Year Level</th>
-            <th>Assigned Company</th>
-            <th>Internship Progress</th>
-            <th>Status</th>
-            <th class="action-heading" aria-label="Actions"></th>
-          </tr>
-        </thead>
-
-        <tbody>
-
-          <tr
-            *ngFor="
-              let student of paginatedStudents;
-              trackBy: trackStudent
-            ">
-
-            <!-- Student -->
-            <td>
-
-              <div class="student-profile">
-
-                <div
-                  class="student-avatar"
-                  [ngClass]="student.avatarColor">
-
-                  {{ student.initials }}
-
-                </div>
-
-                <div class="student-information">
-
-                  <span class="student-name">
-                    {{ student.fullName }}
-                  </span>
-
-                  <span
-                    class="student-email"
-                    [title]="student.email">
-
-                    {{ student.email || 'No email provided' }}
-
-                  </span>
-
-                </div>
-
-              </div>
-
-            </td>
-
-            <!-- Student ID -->
-            <td class="student-id">
-              {{ student.studentId }}
-            </td>
-
-            <!-- Course and year level -->
-            <td>
-
-              <div class="course-information">
-
-                <span>{{ student.course }}</span>
-
-                <small>
-                  {{ student.yearLevel || 'Not specified' }}
-                </small>
-
-              </div>
-
-            </td>
-
-            <!-- Assigned company -->
-            <td>
-
-              <span [class.muted-text]="!student.hasAssignment">
-                {{ student.companyName }}
-              </span>
-
-            </td>
-
-            <!-- Internship progress -->
-            <td>
-
-              <div class="progress-container">
-
-                <div class="hours-value">
-
-                  <strong>
-                    {{ student.verifiedHours | number:'1.0-2' }}
-                  </strong>
-
-                  <span>
-                    / {{ student.requiredHours > 0
-                      ? student.requiredHours + ' h'
-                      : 'Not set' }}
-                  </span>
-
-                </div>
-
-                <div
-                  class="progress-track"
-                  role="progressbar"
-                  [attr.aria-label]="student.fullName + ' internship progress'"
-                  [attr.aria-valuenow]="student.progress"
-                  aria-valuemin="0"
-                  aria-valuemax="100">
-
-                  <div
-                    class="progress-fill"
-                    [class.warning]="student.status === 'needs_follow_up'"
-                    [class.completed]="student.status === 'hours_completed'"
-                    [style.width.%]="student.progress">
-                  </div>
-
-                </div>
-
-                <span class="progress-label">
-
-                  {{ student.requiredHours > 0
-                    ? student.progress + '% complete'
-                    : 'Required hours not set' }}
-
-                </span>
-
-              </div>
-
-            </td>
-
-            <!-- Status -->
-            <td>
-
-              <span
-                class="status-text"
-                [ngClass]="student.status">
-
-                {{ getStatusLabel(student.status) }}
-
-              </span>
-
-            </td>
-
-            <!-- Action -->
-            <td class="action-cell">
-
-              <button
-                type="button"
-                class="view-button"
-                [attr.aria-label]="'View ' + student.fullName"
-                (click)="viewStudent(student)">
-
-                View
-
-              </button>
-
-            </td>
-
-          </tr>
-
-        </tbody>
-
-      </table>
-
-    </div>
-
-    <!-- Empty state -->
-    <div
-      class="empty-state"
-      *ngIf="!isLoading && !errorMessage && !filteredStudents.length">
-
+    <div class="page-state" *ngIf="!isLoading && !errorMessage && filteredStudents.length === 0">
+      <div class="state-icon"><ion-icon name="people-outline"></ion-icon></div>
       <h3>No student interns found</h3>
-
-      <p *ngIf="students.length">
-        Try a different search or adjust your filters.
-      </p>
-
-      <p *ngIf="!students.length">
-        No student intern records are available.
-      </p>
-
-      <button
-        *ngIf="students.length"
-        type="button"
-        class="secondary-button"
-        (click)="resetFilters()">
-
-        Clear filters
-
-      </button>
-
+      <p *ngIf="totalStudents === 0">No student intern records are available. Register a student intern to get started.</p>
+      <p *ngIf="totalStudents > 0">No student interns match your current search or filters.</p>
+      <button type="button" class="btn-secondary" *ngIf="totalStudents > 0" (click)="resetFilters()">Clear filters</button>
     </div>
 
-    <!-- Pagination -->
-    <footer
-      class="table-footer"
-      *ngIf="!isLoading && !errorMessage">
+    <!-- Table: preserve every student information field -->
+    <div class="table-wrapper" *ngIf="!isLoading && !errorMessage && filteredStudents.length > 0">
+      <table class="students-table">
+        <thead><tr>
+          <th class="student-column" scope="col">Student intern</th>
+          <th class="id-column" scope="col">Student ID</th>
+          <th class="course-column" scope="col">Course &amp; Year</th>
+          <th class="company-column" scope="col">Company</th>
+          <th class="progress-column" scope="col">Internship progress</th>
+          <th class="status-column" scope="col">Status</th>
+          <th class="action-column" scope="col" aria-label="Actions"></th>
+        </tr></thead>
+        <tbody>
+          <tr *ngFor="let student of paginatedStudents; trackBy: trackStudent">
+            <td class="student-column">
+              <div class="student-cell">
+                <div class="student-avatar" [ngClass]="student.avatarColor">{{ student.initials }}</div>
+                <div class="student-information">
+                  <span class="student-name" [title]="student.fullName">{{ student.fullName }}</span>
+                  <span class="student-email" [title]="student.email">{{ student.email || 'No email provided' }}</span>
+                </div>
+              </div>
+            </td>
+            <td class="id-column"><span class="student-id">{{ student.studentId }}</span></td>
+            <td class="course-column">
+              <div class="academic-cell"><span class="course-name">{{ student.course }}</span><span class="secondary-text">{{ student.yearLevel || 'Not specified' }}</span></div>
+            </td>
+            <td class="company-column"><span class="company-name" [title]="student.companyName" [class.unassigned-company]="!student.hasAssignment">{{ student.companyName }}</span></td>
+            <td class="progress-column">
+              <div class="progress-cell">
+                <div class="progress-label">
+                  <span>{{ student.verifiedHours | number:'1.0-2' }} / {{ student.requiredHours | number:'1.0-2' }} hrs</span>
+                  <strong class="progress-percentage">{{ student.progress }}%</strong>
+                </div>
+                <div class="progress-track" role="progressbar" [attr.aria-label]="'Internship progress of ' + student.fullName" [attr.aria-valuenow]="student.progress" aria-valuemin="0" aria-valuemax="100">
+                  <div class="progress-fill" [class.completed]="student.progress >= 100" [style.width.%]="student.progress"></div>
+                </div>
+              </div>
+            </td>
+            <td class="status-column"><span class="status-text" [ngClass]="student.status">{{ getStatusLabel(student.status) }}</span></td>
+            <td class="action-column">
+              <button type="button" class="view-button" [attr.aria-label]="'View profile of ' + student.fullName" (click)="viewStudent(student)">
+                View
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"></path></svg>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
 
-      <p class="pagination-summary">
-
-        Showing
-        <strong>{{ showingFrom }}–{{ showingTo }}</strong>
-        of
-        <strong>{{ filteredStudents.length }}</strong>
-        {{ filteredStudents.length === 1 ? 'student intern' : 'student interns' }}
-
-      </p>
-
-      <nav
-        class="pagination"
-        aria-label="Student table pagination"
-        *ngIf="filteredStudents.length">
-
-        <button
-          type="button"
-          class="page-button"
-          aria-label="Previous page"
-          [disabled]="currentPage === 1"
-          (click)="goToPage(currentPage - 1)">
-
-          <ion-icon name="chevron-back-outline"></ion-icon>
-
-        </button>
-
-        <button
-          *ngFor="let page of pageNumbers"
-          type="button"
-          class="page-button"
-          [class.active]="currentPage === page"
-          [attr.aria-current]="currentPage === page ? 'page' : null"
-          (click)="goToPage(page)">
-
-          {{ page }}
-
-        </button>
-
-        <button
-          type="button"
-          class="page-button"
-          aria-label="Next page"
-          [disabled]="currentPage === totalPages"
-          (click)="goToPage(currentPage + 1)">
-
-          <ion-icon name="chevron-forward-outline"></ion-icon>
-
-        </button>
-
+    <footer class="table-footer" *ngIf="!isLoading && !errorMessage && filteredStudents.length > 0">
+      <div class="pagination-information">Showing <strong>{{ showingFrom }}–{{ showingTo }}</strong> of <strong>{{ filteredStudents.length }}</strong> student interns</div>
+      <nav class="pagination" aria-label="Student records pagination">
+        <button type="button" class="pagination-button navigation-button" aria-label="Previous page" [disabled]="currentPage === 1" (click)="goToPage(currentPage - 1)"><ion-icon name="chevron-back-outline"></ion-icon></button>
+        <button type="button" class="pagination-button page-button" *ngFor="let page of pageNumbers" [class.active]="currentPage === page" [attr.aria-current]="currentPage === page ? 'page' : null" (click)="goToPage(page)">{{ page }}</button>
+        <button type="button" class="pagination-button navigation-button" aria-label="Next page" [disabled]="currentPage === totalPages" (click)="goToPage(currentPage + 1)"><ion-icon name="chevron-forward-outline"></ion-icon></button>
       </nav>
-
     </footer>
-
   </section>
+</div>
 
+<!-- Student registration modal: all original form inputs and bindings retained -->
+<div class="modal-backdrop" *ngIf="showAddStudentModal" (click)="closeAddStudentModal()">
+  <section class="registration-modal" role="dialog" aria-modal="true" aria-labelledby="registration-title" (click)="$event.stopPropagation()" (keydown.escape)="closeAddStudentModal()">
+    <header class="modal-header">
+      <div><h2 id="registration-title">Add student intern</h2><p>Register a student intern and provide access to InternTrack.</p></div>
+      <button type="button" class="modal-close" aria-label="Close registration form" [disabled]="isCreatingStudent" (click)="closeAddStudentModal()"><ion-icon name="close-outline"></ion-icon></button>
+    </header>
+    <form class="registration-form" (ngSubmit)="createStudentIntern()" novalidate>
+      <div class="modal-body">
+        <div class="feedback-banner error-banner" *ngIf="registrationError" role="alert"><ion-icon name="alert-circle-outline"></ion-icon><span>{{ registrationError }}</span></div>
+        <fieldset [disabled]="isCreatingStudent">
+          <section class="form-section">
+            <div class="section-heading"><h3>Personal information</h3><p>Enter the student's name and email address.</p></div>
+            <div class="form-grid">
+              <div class="form-field full-width"><label for="studentFullName">Full name <span class="required">*</span></label><input id="studentFullName" name="studentFullName" type="text" placeholder="Enter full name" maxlength="150" autocomplete="off" required [(ngModel)]="registrationForm.fullName" (ngModelChange)="clearRegistrationError()" /></div>
+              <div class="form-field full-width"><label for="studentEmail">Email address <span class="required">*</span></label><input id="studentEmail" name="studentEmail" type="email" placeholder="Enter student email address" maxlength="254" autocomplete="off" required [(ngModel)]="registrationForm.email" (ngModelChange)="clearRegistrationError()" /></div>
+            </div>
+          </section>
+          <section class="form-section">
+            <div class="section-heading"><h3>Academic information</h3><p>Specify the student's academic details.</p></div>
+            <div class="form-grid">
+              <div class="form-field"><label for="studentId">Student ID <span class="required">*</span></label><input id="studentId" name="studentId" type="text" placeholder="24-XXXX" maxlength="30" autocomplete="off" required [(ngModel)]="registrationForm.studentId" (ngModelChange)="clearRegistrationError()" /></div>
+              <div class="form-field"><label for="studentYearLevel">Year level <span class="required">*</span></label><div class="form-select"><select id="studentYearLevel" name="studentYearLevel" required [(ngModel)]="registrationForm.yearLevel" (ngModelChange)="clearRegistrationError()"><option value="" disabled>Select year level</option><option *ngFor="let year of yearLevelOptions" [value]="year">{{ year }}</option></select><ion-icon name="chevron-down-outline"></ion-icon></div></div>
+              <div class="form-field full-width"><label for="studentSchool">School <span class="required">*</span></label><input id="studentSchool" name="studentSchool" type="text" placeholder="Enter school name" maxlength="200" required [(ngModel)]="registrationForm.schoolName" (ngModelChange)="clearRegistrationError()" /></div>
+              <div class="form-field full-width"><label for="studentCourse">Course <span class="required">*</span></label><div class="form-select"><select id="studentCourse" name="studentCourse" required [(ngModel)]="registrationForm.course" (ngModelChange)="clearRegistrationError()"><option value="" disabled>Select course</option><option *ngFor="let course of courseOptions" [value]="course">{{ course }}</option></select><ion-icon name="chevron-down-outline"></ion-icon></div></div>
+            </div>
+          </section>
+          <section class="form-section">
+            <div class="section-heading"><h3>Internship requirements</h3><p>Set the required hours for internship completion.</p></div>
+            <div class="form-grid"><div class="form-field full-width"><label for="requiredHours">Required internship hours <span class="required">*</span></label><div class="input-with-suffix"><input id="requiredHours" name="requiredHours" type="number" placeholder="486" min="1" max="10000" step="1" required [(ngModel)]="registrationForm.requiredHours" (ngModelChange)="clearRegistrationError()" /><span class="input-suffix">hours</span></div></div></div>
+          </section>
+          <section class="form-section last-section">
+            <div class="section-heading"><h3>Account credentials</h3><p>Set a temporary password for the student account.</p></div>
+            <div class="form-grid"><div class="form-field full-width"><label for="temporaryPassword">Temporary password <span class="required">*</span></label><div class="password-field"><input id="temporaryPassword" name="temporaryPassword" [type]="showTemporaryPassword ? 'text' : 'password'" placeholder="Enter temporary password" minlength="8" maxlength="72" autocomplete="new-password" aria-describedby="password-help" required [(ngModel)]="registrationForm.temporaryPassword" (ngModelChange)="clearRegistrationError()" /><button type="button" class="password-toggle" [attr.aria-label]="showTemporaryPassword ? 'Hide password' : 'Show password'" [attr.aria-pressed]="showTemporaryPassword" (click)="toggleTemporaryPassword()"><ion-icon [name]="showTemporaryPassword ? 'eye-off-outline' : 'eye-outline'"></ion-icon></button></div><span id="password-help" class="field-help">Use at least 8 characters, not exceeding 72 bytes.</span></div></div>
+          </section>
+          <div class="information-box"><ion-icon name="information-circle-outline"></ion-icon><div><strong>Account activation</strong><p>The student will use their Student ID and temporary password to access the mobile application after account activation. Internship placement can be configured separately.</p></div></div>
+        </fieldset>
+      </div>
+      <footer class="modal-footer"><button type="button" class="btn-secondary" [disabled]="isCreatingStudent" (click)="closeAddStudentModal()">Cancel</button><button type="submit" class="btn-primary create-button" [disabled]="isCreatingStudent || isLoading"><span class="button-spinner" *ngIf="isCreatingStudent"></span><span>{{ isCreatingStudent ? 'Creating account...' : 'Create student intern' }}</span></button></footer>
+    </form>
+  </section>
 </div>

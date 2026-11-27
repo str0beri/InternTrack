@@ -1,112 +1,250 @@
 <ion-content class="profile-content">
+
   <main class="profile-container">
 
-    <!-- page header -->
+    <!-- PAGE HEADER -->
     <header class="profile-header">
       <h1>Profile</h1>
     </header>
 
-    <!-- student profile -->
-    <section class="student-card">
+    <!-- PROFILE NOTICE -->
+    @if (profileMessage) {
 
-      <!-- student avatar -->
-      <div class="student-avatar">
-        <span>{{ student.initials }}</span>
-      </div>
+      <div class="profile-notice" role="status">
 
-      <!-- student name -->
-      <h2 class="student-name">{{ student.name }}</h2>
+        <p>{{ profileMessage }}</p>
 
-      <!-- student information -->
-      <div class="student-information">
-        <p class="student-details">
-          <span>{{ student.studentId }}</span>
-          <span class="separator">·</span>
-          <span>{{ student.program }}</span>
-        </p>
+        @if (isOnline && (profileLoadError || contactsLoadError)) {
 
-        <p class="student-university">
-          {{ student.university }}
-        </p>
-      </div>
+          <button
+            type="button"
+            class="retry-button"
+            (click)="retryProfile()"
+            [disabled]="isLoading">
 
-    </section>
+            Retry
 
-    <!-- ojt placement -->
-    <section
-      class="placement-section"
-      aria-labelledby="placement-title">
+          </button>
 
-      <h2 id="placement-title" class="section-title">
-        OJT Placement
-      </h2>
-
-      <!-- placement details -->
-      <div class="placement-card">
-
-        @for (detail of placementDetails; track detail.label) {
-          <div class="placement-row">
-            <span class="placement-label">{{ detail.label }}</span>
-            <span class="placement-value">{{ detail.value }}</span>
-          </div>
         }
 
       </div>
 
-    </section>
+    }
 
-    <!-- contacts -->
-    <section
-      class="contacts-section"
-      aria-labelledby="contacts-title">
+    <!-- LOADING STATE -->
+    @if (isLoading && !hasProfile) {
 
-      <h2 id="contacts-title" class="section-title">
-        Contacts
-      </h2>
+      <div class="profile-state" role="status">
 
-      <!-- contacts list -->
-      <div class="contacts-card">
-
-        @for (contact of contacts; track contact.id) {
-          <div class="contact-row">
-
-            <!-- contact avatar -->
-            <div class="contact-avatar">
-              {{ contact.initials }}
-            </div>
-
-            <!-- contact information -->
-            <div class="contact-information">
-              <h3 class="contact-name">{{ contact.name }}</h3>
-              <p class="contact-role">{{ contact.role }}</p>
-            </div>
-
-            <!-- email button -->
-            <button
-              type="button"
-              class="contact-email"
-              [attr.aria-label]="'Email ' + contact.name"
-              (click)="emailContact(contact)">
-              <ion-icon name="mail-outline"></ion-icon>
-            </button>
-
-          </div>
-        }
+        <p>Loading your profile...</p>
 
       </div>
 
-    </section>
+    }
 
-    <!-- logout button -->
+    @if (hasProfile) {
+
+      <!-- STUDENT PROFILE -->
+      <section class="student-card">
+
+        <!-- DECORATIVE BACKGROUND -->
+        <div class="student-card-decoration" aria-hidden="true">
+
+          <span class="shape shape-purple"></span>
+          <span class="shape shape-orange"></span>
+          <span class="shape shape-blue"></span>
+
+        </div>
+
+        <!-- STUDENT IDENTITY -->
+        <div class="student-identity">
+
+          <div class="student-avatar">
+
+            <span>{{ student.initials }}</span>
+
+          </div>
+
+          <div class="student-information">
+
+            <h2 class="student-name">
+              {{ student.name }}
+            </h2>
+
+            <p class="student-details">
+
+              <span>{{ student.studentId }}</span>
+
+              <span class="separator">·</span>
+
+              <span>{{ student.program }}</span>
+
+            </p>
+
+            @if (student.yearLevel) {
+
+              <p class="student-year">
+                {{ student.yearLevel }}
+              </p>
+
+            }
+
+          </div>
+
+        </div>
+
+        <!-- UNIVERSITY INFORMATION -->
+        <div class="student-school">
+
+          <span class="student-school-label">
+            University
+          </span>
+
+          <p class="student-university">
+            {{ student.university }}
+          </p>
+
+        </div>
+
+      </section>
+
+      <!-- INTERNSHIP DETAILS -->
+      <section
+        class="placement-section"
+        aria-labelledby="placement-title">
+
+        <h2
+          id="placement-title"
+          class="section-title">
+
+          Internship Details
+
+        </h2>
+
+        <div class="placement-card">
+
+          @for (detail of placementDetails; track detail.label) {
+
+            <div class="placement-row">
+
+              <span class="placement-label">
+                {{ detail.label }}
+              </span>
+
+              <span class="placement-value">
+                {{ detail.value }}
+              </span>
+
+            </div>
+
+          }
+
+        </div>
+
+      </section>
+
+      <!-- CONTACTS -->
+      <section
+        class="contacts-section"
+        aria-labelledby="contacts-title">
+
+        <h2
+          id="contacts-title"
+          class="section-title">
+
+          Contacts
+
+        </h2>
+
+        <div class="contacts-card">
+
+          @for (contact of contacts; track contact.id) {
+
+            <div class="contact-row">
+
+              <div class="contact-avatar">
+                {{ contact.initials }}
+              </div>
+
+              <div class="contact-information">
+
+                <h3 class="contact-name">
+                  {{ contact.name }}
+                </h3>
+
+                <p class="contact-role">
+                  {{ contact.role }}
+                </p>
+
+              </div>
+
+              <button
+                type="button"
+                class="contact-email"
+                [disabled]="!contact.email"
+                [attr.aria-label]="'Email ' + contact.name"
+                (click)="emailContact(contact)">
+
+                <ion-icon
+                  name="mail-outline"
+                  aria-hidden="true">
+                </ion-icon>
+
+              </button>
+
+            </div>
+
+          } @empty {
+
+            <div class="contacts-empty">
+
+              @if (isLoading) {
+
+                <p>Loading contacts...</p>
+
+              } @else if (contactsLoadError) {
+
+                <p>Unable to load your contacts.</p>
+
+              } @else {
+
+                <p>No contacts available.</p>
+
+              }
+
+            </div>
+
+          }
+
+        </div>
+
+      </section>
+
+    }
+
+    <!-- LOGOUT -->
     <section class="logout-section">
+
       <button
         type="button"
         class="logout-button"
+        [disabled]="isLoggingOut"
         (click)="logout()">
-        <ion-icon name="log-out-outline"></ion-icon>
-        <span>Logout</span>
+
+        <ion-icon
+          name="log-out-outline"
+          aria-hidden="true">
+        </ion-icon>
+
+        <span>
+          {{ isLoggingOut ? 'Logging out...' : 'Logout' }}
+        </span>
+
       </button>
+
     </section>
 
   </main>
+
 </ion-content>

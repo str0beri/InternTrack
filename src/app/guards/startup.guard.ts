@@ -5,6 +5,8 @@ import {
   Router
 } from '@angular/router';
 
+import { Capacitor } from '@capacitor/core';
+
 import { AuthService } from '../services/auth.service';
 
 export const startupGuard: CanActivateFn = async () => {
@@ -12,44 +14,77 @@ export const startupGuard: CanActivateFn = async () => {
   const authService = inject(AuthService);
   const router = inject(Router);
 
-  // Wait until authentication initialization is complete.
+  const isNativeApp = Capacitor.isNativePlatform();
+
   await authService.waitForInitialization();
 
-  // Restore an existing authenticated session.
+  // =========================================
+  // RESTORE AUTHENTICATED SESSION
+  // =========================================
+
   if (authService.isAuthenticated()) {
 
-    // Existing authenticated users have passed onboarding.
-    localStorage.setItem(
-      'interntrack.onboarded',
-      'true'
-    );
+    // Student mobile application.
 
-    if (authService.isStudent()) {
+    if (isNativeApp && authService.isStudent()) {
+
+      localStorage.setItem(
+        'interntrack.onboarded',
+        'true'
+      );
+
       return router.createUrlTree(['/tabs/home']);
     }
 
-    if (authService.isSupervisor()) {
-      return router.createUrlTree([
-        '/supervisor/dashboard'
-      ]);
+    // Staff web application.
+
+    if (!isNativeApp && authService.isOnline()) {
+
+      if (authService.isSupervisor()) {
+
+        return router.createUrlTree([
+          '/supervisor/dashboard'
+        ]);
+      }
+
+      if (authService.isCoordinator()) {
+
+        return router.createUrlTree([
+          '/coordinator/dashboard'
+        ]);
+      }
     }
 
-    if (authService.isCoordinator()) {
-      return router.createUrlTree([
-        '/coordinator/dashboard'
-      ]);
-    }
+    // Session does not match the current platform.
+
+    return router.createUrlTree(['/login']);
   }
 
-  // Check whether onboarding has already been completed.
+  // =========================================
+  // WEB APPLICATION
+  // =========================================
+
+  // Staff users do not need student onboarding.
+
+  if (!isNativeApp) {
+
+    return router.createUrlTree(['/login']);
+  }
+
+  // =========================================
+  // STUDENT MOBILE APPLICATION
+  // =========================================
+
   const hasCompletedOnboarding =
     localStorage.getItem('interntrack.onboarded') === 'true';
 
   if (hasCompletedOnboarding) {
+
     return router.createUrlTree(['/login']);
   }
 
-  // First-time users.
+  // First-time mobile users.
+
   return router.createUrlTree([
     '/onboarding/welcome'
   ]);

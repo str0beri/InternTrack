@@ -37,9 +37,9 @@ interface AttendanceLog {
   id: string;
   date: string;
   hours: string;
-  status: 'pending' | 'synced' | 'failed';
+  status: 'pending' | 'synced' | 'failed' | 'conflict';
   condition: 'completed' | 'incomplete' | 'timed_in';
-  verificationStatus: 'provisional' | 'verified';
+  verificationStatus: 'verified' | 'provisional' | 'rejected';
 }
 interface LocationData {
   latitude: number;
@@ -321,6 +321,16 @@ export class AttendancePage
   // ====================================================
   private refresh(): void {
     if (!this.destroyed) {
+      // The conflict banner takes precedence over stale save messages.
+      if (
+        this.hasTodayConflict &&
+        (
+          this.syncMessage.startsWith('Time-In saved successfully.') ||
+          this.syncMessage.startsWith('Time-Out saved successfully.')
+        )
+      ) {
+        this.syncMessage = '';
+      }
       this.cdr.detectChanges();
     }
   }
@@ -441,6 +451,11 @@ export class AttendancePage
     if (this.isLoading) {
       return 'Loading...';
     }
+    if (
+      this.todayAttendance?.verification_status === 'rejected'
+    ) {
+      return 'Rejected';
+    }
     if (this.todayAttendance?.time_out) {
       return 'Timed Out';
     }
@@ -460,6 +475,7 @@ export class AttendancePage
       this.attendanceReady &&
       !this.isLoading &&
       !this.isProcessing &&
+      !this.hasTodayConflict &&
       !this.todayAttendance &&
       this.currentAttendanceDate === getPhilippineDate()
     );
@@ -472,10 +488,11 @@ export class AttendancePage
       this.attendanceReady &&
       !this.isLoading &&
       !this.isProcessing &&
+      !this.hasTodayConflict &&
       !!this.todayAttendance?.time_in &&
       !this.todayAttendance?.time_out &&
       !!this.todayAttendance?.client_transaction_id &&
-      this.todayAttendance?.verification_status !== 'verified' &&
+      this.todayAttendance?.verification_status === 'provisional' &&
       this.todayAttendance?.attendance_date === getPhilippineDate()
     );
   }
@@ -486,6 +503,28 @@ export class AttendancePage
   get failedCount(): number {
     return this.offlineSyncService
       .getFailedRecords().length;
+  }
+  get permanentConflictCount(): number {
+    return this.offlineSyncService
+      .getFailedRecords()
+      .filter(record =>
+        record.permanent_conflict === true
+      ).length;
+  }
+  get retryableFailedCount(): number {
+    return this.offlineSyncService
+      .getFailedRecords()
+      .filter(record =>
+        record.permanent_conflict !== true
+      ).length;
+  }
+  get hasTodayConflict(): boolean {
+    return this.offlineSyncService
+      .getFailedRecords()
+      .some(record =>
+        record.permanent_conflict === true &&
+        record.attendance_date === getPhilippineDate()
+      );
   }
   get todaySyncStatus():
     'pending' | 'synced' | 'failed' | null {
@@ -579,14 +618,15 @@ export class AttendancePage
       const supportedTypes = [
         'image/jpeg',
         'image/png',
-        'image/webp',
-        'image/heic',
-        'image/heif'
+        'image/webp'
       ];
       if (!supportedTypes.includes(file.type)) {
         throw new Error(
           'This photo format is not supported.'
         );
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        throw new Error('Attendance photo must not exceed 10 MB.');
       }
       // GPS evidence must be successfully captured.
       const location =
@@ -659,10 +699,10 @@ export class AttendancePage
           );
         }
         if (
-          existing.verification_status === 'verified'
+          existing.verification_status !== 'provisional'
         ) {
           throw new Error(
-            'Verified attendance cannot be modified.'
+            'Reviewed attendance cannot be modified.'
           );
         }
         if (!existing.client_transaction_id) {
@@ -914,7 +954,9 @@ export class AttendancePage
           verification_status:
             row.verification_status === 'verified'
               ? 'verified'
-              : 'provisional'
+              : row.verification_status === 'rejected'
+                ? 'rejected'
+                : 'provisional'
         };
       });
       if (this.offlineSyncService.isSyncing || this.offlineSyncService.getAttendanceRevision() !== expectedRevision) {
@@ -923,7 +965,6 @@ export class AttendancePage
         return;
       }
       await this.offlineSyncService.reconcileAttendanceCache(studentId, serverRecords, expectedRevision);
-
       // Local pending records remain available.
       await this.loadLocalAttendance(version);
       if (
@@ -1019,11 +1060,23 @@ export class AttendancePage
       sorted.filter(record =>
         record.attendance_date < today &&
         !!record.time_in &&
-        !record.time_out
+        !record.time_out &&
+        record.verification_status === 'provisional'
       ).length;
+    const failedRecords =
+      this.offlineSyncService.getFailedRecords();
     const failedDates = new Set(
-      this.offlineSyncService
-        .getFailedRecords()
+      failedRecords
+        .filter(record =>
+          record.permanent_conflict !== true
+        )
+        .map(record => record.attendance_date)
+    );
+    const conflictDates = new Set(
+      failedRecords
+        .filter(record =>
+          record.permanent_conflict === true
+        )
         .map(record => record.attendance_date)
     );
     // Show only the latest five attendance records.
@@ -1043,6 +1096,10 @@ export class AttendancePage
         }
         let status: AttendanceLog['status'];
         if (
+          conflictDates.has(record.attendance_date)
+        ) {
+          status = 'conflict';
+        } else if (
           failedDates.has(record.attendance_date)
         ) {
           status = 'failed';
@@ -1096,10 +1153,14 @@ export class AttendancePage
         await this.offlineSyncService
           .syncPendingRecords();
       await this.loadAttendanceFromSupabase();
-      if (
-        result.synced > 0 &&
-        result.failed > 0
-      ) {
+        if (this.permanentConflictCount > 0) {
+          this.syncMessage =
+            `${this.permanentConflictCount} attendance conflict(s) detected. ` +
+            'Local evidence is preserved. Contact your supervisor for assistance.';
+        } else if (
+          result.synced > 0 &&
+          result.failed > 0
+        ) {
         this.syncMessage =
           `${result.synced} record(s) synced. ` +
           `${result.failed} upload(s) unsuccessful.`;
@@ -1133,6 +1194,16 @@ export class AttendancePage
     if (this.isSyncing) {
       return;
     }
+    if (this.retryableFailedCount === 0) {
+    if (this.permanentConflictCount > 0) {
+      this.syncMessage =
+        'Attendance conflicts cannot be retried. ' +
+        'Your local evidence is preserved. ' +
+        'Contact your supervisor for assistance.';
+      this.refresh();
+    }
+    return;
+  }
     if (!this.networkService.isOnline()) {
       this.syncMessage =
         'Connect to the internet before retrying.';
@@ -1148,7 +1219,11 @@ export class AttendancePage
     try {
       await this.offlineSyncService.retryFailed();
       await this.loadAttendanceFromSupabase();
-      if (
+      if (this.permanentConflictCount > 0) {
+        this.syncMessage =
+          `${this.permanentConflictCount} attendance conflict(s) remain. ` +
+          'Contact your supervisor for assistance.';
+      } else if (
         this.failedCount === 0 &&
         this.pendingCount === 0 &&
         !this.attendanceLoadError
@@ -1190,7 +1265,7 @@ export class AttendancePage
       this.refresh();
       return;
     }
-    if (this.failedCount > 0) {
+    if (this.retryableFailedCount > 0) {
       await this.retryFailedSync();
     } else if (this.pendingCount > 0) {
       await this.syncPendingRecords();
@@ -1202,7 +1277,9 @@ export class AttendancePage
         !this.authService.isOfflineSession()
       ) {
         this.syncMessage =
-          'Attendance is up to date.';
+        this.permanentConflictCount > 0
+          ? 'Attendance conflicts remain. Contact your supervisor for assistance.'
+          : 'Attendance is up to date.';
       }
       this.refresh();
     }

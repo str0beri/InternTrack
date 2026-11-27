@@ -1,15 +1,16 @@
+
 <ion-content class="attendance-content">
   <main class="attendance-container">
 
-    <!-- Page header -->
+    <!-- PAGE HEADER -->
     <header class="attendance-header">
       <h1>Attendance</h1>
+      <p>Record and monitor your daily attendance.</p>
     </header>
 
-    <!-- Offline notification -->
+    <!-- OFFLINE NOTIFICATION -->
     @if (!isOnline) {
       <section class="offline-banner">
-
         <div class="offline-icon">
           <ion-icon name="cloud-offline-outline"></ion-icon>
         </div>
@@ -18,14 +19,12 @@
           <h3>You're Offline</h3>
           <p>Attendance will sync when you're back online.</p>
         </div>
-
       </section>
     }
 
-    <!-- Pending synchronization -->
+    <!-- PENDING SYNCHRONIZATION -->
     @if (isOnline && pendingCount > 0) {
       <section class="pending-sync-banner">
-
         <p>
           {{ pendingCount }}
           {{ pendingCount === 1 ? 'record' : 'records' }}
@@ -41,17 +40,17 @@
           {{ isSyncing ? 'Syncing...' : 'Sync Now' }}
 
         </button>
-
       </section>
     }
 
-    <!-- Failed synchronization -->
-    @if (isOnline && failedCount > 0) {
+    <!-- FAILED SYNCHRONIZATION -->
+    @if (isOnline && retryableFailedCount > 0) {
+
       <section class="failed-sync-banner">
 
         <p>
-          {{ failedCount }}
-          {{ failedCount === 1 ? 'record' : 'records' }}
+          {{ retryableFailedCount }}
+          {{ retryableFailedCount === 1 ? 'record' : 'records' }}
           failed to sync
         </p>
 
@@ -66,9 +65,49 @@
         </button>
 
       </section>
+
     }
 
-    <!-- Attendance loading error -->
+    <!-- PERMANENT ATTENDANCE CONFLICT -->
+
+    @if (permanentConflictCount > 0) {
+
+      <section
+        class="attendance-conflict-banner"
+        role="status"
+        aria-live="polite">
+
+        <div class="conflict-icon">
+
+          <ion-icon
+            name="alert-circle-outline"
+            aria-hidden="true">
+          </ion-icon>
+
+        </div>
+
+        <div class="conflict-details">
+
+          <h3>Attendance Conflict</h3>
+
+          <p>
+            {{ permanentConflictCount }}
+            {{ permanentConflictCount === 1 ? 'record conflicts' : 'records conflict' }}
+            with existing server attendance.
+          </p>
+
+          <p class="conflict-instruction">
+            Your local evidence is preserved.
+            Contact your supervisor for assistance.
+          </p>
+
+        </div>
+
+      </section>
+
+    }
+
+    <!-- ATTENDANCE LOADING ERROR -->
     @if (attendanceLoadError) {
       <section class="attendance-error-banner">
 
@@ -83,22 +122,23 @@
             class="retry-button"
             [disabled]="isLoading || isProcessing"
             (click)="retrySync()">
+
             Retry
+
           </button>
         }
 
       </section>
     }
 
-    <!-- Attendance card -->
+    <!-- TODAY'S ATTENDANCE -->
     <section class="attendance-card">
 
-      <!-- Current date -->
       <p class="current-date">
         {{ currentDate }}
       </p>
 
-      <!-- Live clock -->
+      <!-- LIVE CLOCK -->
       <div class="clock-container">
 
         <h2 class="clock-time">
@@ -111,22 +151,38 @@
 
       </div>
 
-      <!-- Attendance status -->
+      <!-- ATTENDANCE STATUS -->
       <div class="attendance-status">
-
         <span
           class="status-badge"
-          [class.timed-in]="timeIn && !timeOut"
-          [class.timed-out]="!!timeOut"
+          [class.timed-in]="timeIn && !timeOut && attendanceStatus !== 'Rejected'"
+          [class.timed-out]="!!timeOut && attendanceStatus !== 'Rejected'"
+          [class.rejected]="attendanceStatus === 'Rejected'"
           role="status">
+
+          <span class="status-dot"></span>
 
           {{ attendanceStatus }}
 
         </span>
+      </div>
+
+      <!-- TODAY'S RECORDED ATTENDANCE -->
+      <div class="recorded-attendance">
+
+        <div class="recorded-time">
+          <span>Time In</span>
+          <strong>{{ timeIn || '--:--' }}</strong>
+        </div>
+
+        <div class="recorded-time">
+          <span>Time Out</span>
+          <strong>{{ timeOut || '--:--' }}</strong>
+        </div>
 
       </div>
 
-      <!-- Time-In photo input -->
+      <!-- TIME-IN PHOTO INPUT -->
       <input
         type="file"
         accept="image/*"
@@ -136,7 +192,7 @@
         (change)="handlePhotoCapture($event)"
       />
 
-      <!-- Time-Out photo input -->
+      <!-- TIME-OUT PHOTO INPUT -->
       <input
         type="file"
         accept="image/*"
@@ -146,30 +202,34 @@
         (change)="handleTimeOutPhotoCapture($event)"
       />
 
-      <!-- Attendance actions -->
+      <!-- ATTENDANCE ACTIONS -->
       <div class="attendance-actions">
 
-        <!-- Time In -->
         <button
           type="button"
           class="time-in-button"
           [disabled]="!canTimeIn"
           (click)="fileInput.click()">
 
-          <ion-icon name="camera-outline"></ion-icon>
+          <ion-icon
+            name="camera-outline"
+            aria-hidden="true">
+          </ion-icon>
 
           <span>Time In</span>
 
         </button>
 
-        <!-- Time Out -->
         <button
           type="button"
           class="time-out-button"
           [disabled]="!canTimeOut"
           (click)="timeOutFileInput.click()">
 
-          <ion-icon name="log-out-outline"></ion-icon>
+          <ion-icon
+            name="log-out-outline"
+            aria-hidden="true">
+          </ion-icon>
 
           <span>Time Out</span>
 
@@ -177,55 +237,84 @@
 
       </div>
 
-      <!-- Today's recorded attendance -->
-      @if (timeIn || timeOut) {
-        <div class="recorded-attendance">
+      <!-- ATTENDANCE REQUIREMENTS -->
 
-          <div class="recorded-time">
-            <span>Time In</span>
-            <strong>{{ timeIn || '--' }}</strong>
-          </div>
+      @if (attendanceStatus === 'Rejected') {
 
-          <div class="recorded-time">
-            <span>Time Out</span>
-            <strong>{{ timeOut || '--' }}</strong>
-          </div>
+        <p class="attendance-note rejected-note">
+          This attendance has been rejected.
+          Contact your supervisor for assistance.
+        </p>
 
-        </div>
-      }
+      } @else if (hasTodayConflict) {
 
-      <!-- Photo and location information -->
-      @if (!timeOut) {
+        <p class="attendance-note rejected-note">
+          Attendance recording is unavailable due to
+          an unresolved conflict.
+          Contact your supervisor for assistance.
+        </p>
+
+      } @else if (!timeOut) {
+
         <p class="attendance-note">
           Photo and location are required to record attendance.
         </p>
+
       }
 
-      <!-- Today's synchronization status -->
-      @if (todaySyncStatus === 'pending') {
-        <p class="attendance-sync-note pending">
-          <ion-icon name="cloud-offline-outline"></ion-icon>
-          Saved locally. Pending upload.
-        </p>
-      }
+      <!-- TODAY'S SYNCHRONIZATION STATUS -->
 
-      @if (todaySyncStatus === 'failed') {
+      @if (hasTodayConflict) {
+
         <p class="attendance-sync-note failed">
-          <ion-icon name="alert-circle-outline"></ion-icon>
-          Saved locally. Upload failed.
-        </p>
-      }
 
-      @if (todaySyncStatus === 'synced') {
-        <p class="attendance-sync-note synced">
-          <ion-icon name="checkmark-outline"></ion-icon>
-          Attendance synced
+          <ion-icon
+            name="alert-circle-outline"
+            aria-hidden="true">
+          </ion-icon>
+
+          Attendance conflict. Local evidence preserved.
+
         </p>
+
+      } @else if (todaySyncStatus === 'pending') {
+
+        <p class="attendance-sync-note pending">
+
+          <ion-icon name="cloud-offline-outline">
+          </ion-icon>
+
+          Saved locally. Pending upload.
+
+        </p>
+
+      } @else if (todaySyncStatus === 'failed') {
+
+        <p class="attendance-sync-note failed">
+
+          <ion-icon name="alert-circle-outline">
+          </ion-icon>
+
+          Saved locally. Upload failed.
+
+        </p>
+
+      } @else if (todaySyncStatus === 'synced') {
+
+        <p class="attendance-sync-note synced">
+
+          <ion-icon name="checkmark-outline">
+          </ion-icon>
+
+          Attendance synced
+
+        </p>
+
       }
 
     </section>
 
-    <!-- Attendance feedback -->
+    <!-- ATTENDANCE FEEDBACK -->
     @if (syncMessage) {
       <p
         class="sync-message"
@@ -237,7 +326,7 @@
       </p>
     }
 
-    <!-- Previous incomplete attendance -->
+    <!-- PREVIOUS INCOMPLETE ATTENDANCE -->
     @if (incompleteAttendanceCount > 0) {
       <section class="incomplete-banner">
 
@@ -262,10 +351,9 @@
       </section>
     }
 
-    <!-- Recent logs -->
+    <!-- RECENT LOGS -->
     <section class="recent-logs-section">
 
-      <!-- Section header -->
       <div class="logs-header">
 
         <h2>Recent Logs</h2>
@@ -280,35 +368,43 @@
 
       </div>
 
-      <!-- Attendance logs -->
       <div class="logs-card">
 
+        <!-- LOADING STATE -->
         @if (isLoading && recentLogs.length === 0) {
 
           <div class="empty-logs">
             <p>Loading attendance records...</p>
           </div>
 
-        } @else if (recentLogs.length > 0) {
+        }
+
+        <!-- AVAILABLE RECORDS -->
+        @else if (recentLogs.length > 0) {
 
           @for (log of recentLogs; track log.id) {
 
             <div class="log-item">
 
-              <!-- Attendance details -->
               <div class="log-details">
 
                 <h3>{{ log.date }}</h3>
 
                 <p>{{ log.hours }}</p>
 
-                @if (log.condition === 'incomplete') {
+                @if (
+                  log.condition === 'incomplete' &&
+                  log.verificationStatus !== 'rejected'
+                ) {
                   <span class="log-condition incomplete">
                     Incomplete
                   </span>
                 }
 
-                @if (log.condition === 'timed_in') {
+                @if (
+                  log.condition === 'timed_in' &&
+                  log.verificationStatus !== 'rejected'
+                ) {
                   <span class="log-condition ongoing">
                     In Progress
                   </span>
@@ -316,49 +412,77 @@
 
               </div>
 
-              <!-- Record statuses -->
+              <!-- RECORD STATUSES -->
               <div class="log-status-group">
 
-                <!-- Synchronization status -->
+                <!-- SYNCHRONIZATION STATUS -->
+
                 <span
                   class="log-status"
                   [class.pending]="log.status === 'pending'"
                   [class.synced]="log.status === 'synced'"
-                  [class.failed]="log.status === 'failed'">
+                  [class.failed]="log.status === 'failed' || log.status === 'conflict'">
 
-                  @if (log.status === 'pending') {
+                  @if (log.status === 'conflict') {
 
-                    <ion-icon name="cloud-offline-outline"></ion-icon>
+                    <ion-icon
+                      name="alert-circle-outline"
+                      aria-hidden="true">
+                    </ion-icon>
+
+                    Conflict
+
+                  } @else if (log.status === 'pending') {
+
+                    <ion-icon
+                      name="cloud-offline-outline"
+                      aria-hidden="true">
+                    </ion-icon>
+
                     Pending Upload
 
                   } @else if (log.status === 'failed') {
 
-                    <ion-icon name="alert-circle-outline"></ion-icon>
+                    <ion-icon
+                      name="alert-circle-outline"
+                      aria-hidden="true">
+                    </ion-icon>
+
                     Sync Failed
 
                   } @else {
 
-                    <ion-icon name="checkmark-outline"></ion-icon>
+                    <ion-icon
+                      name="checkmark-outline"
+                      aria-hidden="true">
+                    </ion-icon>
+
                     Synced
 
                   }
 
                 </span>
 
-                <!-- Verification status -->
-                @if (log.condition === 'completed') {
-
+                <!-- VERIFICATION STATUS -->
+                @if (
+                  log.condition === 'completed' ||
+                  log.verificationStatus === 'rejected'
+                ) {
                   <span
                     class="verification-label"
                     [class.verified]="log.verificationStatus === 'verified'"
-                    [class.provisional]="log.verificationStatus === 'provisional'">
+                    [class.provisional]="log.verificationStatus === 'provisional'"
+                    [class.rejected]="log.verificationStatus === 'rejected'">
 
-                    {{ log.verificationStatus === 'verified'
-                      ? 'Verified'
-                      : 'Provisional' }}
+                    @if (log.verificationStatus === 'verified') {
+                      Verified
+                    } @else if (log.verificationStatus === 'rejected') {
+                      Rejected
+                    } @else {
+                      Provisional
+                    }
 
                   </span>
-
                 }
 
               </div>
@@ -367,25 +491,38 @@
 
           }
 
-        } @else if (attendanceLoadError) {
+        }
+
+        <!-- LOADING ERROR -->
+        @else if (attendanceLoadError) {
 
           <div class="empty-logs">
+
             <h3>Attendance unavailable</h3>
+
             <p>Unable to retrieve attendance records.</p>
+
           </div>
 
-        } @else {
+        }
+
+        <!-- EMPTY STATE -->
+        @else {
 
           <div class="empty-logs">
+
             <h3>No attendance records yet</h3>
+
             <p>Your recorded attendance will appear here.</p>
+
           </div>
 
         }
 
       </div>
 
-      <!-- Connection information -->
+      <!-- CONNECTION INFORMATION -->
+
       <p class="last-synced">
 
         @if (!isOnline) {
@@ -400,17 +537,21 @@
 
           Unable to refresh server records
 
-        } @else if (failedCount > 0) {
+        } @else if (isLoading) {
+
+          Refreshing attendance records...
+
+        } @else if (permanentConflictCount > 0) {
+
+          Attendance conflicts require supervisor assistance
+
+        } @else if (retryableFailedCount > 0) {
 
           Some attendance records failed to sync
 
         } @else if (pendingCount > 0) {
 
           Attendance records pending synchronization
-
-        } @else if (isLoading) {
-
-          Refreshing attendance records...
 
         } @else {
 

@@ -1,6 +1,102 @@
-// For information on how to create your own theme, please refer to:
-// https://ionicframework.com/docs/theming/
 
 :root {
-    --ion-font-family: 'Inter', sans-serif;
+
+  // =========================================
+  // TYPOGRAPHY
+  // =========================================
+
+  --ion-font-family: 'Inter', sans-serif;
+
+  // =========================================
+  // INTERNTRACK BRAND COLORS
+  // =========================================
+
+  --it-primary: #3157d5;
+  --it-secondary: #7556d9;
+  --it-accent: #ff9638;
+
+  --it-success: #087b56;
+  --it-danger: #c92a2a;
+  --it-warning: #b36a08;
+
+  --it-text: #172033;
+  --it-text-secondary: #64748b;
+  --it-border: #dce2ed;
+
+  --it-background: #f4f5f9;
+  --it-surface: #ffffff;
+
+  // =========================================
+  // MOBILE SPACING
+  // =========================================
+
+  --it-mobile-page-padding: 16px;
+  --it-mobile-card-padding: 16px;
+
+  --it-mobile-section-gap: 24px;
+  --it-mobile-card-gap: 12px;
+
+  --it-space-xs: 4px;
+  --it-space-sm: 8px;
+  --it-space-md: 12px;
+  --it-space-lg: 16px;
+  --it-space-xl: 24px;
+
+  // =========================================
+  // MOBILE TYPOGRAPHY
+  // =========================================
+
+  --it-mobile-title: 24px;
+  --it-mobile-heading: 16px;
+  --it-mobile-body: 14px;
+  --it-mobile-caption: 12px;
+
+  // =========================================
+  // MOBILE COMPONENT SIZES
+  // =========================================
+
+  --it-mobile-card-radius: 16px;
+  --it-mobile-button-radius: 12px;
+
+  --it-mobile-button-height: 48px;
+  --it-mobile-nav-height: 64px;
+
+}
+
+// =========================================
+// COMPACT MOBILE SCREENS
+// =========================================
+
+@media (max-width: 360px) {
+
+  :root {
+
+    --it-mobile-page-padding: 12px;
+    --it-mobile-card-padding: 14px;
+
+    --it-mobile-section-gap: 20px;
+    --it-mobile-card-gap: 10px;
+
+    --it-mobile-title: 22px;
+    --it-mobile-heading: 16px;
+
+    --it-mobile-card-radius: 14px;
+
+  }
+
+}
+
+// =========================================
+// LARGER MOBILE SCREENS
+// =========================================
+
+@media (min-width: 430px) {
+
+  :root {
+
+    --it-mobile-page-padding: 20px;
+    --it-mobile-card-padding: 18px;
+
+  }
+
 }

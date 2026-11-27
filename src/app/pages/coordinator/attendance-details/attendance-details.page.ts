@@ -1,6 +1,8 @@
+
 import {
   Component,
   OnInit,
+  OnDestroy,
   ChangeDetectorRef,
   NgZone,
   inject
@@ -25,16 +27,16 @@ import {
   closeOutline
 } from 'ionicons/icons';
 
-import {
-  SupabaseService
-} from '../../../services/supabase.service';
+import { SupabaseService } from '../../../services/supabase.service';
+
+import { createDtrTemplate } from '../../../utils/dtr-template';
+import type { DtrTemplateRecord } from '../../../utils/dtr-template';
 
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 
 import type {
-  TDocumentDefinitions,
-  TableCell
+  TDocumentDefinitions
 } from 'pdfmake/interfaces';
 
 pdfMake.addVirtualFileSystem(
@@ -104,22 +106,21 @@ type AttendanceStatus =
   | 'rejected'
   | 'unknown';
 
-type DtrAction =
-  | 'open'
-  | 'download'
-  | 'print';
+type DtrAction = 'open' | 'download' | 'print';
 
 @Component({
   selector: 'app-attendance-details',
   templateUrl: './attendance-details.page.html',
   styleUrls: ['./attendance-details.page.scss'],
   standalone: true,
-  imports: [IonToolbar, IonHeader, 
+  imports: [
+    IonToolbar,
+    IonHeader,
     CommonModule,
     IonIcon
   ]
 })
-export class AttendanceDetailsPage implements OnInit {
+export class AttendanceDetailsPage implements OnInit, OnDestroy {
 
   private supabaseService = inject(SupabaseService);
   private supabase = this.supabaseService.getClient();
@@ -151,11 +152,18 @@ export class AttendanceDetailsPage implements OnInit {
   selectedPhotoUrl = '';
   selectedPhotoTitle = '';
 
+  private photoRequest = 0;
   private attendanceId = '';
   private loadingInProgress = false;
+  private destroyed = false;
+  private loadVersion = 0;
+  private loadedUserId = '';
+
+  private authSubscription: {
+    unsubscribe(): void;
+  } | null = null;
 
   constructor() {
-
     addIcons({
       arrowBackOutline,
       documentTextOutline,
@@ -169,7 +177,6 @@ export class AttendanceDetailsPage implements OnInit {
       openOutline,
       closeOutline
     });
-
   }
 
   ngOnInit(): void {
@@ -179,13 +186,166 @@ export class AttendanceDetailsPage implements OnInit {
       this.route.snapshot.paramMap.get('id') ||
       '';
 
-    if (!this.attendanceId) {
-      this.errorMessage = 'No attendance record was selected.';
+    if (!this.attendanceId || !this.isUuid(this.attendanceId)) {
+      this.errorMessage = 'No valid attendance record was selected.';
       this.isLoading = false;
       return;
     }
 
+    const { data } = this.supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (this.destroyed) {
+          return;
+        }
+
+        if (
+          event === 'SIGNED_OUT' ||
+          (
+            this.loadedUserId &&
+            session?.user?.id !== this.loadedUserId
+          )
+        ) {
+          this.ngZone.run(() => {
+            this.loadVersion++;
+            this.loadedUserId = '';
+            this.loadingInProgress = false;
+            this.isLoading = false;
+
+            this.clearLoadedData();
+
+            this.errorMessage =
+              'Your session has changed. Please sign in again.';
+
+            this.refreshView();
+          });
+        }
+      }
+    );
+
+    this.authSubscription = data.subscription;
+
     void this.loadAttendanceDetails();
+  }
+
+  ngOnDestroy(): void {
+    this.destroyed = true;
+    this.loadVersion++;
+
+    this.authSubscription?.unsubscribe();
+    this.authSubscription = null;
+
+    this.clearLoadedData();
+  }
+
+  // ==========================================
+  // SESSION AND ACCESS VALIDATION
+  // ==========================================
+
+  private refreshView(): void {
+    if (!this.destroyed) {
+      this.cdr.markForCheck();
+    }
+  }
+
+  private clearLoadedData(): void {
+    this.photoRequest++;
+    this.attendance = null;
+    this.student = null;
+    this.assignment = null;
+    this.supervisor = null;
+    this.reviewingSupervisor = null;
+
+    this.timeInPhotoUrl = '';
+    this.timeOutPhotoUrl = '';
+
+    this.timeInPhotoFailed = false;
+    this.timeOutPhotoFailed = false;
+
+    this.selectedPhotoUrl = '';
+    this.selectedPhotoTitle = '';
+
+    this.dtrErrorMessage = '';
+    this.dtrSuccessMessage = '';
+  }
+
+  private async validateCoordinatorAccess(
+    expectedUserId?: string
+  ): Promise<string> {
+
+    if (this.destroyed) {
+      throw new Error('The attendance page is no longer active.');
+    }
+
+    if (!navigator.onLine) {
+      throw new Error(
+        'An internet connection is required to access attendance records.'
+      );
+    }
+
+    const {
+      data: authData,
+      error: authError
+    } = await this.supabase.auth.getUser();
+
+    const userId = authData.user?.id;
+
+    if (authError || !userId) {
+      throw new Error(
+        'Your session is unavailable. Please sign in again.'
+      );
+    }
+
+    if (expectedUserId && expectedUserId !== userId) {
+      throw new Error(
+        'Your session has changed. Please sign in again.'
+      );
+    }
+
+    const {
+      data: account,
+      error: accountError
+    } = await this.supabase
+      .from('users')
+      .select('id, role, account_status')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (
+      accountError ||
+      !account ||
+      account.role !== 'ojt_coordinator' ||
+      account.account_status !== 'active'
+    ) {
+      throw new Error(
+        'You are not authorized to access coordinator attendance records.'
+      );
+    }
+
+    const {
+      data: coordinator,
+      error: coordinatorError
+    } = await this.supabase
+      .from('ojt_coordinators')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('account_status', 'active')
+      .maybeSingle();
+
+    if (coordinatorError || !coordinator) {
+      throw new Error(
+        'An active coordinator account is required.'
+      );
+    }
+
+    if (this.destroyed) {
+      throw new Error('The attendance page is no longer active.');
+    }
+
+    return userId;
+  }
+
+  private isCurrentRequest(version: number): boolean {
+    return !this.destroyed && version === this.loadVersion;
   }
 
   // ==========================================
@@ -194,20 +354,31 @@ export class AttendanceDetailsPage implements OnInit {
 
   async loadAttendanceDetails(): Promise<void> {
 
-    if (this.loadingInProgress) {
+    if (
+      this.destroyed ||
+      this.loadingInProgress ||
+      this.isGeneratingDtr
+    ) {
       return;
     }
+
+    const version = ++this.loadVersion;
 
     this.loadingInProgress = true;
     this.isLoading = true;
     this.errorMessage = '';
+    this.loadedUserId = '';
 
-    this.timeInPhotoFailed = false;
-    this.timeOutPhotoFailed = false;
+    this.clearLoadedData();
 
     try {
+      const userId = await this.validateCoordinatorAccess();
 
-      // Fetch selected attendance record.
+      if (!this.isCurrentRequest(version)) {
+        return;
+      }
+
+      this.loadedUserId = userId;
 
       const {
         data: attendanceData,
@@ -237,23 +408,21 @@ export class AttendanceDetailsPage implements OnInit {
         .eq('sync_status', 'synced')
         .maybeSingle();
 
-      if (attendanceError) {
-        throw attendanceError;
-      }
-
-      if (!attendanceData) {
-
+      if (attendanceError || !attendanceData) {
         throw new Error(
           'Attendance record was not found or is unavailable.'
         );
-
       }
 
-      const attendance =
-        attendanceData as AttendanceRecord;
+      const attendance = attendanceData as AttendanceRecord;
 
-
-      // Fetch student information.
+      if (
+        attendance.id !== this.attendanceId ||
+        attendance.sync_status !== 'synced' ||
+        !this.isValidDateOnly(attendance.attendance_date)
+      ) {
+        throw new Error('Invalid attendance record.');
+      }
 
       const {
         data: studentData,
@@ -276,23 +445,17 @@ export class AttendanceDetailsPage implements OnInit {
         .eq('student_id', attendance.student_id)
         .maybeSingle();
 
-      if (studentError) {
-        throw studentError;
-      }
-
-      if (!studentData) {
-
+      if (studentError || !studentData) {
         throw new Error(
           'The student associated with this attendance record was not found.'
         );
-
       }
 
-      const student =
-        studentData as StudentRecord;
+      const student = studentData as StudentRecord;
 
-
-      // Fetch the student's placement history.
+      if (student.student_id !== attendance.student_id) {
+        throw new Error('Attendance and student information do not match.');
+      }
 
       const assignments =
         await this.fetchStudentAssignments(student.id);
@@ -302,74 +465,53 @@ export class AttendanceDetailsPage implements OnInit {
         attendance.attendance_date
       );
 
-
-      // Fetch assigned supervisor.
-
       let supervisor: SupervisorRecord | null = null;
 
       if (assignment?.supervisor_id) {
-
         supervisor = await this.fetchSupervisor(
           'id',
           assignment.supervisor_id
         );
-
       }
 
-
-      // Fetch the actual reviewing supervisor.
-      // verified_by may reference a supervisor UUID
-      // or the supervisor's linked authentication UUID.
-
-      let reviewingSupervisor:
-        SupervisorRecord | null = null;
+      let reviewingSupervisor: SupervisorRecord | null = null;
 
       if (attendance.verified_by) {
-
         const reviewerId = attendance.verified_by;
 
         if (this.isUuid(reviewerId)) {
-
-          reviewingSupervisor =
-            await this.fetchSupervisor(
-              'id',
-              reviewerId
-            );
+          reviewingSupervisor = await this.fetchSupervisor(
+            'id',
+            reviewerId
+          );
 
           if (!reviewingSupervisor) {
-
-            reviewingSupervisor =
-              await this.fetchSupervisor(
-                'user_id',
-                reviewerId
-              );
-
-          }
-
-        } else {
-
-          reviewingSupervisor =
-            await this.fetchSupervisor(
-              'supervisor_id',
+            reviewingSupervisor = await this.fetchSupervisor(
+              'user_id',
               reviewerId
             );
-
+          }
+        } else {
+          reviewingSupervisor = await this.fetchSupervisor(
+            'supervisor_id',
+            reviewerId
+          );
         }
-
       }
 
-
-      // Resolve stored attendance photo URLs.
-
       const timeInPhotoUrl =
-        this.resolvePhotoUrl(attendance.time_in_photo);
+        await this.resolvePhotoUrl(attendance.time_in_photo, attendance.student_id, 'in');
 
       const timeOutPhotoUrl =
-        this.resolvePhotoUrl(attendance.time_out_photo);
+        await this.resolvePhotoUrl(attendance.time_out_photo, attendance.student_id, 'out');
 
+      await this.validateCoordinatorAccess(userId);
+
+      if (!this.isCurrentRequest(version)) {
+        return;
+      }
 
       this.ngZone.run(() => {
-
         this.attendance = attendance;
         this.student = student;
         this.assignment = assignment || null;
@@ -379,39 +521,35 @@ export class AttendanceDetailsPage implements OnInit {
         this.timeInPhotoUrl = timeInPhotoUrl;
         this.timeOutPhotoUrl = timeOutPhotoUrl;
 
-        this.cdr.detectChanges();
-
+        this.refreshView();
       });
 
     } catch (error) {
+      if (!this.isCurrentRequest(version)) {
+        return;
+      }
 
-      console.error(
-        'Attendance details loading error:',
-        error
-      );
+      console.error('Attendance details loading error:', error);
 
       this.ngZone.run(() => {
+        this.clearLoadedData();
+        this.loadedUserId = '';
 
         this.errorMessage =
           error instanceof Error
             ? error.message
             : 'Unable to load attendance details. Please try again.';
-
       });
 
     } finally {
-
-      this.ngZone.run(() => {
-
-        this.isLoading = false;
-        this.loadingInProgress = false;
-
-        this.cdr.detectChanges();
-
-      });
-
+      if (this.isCurrentRequest(version)) {
+        this.ngZone.run(() => {
+          this.isLoading = false;
+          this.loadingInProgress = false;
+          this.refreshView();
+        });
+      }
     }
-
   }
 
   retryLoad(): void {
@@ -427,13 +565,18 @@ export class AttendanceDetailsPage implements OnInit {
   ): Promise<AssignmentRecord[]> {
 
     const records: AssignmentRecord[] = [];
+    const uniqueIds = new Set<string>();
 
     const batchSize = 500;
     let offset = 0;
+    let expectedCount: number | null = null;
 
     while (true) {
+      if (this.destroyed) {
+        throw new Error('The attendance page is no longer active.');
+      }
 
-      const { data, error } = await this.supabase
+      const { data, error, count } = await this.supabase
         .from('intern_supervisor_assignments')
         .select(`
           id,
@@ -445,30 +588,54 @@ export class AttendanceDetailsPage implements OnInit {
           end_date,
           assignment_status,
           assignment_history
-        `)
+        `, { count: 'exact' })
         .eq('student_id', studentUuid)
         .order('id', { ascending: true })
         .range(offset, offset + batchSize - 1);
 
-      if (error) {
-        throw error;
+      if (error || count === null) {
+        throw new Error('Unable to retrieve complete assignment history.');
       }
 
-      const batch =
-        (data ?? []) as AssignmentRecord[];
+      if (expectedCount === null) {
+        expectedCount = count;
+      }
 
-      records.push(...batch);
+      if (count !== expectedCount) {
+        throw new Error(
+          'Assignment history changed during retrieval. Please try again.'
+        );
+      }
 
-      if (batch.length < batchSize) {
+      const batch = (data ?? []) as AssignmentRecord[];
+
+      for (const record of batch) {
+        if (
+          record.student_id !== studentUuid ||
+          uniqueIds.has(record.id)
+        ) {
+          throw new Error('Invalid or duplicate assignment record detected.');
+        }
+
+        uniqueIds.add(record.id);
+        records.push(record);
+      }
+
+      if (records.length === expectedCount) {
         break;
       }
 
-      offset += batchSize;
+      if (
+        batch.length === 0 ||
+        records.length > expectedCount
+      ) {
+        throw new Error('Assignment history retrieval was incomplete.');
+      }
 
+      offset += batch.length;
     }
 
     return records;
-
   }
 
   private resolvePlacement(
@@ -478,7 +645,10 @@ export class AttendanceDetailsPage implements OnInit {
 
     const matches = assignments.filter(assignment => {
 
-      if (!assignment.start_date) {
+      if (
+        !assignment.start_date ||
+        !this.isValidDateOnly(assignment.start_date)
+      ) {
         return false;
       }
 
@@ -488,7 +658,10 @@ export class AttendanceDetailsPage implements OnInit {
 
       if (
         assignment.end_date &&
-        attendanceDate > assignment.end_date
+        (
+          !this.isValidDateOnly(assignment.end_date) ||
+          attendanceDate > assignment.end_date
+        )
       ) {
         return false;
       }
@@ -514,20 +687,21 @@ export class AttendanceDetailsPage implements OnInit {
           reassignment.new_start_date ||
           this.toManilaDate(reassignment.changed_at);
 
-        if (!boundary || attendanceDate >= boundary) {
+        if (
+          !boundary ||
+          !this.isValidDateOnly(boundary) ||
+          attendanceDate >= boundary
+        ) {
           return false;
         }
-
       }
 
       return true;
-
     });
 
     return matches.length === 1
       ? matches[0]
       : undefined;
-
   }
 
   // ==========================================
@@ -554,20 +728,17 @@ export class AttendanceDetailsPage implements OnInit {
       .maybeSingle();
 
     if (error) {
-      throw error;
+      throw new Error('Unable to retrieve supervisor information.');
     }
 
     return data
       ? data as SupervisorRecord
       : null;
-
   }
 
   private isUuid(value: string): boolean {
-
     return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
       .test(value);
-
   }
 
   // ==========================================
@@ -579,11 +750,9 @@ export class AttendanceDetailsPage implements OnInit {
   }
 
   get studentId(): string {
-
     return this.student?.student_id ||
       this.attendance?.student_id ||
       'Not recorded';
-
   }
 
   get studentCourse(): string {
@@ -603,7 +772,6 @@ export class AttendanceDetailsPage implements OnInit {
   }
 
   get reviewingSupervisorName(): string {
-
     if (this.reviewingSupervisor) {
       return this.reviewingSupervisor.full_name;
     }
@@ -613,29 +781,23 @@ export class AttendanceDetailsPage implements OnInit {
     }
 
     return 'Not yet reviewed';
-
   }
 
   get internshipPeriod(): string {
-
     if (!this.assignment?.start_date) {
       return 'Not recorded';
     }
 
-    const start = this.formatDate(
-      this.assignment.start_date
-    );
+    const start = this.formatDate(this.assignment.start_date);
 
     const end = this.assignment.end_date
       ? this.formatDate(this.assignment.end_date)
       : 'Ongoing';
 
     return `${start} – ${end}`;
-
   }
 
   get studentInitials(): string {
-
     const parts = this.studentName
       .trim()
       .split(/\s+/)
@@ -653,11 +815,9 @@ export class AttendanceDetailsPage implements OnInit {
       parts[0][0] +
       parts[parts.length - 1][0]
     ).toUpperCase();
-
   }
 
   get studentAvatarColor(): string {
-
     const colors = [
       'blue',
       'purple',
@@ -669,13 +829,11 @@ export class AttendanceDetailsPage implements OnInit {
 
     const hash = Array.from(this.studentId)
       .reduce(
-        (sum, character) =>
-          sum + character.charCodeAt(0),
+        (sum, character) => sum + character.charCodeAt(0),
         0
       );
 
     return colors[hash % colors.length];
-
   }
 
   // ==========================================
@@ -693,6 +851,10 @@ export class AttendanceDetailsPage implements OnInit {
       return 'rejected';
     }
 
+    if (record.sync_status !== 'synced') {
+      return 'unknown';
+    }
+
     if (!record.time_in || !record.time_out) {
       return 'incomplete';
     }
@@ -703,7 +865,7 @@ export class AttendanceDetailsPage implements OnInit {
     if (
       !Number.isFinite(timeIn) ||
       !Number.isFinite(timeOut) ||
-      timeOut < timeIn
+      timeOut <= timeIn
     ) {
       return 'incomplete';
     }
@@ -712,29 +874,20 @@ export class AttendanceDetailsPage implements OnInit {
       return 'verified';
     }
 
-    if (
-      status === 'provisional' ||
-      status === 'pending'
-    ) {
+    if (status === 'provisional') {
       return 'pending';
     }
 
     return 'unknown';
-
   }
 
   get attendanceStatus(): AttendanceStatus {
-
     return this.attendance
       ? this.resolveStatus(this.attendance)
       : 'unknown';
-
   }
 
-  private statusLabel(
-    status: AttendanceStatus
-  ): string {
-
+  private statusLabel(status: AttendanceStatus): string {
     const labels: Record<AttendanceStatus, string> = {
       verified: 'Verified',
       pending: 'Pending',
@@ -744,7 +897,6 @@ export class AttendanceDetailsPage implements OnInit {
     };
 
     return labels[status];
-
   }
 
   get verificationLabel(): string {
@@ -760,6 +912,13 @@ export class AttendanceDetailsPage implements OnInit {
     switch (this.attendanceStatus) {
 
       case 'verified':
+        if (
+          this.attendance &&
+          this.getValidHours(this.attendance) === null
+        ) {
+          return 'This record is verified, but its stored rendered hours require reconciliation before they can be included in the official OJT total.';
+        }
+
         return 'This attendance record has been verified. Valid rendered hours are included in the student’s official OJT hours.';
 
       case 'pending':
@@ -773,21 +932,15 @@ export class AttendanceDetailsPage implements OnInit {
 
       default:
         return 'The verification status of this attendance record could not be determined.';
-
     }
-
   }
 
   get verifiedOn(): string {
-
     if (!this.attendance?.verified_at) {
       return 'Not yet verified';
     }
 
-    return this.formatDateTime(
-      this.attendance.verified_at
-    );
-
+    return this.formatDateTime(this.attendance.verified_at);
   }
 
   get remarks(): string {
@@ -798,7 +951,7 @@ export class AttendanceDetailsPage implements OnInit {
   // RENDERED HOURS
   // ==========================================
 
-  private getValidHours(
+  private calculateExpectedHours(
     record: AttendanceRecord
   ): number | null {
 
@@ -812,28 +965,97 @@ export class AttendanceDetailsPage implements OnInit {
     if (
       !Number.isFinite(timeIn) ||
       !Number.isFinite(timeOut) ||
-      timeOut < timeIn
+      timeOut <= timeIn
     ) {
+      return null;
+    }
+
+    const attendanceDate = this.toManilaDate(record.time_in);
+
+    if (
+      !this.isValidDateOnly(attendanceDate) ||
+      attendanceDate !== record.attendance_date
+    ) {
+      return null;
+    }
+
+    const lunchStart = new Date(
+      `${attendanceDate}T12:00:00+08:00`
+    ).getTime();
+
+    const lunchEnd = new Date(
+      `${attendanceDate}T13:00:00+08:00`
+    ).getTime();
+
+    const lunchOverlap = Math.max(
+      0,
+      Math.min(timeOut, lunchEnd) -
+      Math.max(timeIn, lunchStart)
+    );
+
+    const elapsedMilliseconds = timeOut - timeIn;
+
+    const creditedMilliseconds = Math.max(
+      0,
+      elapsedMilliseconds - lunchOverlap
+    );
+
+    return Math.round(
+      (creditedMilliseconds / 3600000) * 1000000
+    ) / 1000000;
+  }
+
+  private getValidHours(
+    record: AttendanceRecord
+  ): number | null {
+
+    const status = this.resolveStatus(record);
+
+    if (status === 'rejected') {
+      return 0;
+    }
+
+    if (status !== 'verified' && status !== 'pending') {
+      return null;
+    }
+
+    const expectedHours = this.calculateExpectedHours(record);
+
+    if (expectedHours === null) {
       return null;
     }
 
     if (
       record.total_hours_rendered === null ||
-      record.total_hours_rendered === undefined
+      record.total_hours_rendered === undefined ||
+      String(record.total_hours_rendered).trim() === ''
     ) {
       return null;
     }
 
-    const hours = Number(record.total_hours_rendered);
+    const storedHours = Number(record.total_hours_rendered);
 
-    return Number.isFinite(hours) && hours >= 0
-      ? hours
-      : null;
+    if (
+      !Number.isFinite(storedHours) ||
+      storedHours < 0
+    ) {
+      return null;
+    }
 
+    // Allow a small tolerance for JavaScript timestamp
+    // precision and database numeric rounding.
+    if (Math.abs(storedHours - expectedHours) > 0.000001) {
+      return null;
+    }
+
+    if (status === 'verified' && storedHours <= 0) {
+      return null;
+    }
+
+    return storedHours;
   }
 
   get renderedHours(): string {
-
     if (!this.attendance) {
       return '—';
     }
@@ -842,65 +1064,56 @@ export class AttendanceDetailsPage implements OnInit {
 
     return hours === null
       ? '—'
-      : `${hours.toFixed(1)} h`;
-
+      : `${hours.toFixed(2)} h`;
   }
 
   // ==========================================
   // PHOTO EVIDENCE
   // ==========================================
 
-  private resolvePhotoUrl(
-    value: string | null
-  ): string {
-
-    if (!value) {
+  private async resolvePhotoUrl(
+    value: string | null,
+    studentId: string,
+    type: 'in' | 'out'
+  ): Promise<string> {
+    if (!value || !studentId) return '';
+    try {
+      const bucket = this.supabase.storage.from('attendance-photos');
+      const marker = '__reference__';
+      const base = new URL(bucket.getPublicUrl(marker).data.publicUrl);
+      const parsed = new URL(value.trim());
+      const prefix = base.pathname.slice(0, -marker.length);
+      if (parsed.origin !== base.origin || parsed.protocol !== 'https:' ||
+          parsed.username || parsed.password || parsed.search || parsed.hash ||
+          !parsed.pathname.startsWith(prefix)) return '';
+      const name = decodeURIComponent(parsed.pathname.slice(prefix.length));
+      if (!name.startsWith(`${studentId}-`) || /[\\/]/.test(name) ||
+          !new RegExp(`-time-${type}\\.(jpg|jpeg|png|webp)$`, 'i').test(name)) return '';
+      const { data, error } = await bucket.createSignedUrl(name, 300);
+      return error ? '' : data?.signedUrl || '';
+    } catch {
       return '';
     }
-
-    const url = value.trim();
-
-    try {
-
-      const parsed = new URL(url);
-
-      if (parsed.protocol === 'https:') {
-        return parsed.href;
-      }
-
-    } catch {
-
-      // Storage object paths require the existing
-      // application's storage bucket configuration.
-
-    }
-
-    return '';
-
   }
 
   get hasTimeInPhoto(): boolean {
-
     return !!this.timeInPhotoUrl &&
       !this.timeInPhotoFailed;
-
   }
 
   get hasTimeOutPhoto(): boolean {
-
     return !!this.timeOutPhotoUrl &&
       !this.timeOutPhotoFailed;
-
   }
 
   onPhotoError(type: 'in' | 'out'): void {
-
     if (type === 'in') {
       this.timeInPhotoFailed = true;
     } else {
       this.timeOutPhotoFailed = true;
     }
 
+    this.refreshView();
   }
 
   getPhotoFileName(
@@ -912,7 +1125,6 @@ export class AttendanceDetailsPage implements OnInit {
     }
 
     try {
-
       const path = value.split('?')[0];
 
       const fileName = path
@@ -925,36 +1137,54 @@ export class AttendanceDetailsPage implements OnInit {
         : 'Attendance photo';
 
     } catch {
-
       return 'Attendance photo';
-
     }
-
   }
 
-  openPhoto(type: 'in' | 'out'): void {
-
-    if (type === 'in' && this.hasTimeInPhoto) {
-
-      this.selectedPhotoUrl = this.timeInPhotoUrl;
-      this.selectedPhotoTitle = 'Time-in photo';
-
+  async openPhoto(type: 'in' | 'out'): Promise<void> {
+    if (this.destroyed || this.isLoading || this.errorMessage ||
+        !this.loadedUserId || !this.attendance) return;
+    const record = this.attendance;
+    const userId = this.loadedUserId;
+    const version = this.loadVersion;
+    const request = ++this.photoRequest;
+    const current = () => this.isCurrentRequest(version) &&
+      this.photoRequest === request && this.loadedUserId === userId &&
+      this.attendance?.id === record.id;
+    this.selectedPhotoUrl = '';
+    this.selectedPhotoTitle = '';
+    try {
+      await this.validateCoordinatorAccess(userId);
+      if (!current()) return;
+      const url = await this.resolvePhotoUrl(
+        type === 'in' ? record.time_in_photo : record.time_out_photo,
+        record.student_id, type
+      );
+      await this.validateCoordinatorAccess(userId);
+      if (!current()) return;
+      if (type === 'in') {
+        this.timeInPhotoUrl = url;
+        this.timeInPhotoFailed = !url;
+      } else {
+        this.timeOutPhotoUrl = url;
+        this.timeOutPhotoFailed = !url;
+      }
+      if (url) {
+        this.selectedPhotoUrl = url;
+        this.selectedPhotoTitle = type === 'in' ? 'Time-in photo' : 'Time-out photo';
+      }
+    } catch {
+      if (!current()) return;
+      this.onPhotoError(type);
+    } finally {
+      if (current()) this.refreshView();
     }
-
-    if (type === 'out' && this.hasTimeOutPhoto) {
-
-      this.selectedPhotoUrl = this.timeOutPhotoUrl;
-      this.selectedPhotoTitle = 'Time-out photo';
-
-    }
-
   }
 
   closePhoto(): void {
-
+    this.photoRequest++;
     this.selectedPhotoUrl = '';
     this.selectedPhotoTitle = '';
-
   }
 
   // ==========================================
@@ -970,7 +1200,9 @@ export class AttendanceDetailsPage implements OnInit {
       latitude === null ||
       latitude === undefined ||
       longitude === null ||
-      longitude === undefined
+      longitude === undefined ||
+      String(latitude).trim() === '' ||
+      String(longitude).trim() === ''
     ) {
       return false;
     }
@@ -984,29 +1216,23 @@ export class AttendanceDetailsPage implements OnInit {
       lat <= 90 &&
       lng >= -180 &&
       lng <= 180;
-
   }
 
   get hasTimeInLocation(): boolean {
-
     return this.validCoordinates(
       this.attendance?.time_in_location_lat,
       this.attendance?.time_in_location_long
     );
-
   }
 
   get hasTimeOutLocation(): boolean {
-
     return this.validCoordinates(
       this.attendance?.time_out_location_lat,
       this.attendance?.time_out_location_long
     );
-
   }
 
   get timeInCoordinates(): string {
-
     if (!this.hasTimeInLocation) {
       return 'Location not recorded';
     }
@@ -1016,11 +1242,9 @@ export class AttendanceDetailsPage implements OnInit {
     }, ${
       Number(this.attendance?.time_in_location_long).toFixed(5)
     }`;
-
   }
 
   get timeOutCoordinates(): string {
-
     if (!this.hasTimeOutLocation) {
       return 'Location not recorded';
     }
@@ -1030,12 +1254,17 @@ export class AttendanceDetailsPage implements OnInit {
     }, ${
       Number(this.attendance?.time_out_location_long).toFixed(5)
     }`;
-
   }
 
   openLocation(type: 'in' | 'out'): void {
 
-    if (!this.attendance) {
+    if (
+      !this.attendance ||
+      this.destroyed ||
+      this.isLoading ||
+      this.errorMessage ||
+      !this.loadedUserId
+    ) {
       return;
     }
 
@@ -1058,17 +1287,24 @@ export class AttendanceDetailsPage implements OnInit {
       'https://www.google.com/maps/search/?api=1&query=' +
       encodeURIComponent(coordinates);
 
-    window.open(
-      url,
-      '_blank',
-      'noopener,noreferrer'
-    );
-
+    window.open(url, '_blank', 'noopener,noreferrer');
   }
 
   // ==========================================
   // DATE AND TIME FORMATTING
   // ==========================================
+
+  private isValidDateOnly(value: string): boolean {
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      return false;
+    }
+
+    const date = new Date(`${value}T00:00:00Z`);
+
+    return Number.isFinite(date.getTime()) &&
+      date.toISOString().slice(0, 10) === value;
+  }
 
   private toManilaDate(
     value: string | null | undefined
@@ -1079,12 +1315,12 @@ export class AttendanceDetailsPage implements OnInit {
     }
 
     if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-      return value;
+      return this.isValidDateOnly(value) ? value : '';
     }
 
     const date = new Date(value);
 
-    if (Number.isNaN(date.getTime())) {
+    if (!Number.isFinite(date.getTime())) {
       return '';
     }
 
@@ -1105,30 +1341,26 @@ export class AttendanceDetailsPage implements OnInit {
       parts.find(part => part.type === 'day')?.value;
 
     return `${year}-${month}-${day}`;
-
   }
 
   private parseDate(value: string): Date {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      return this.isValidDateOnly(value)
+        ? new Date(`${value}T00:00:00+08:00`)
+        : new Date(NaN);
+    }
 
-    return new Date(
-      /^\d{4}-\d{2}-\d{2}$/.test(value)
-        ? `${value}T00:00:00+08:00`
-        : value
-    );
-
+    return new Date(value);
   }
 
-  formatDate(
-    value: string | null | undefined
-  ): string {
-
+  formatDate(value: string | null | undefined): string {
     if (!value) {
       return '—';
     }
 
     const date = this.parseDate(value);
 
-    if (Number.isNaN(date.getTime())) {
+    if (!Number.isFinite(date.getTime())) {
       return '—';
     }
 
@@ -1138,20 +1370,16 @@ export class AttendanceDetailsPage implements OnInit {
       year: 'numeric',
       timeZone: 'Asia/Manila'
     }).format(date);
-
   }
 
-  formatLongDate(
-    value: string | null | undefined
-  ): string {
-
+  formatLongDate(value: string | null | undefined): string {
     if (!value) {
       return '—';
     }
 
     const date = this.parseDate(value);
 
-    if (Number.isNaN(date.getTime())) {
+    if (!Number.isFinite(date.getTime())) {
       return '—';
     }
 
@@ -1162,44 +1390,33 @@ export class AttendanceDetailsPage implements OnInit {
       year: 'numeric',
       timeZone: 'Asia/Manila'
     }).format(date);
-
   }
 
-  formatTime(
-    value: string | null | undefined
-  ): string {
-
+  formatTime(value: string | null | undefined): string {
     if (!value) {
       return '—';
     }
 
     const date = new Date(value);
 
-    if (Number.isNaN(date.getTime())) {
+    if (!Number.isFinite(date.getTime())) {
       return '—';
     }
 
-    return new Intl.DateTimeFormat('en-GB', {
-      hour: '2-digit',
+    return new Intl.DateTimeFormat('en-US', {
+      hour: 'numeric',
       minute: '2-digit',
-      hourCycle: 'h23',
+      hour12: true,
       timeZone: 'Asia/Manila'
     }).format(date);
-
   }
 
-  formatDateTime(
-    value: string | null | undefined
-  ): string {
-
+  formatDateTime(value: string | null | undefined): string {
     if (!value) {
       return '—';
     }
 
-    return `${this.formatDate(value)} · ${
-      this.formatTime(value)
-    }`;
-
+    return `${this.formatDate(value)} · ${this.formatTime(value)}`;
   }
 
   // ==========================================
@@ -1207,12 +1424,14 @@ export class AttendanceDetailsPage implements OnInit {
   // ==========================================
 
   get canGenerateDtr(): boolean {
-
     return !!this.student &&
       !!this.attendance &&
+      !!this.loadedUserId &&
+      !this.destroyed &&
+      !this.errorMessage &&
       !this.isGeneratingDtr &&
-      !this.isLoading;
-
+      !this.isLoading &&
+      navigator.onLine;
   }
 
   async openDtr(): Promise<void> {
@@ -1234,13 +1453,20 @@ export class AttendanceDetailsPage implements OnInit {
   ): Promise<AttendanceRecord[]> {
 
     const records: AttendanceRecord[] = [];
+    const uniqueIds = new Set<string>();
+    const uniqueDates = new Set<string>();
 
     const batchSize = 500;
     let offset = 0;
+    let expectedCount: number | null = null;
 
     while (true) {
 
-      const { data, error } = await this.supabase
+      if (this.destroyed) {
+        throw new Error('The attendance page is no longer active.');
+      }
+
+      const { data, error, count } = await this.supabase
         .from('attendance')
         .select(`
           id,
@@ -1254,7 +1480,7 @@ export class AttendanceDetailsPage implements OnInit {
           verified_by,
           verified_at,
           remarks
-        `)
+        `, { count: 'exact' })
         .eq('student_id', studentId)
         .eq('sync_status', 'synced')
         .gte('attendance_date', startDate)
@@ -1263,30 +1489,69 @@ export class AttendanceDetailsPage implements OnInit {
         .order('id', { ascending: true })
         .range(offset, offset + batchSize - 1);
 
-      if (error) {
-        throw error;
+      if (error || count === null) {
+        throw new Error('Unable to retrieve complete DTR records.');
+      }
+
+      if (expectedCount === null) {
+        expectedCount = count;
+      }
+
+      if (count !== expectedCount) {
+        throw new Error(
+          'Attendance records changed during retrieval. Please generate the DTR again.'
+        );
       }
 
       const batch =
         (data ?? []) as unknown as AttendanceRecord[];
 
-      records.push(...batch);
+      for (const record of batch) {
 
-      if (batch.length < batchSize) {
+        if (
+          record.student_id !== studentId ||
+          record.sync_status !== 'synced' ||
+          !this.isValidDateOnly(record.attendance_date) ||
+          record.attendance_date < startDate ||
+          record.attendance_date > endDate
+        ) {
+          throw new Error('An invalid DTR attendance record was detected.');
+        }
+
+        if (
+          uniqueIds.has(record.id) ||
+          uniqueDates.has(record.attendance_date)
+        ) {
+          throw new Error(
+            'Duplicate attendance records were detected. Please review the student’s attendance before generating the DTR.'
+          );
+        }
+
+        uniqueIds.add(record.id);
+        uniqueDates.add(record.attendance_date);
+        records.push(record);
+      }
+
+      if (records.length === expectedCount) {
         break;
       }
 
-      offset += batchSize;
+      if (
+        batch.length === 0 ||
+        records.length > expectedCount
+      ) {
+        throw new Error(
+          'DTR retrieval was incomplete. Please try again.'
+        );
+      }
 
+      offset += batch.length;
     }
 
     return records;
-
   }
 
-  private async generateDtr(
-    action: DtrAction
-  ): Promise<void> {
+  private async generateDtr(action: DtrAction): Promise<void> {
 
     if (
       !this.canGenerateDtr ||
@@ -1296,65 +1561,72 @@ export class AttendanceDetailsPage implements OnInit {
       return;
     }
 
-    // Open a browser window immediately to avoid
-    // popup blocking after asynchronous requests.
+    const student = this.student;
+    const attendanceId = this.attendance.id;
+    const userId = this.loadedUserId;
+    const version = this.loadVersion;
+
+    const isCurrent = (): boolean =>
+      this.isCurrentRequest(version) &&
+      this.loadedUserId === userId &&
+      this.student?.id === student.id &&
+      this.attendance?.id === attendanceId;
 
     let previewWindow: Window | null = null;
+
+    this.dtrErrorMessage = '';
+    this.dtrSuccessMessage = '';
 
     if (action === 'open' || action === 'print') {
 
       previewWindow = window.open('', '_blank');
 
       if (!previewWindow) {
-
         this.dtrErrorMessage =
           'Please allow browser pop-ups to open or print the DTR.';
 
         return;
-
       }
 
+      previewWindow.opener = null;
     }
 
     this.isGeneratingDtr = true;
-    this.dtrErrorMessage = '';
-    this.dtrSuccessMessage = '';
 
     try {
+      await this.validateCoordinatorAccess(userId);
 
-      const student = this.student;
+      if (!isCurrent()) {
+        throw new Error('The attendance page or session has changed.');
+      }
 
       const assignments =
         await this.fetchStudentAssignments(student.id);
-
-      // Include previous placements so reassignment
-      // does not automatically exclude earlier hours.
 
       const knownStartDates = [
         student.ojt_start_date,
         ...assignments.map(item => item.start_date)
       ].filter(
         (value): value is string =>
-          !!value &&
-          /^\d{4}-\d{2}-\d{2}$/.test(value)
+          !!value && this.isValidDateOnly(value)
       ).sort();
 
       const startDate = knownStartDates[0];
 
       if (!startDate) {
-
         throw new Error(
           'The student has no recorded internship start date.'
         );
-
       }
 
-      const today = this.toManilaDate(
-        new Date().toISOString()
-      );
+      const today = this.toManilaDate(new Date().toISOString());
 
-      // Generate the current DTR up to today.
-      // A missing internship end date is allowed.
+      if (
+        student.ojt_end_date &&
+        !this.isValidDateOnly(student.ojt_end_date)
+      ) {
+        throw new Error('The internship end date is invalid.');
+      }
 
       const endDate =
         student.ojt_end_date &&
@@ -1363,11 +1635,9 @@ export class AttendanceDetailsPage implements OnInit {
           : today;
 
       if (endDate < startDate) {
-
         throw new Error(
           'The internship period is not valid for DTR generation.'
         );
-
       }
 
       const records = await this.fetchDtrRecords(
@@ -1377,49 +1647,53 @@ export class AttendanceDetailsPage implements OnInit {
       );
 
       if (!records.length) {
-
         throw new Error(
           'No synchronized attendance records were found within the internship period.'
         );
-
       }
 
-      const uniqueIds = new Set(
-        records.map(record => record.id)
+      // Do not silently include or exclude inconsistent
+      // official attendance hours from a generated DTR.
+      const inconsistentVerifiedRecord = records.find(record =>
+        record.verification_status === 'verified' &&
+        (
+          this.resolveStatus(record) !== 'verified' ||
+          this.getValidHours(record) === null
+        )
       );
 
-      const uniqueDates = new Set(
-        records.map(record => record.attendance_date)
+      if (inconsistentVerifiedRecord) {
+        throw new Error(
+          'A verified attendance record contains invalid rendered hours. Please reconcile the record before generating the DTR.'
+        );
+      }
+
+      const documentDefinition = this.buildDtrDocument(
+        student,
+        records,
+        startDate,
+        endDate
       );
+
+      await this.validateCoordinatorAccess(userId);
+
+      if (!isCurrent()) {
+        throw new Error('The attendance page or session has changed.');
+      }
 
       if (
-        uniqueIds.size !== records.length ||
-        uniqueDates.size !== records.length
+        previewWindow &&
+        previewWindow.closed
       ) {
-
-        throw new Error(
-          'Duplicate attendance records were detected. Please review the student’s attendance before generating the DTR.'
-        );
-
+        throw new Error('The DTR preview window was closed.');
       }
 
-      const documentDefinition =
-        this.buildDtrDocument(
-          student,
-          records,
-          startDate,
-          endDate
-        );
+      const pdf = pdfMake.createPdf(documentDefinition);
 
-      const pdf = pdfMake.createPdf(
-        documentDefinition
+      const safeStudentId = student.student_id.replace(
+        /[^a-zA-Z0-9_-]/g,
+        '_'
       );
-
-      const safeStudentId =
-        student.student_id.replace(
-          /[^a-zA-Z0-9_-]/g,
-          '_'
-        );
 
       const fileName =
         `InternTrack_DTR_${safeStudentId}_${endDate}.pdf`;
@@ -1427,60 +1701,42 @@ export class AttendanceDetailsPage implements OnInit {
       switch (action) {
 
         case 'open':
-
           pdf.open(previewWindow!);
-
-          this.dtrSuccessMessage =
-            'DTR preview requested.';
-
+          this.dtrSuccessMessage = 'DTR preview requested.';
           break;
 
         case 'download':
-
           pdf.download(fileName);
-
-          this.dtrSuccessMessage =
-            'DTR download requested.';
-
+          this.dtrSuccessMessage = 'DTR download requested.';
           break;
 
         case 'print':
-
           pdf.print(previewWindow!);
-
-          this.dtrSuccessMessage =
-            'DTR print requested.';
-
+          this.dtrSuccessMessage = 'DTR print requested.';
           break;
-
       }
 
     } catch (error) {
 
       previewWindow?.close();
 
-      console.error(
-        'DTR generation error:',
-        error
-      );
+      console.error('DTR generation error:', error);
 
-      this.dtrErrorMessage =
-        error instanceof Error
-          ? error.message
-          : 'Unable to generate the DTR. Please try again.';
+      if (isCurrent()) {
+        this.dtrErrorMessage =
+          error instanceof Error
+            ? error.message
+            : 'Unable to generate the DTR. Please try again.';
+      }
 
     } finally {
-
-      this.ngZone.run(() => {
-
-        this.isGeneratingDtr = false;
-
-        this.cdr.detectChanges();
-
-      });
-
+      if (!this.destroyed) {
+        this.ngZone.run(() => {
+          this.isGeneratingDtr = false;
+          this.refreshView();
+        });
+      }
     }
-
   }
 
   // ==========================================
@@ -1493,349 +1749,56 @@ export class AttendanceDetailsPage implements OnInit {
     startDate: string,
     endDate: string
   ): TDocumentDefinitions {
-
     let verifiedHours = 0;
     let provisionalHours = 0;
+    let invalidPendingHours = 0;
 
-    const body: TableCell[][] = [
-
-      [
-        { text: 'Date', style: 'tableHeader' },
-        { text: 'Time In', style: 'tableHeader' },
-        { text: 'Time Out', style: 'tableHeader' },
-        { text: 'Hours', style: 'tableHeader' },
-        { text: 'Status', style: 'tableHeader' }
-      ]
-
-    ];
-
-    for (const record of records) {
-
+    const templateRecords: DtrTemplateRecord[] = records.map(record => {
       const status = this.resolveStatus(record);
       const hours = this.getValidHours(record);
-
-      if (hours !== null) {
-
-        if (status === 'verified') {
-          verifiedHours += hours;
-        }
-
-        if (status === 'pending') {
-          provisionalHours += hours;
-        }
-
+      if (status === 'verified' && hours !== null) verifiedHours += hours;
+      if (status === 'pending') {
+        if (hours !== null) provisionalHours += hours;
+        else invalidPendingHours++;
       }
-
-      body.push([
-
-        this.formatDate(record.attendance_date),
-
-        {
-          text: this.formatTime(record.time_in),
-          alignment: 'center'
-        },
-
-        {
-          text: this.formatTime(record.time_out),
-          alignment: 'center'
-        },
-
-        {
-          text: hours === null
-            ? '—'
-            : hours.toFixed(2),
-          alignment: 'center'
-        },
-
-        {
-          text: this.statusLabel(status),
-          alignment: 'center'
-        }
-
-      ]);
-
-    }
-
-    const requiredHours =
-      Number(student.required_hours || 0);
-
-    const remainingHours = Math.max(
-      0,
-      requiredHours - verifiedHours
-    );
-
-    return {
-
-      pageSize: 'A4',
-
-      pageMargins: [40, 38, 40, 45],
-
-      defaultStyle: {
-        fontSize: 10,
-        color: '#172033'
-      },
-
-      content: [
-
-        {
-          text: student.school_name ||
-            'Pamantasan ng Lungsod ng Valenzuela',
-          alignment: 'center',
-          bold: true,
-          fontSize: 13,
-          margin: [0, 0, 0, 5]
-        },
-
-        {
-          text: 'DAILY TIME RECORD',
-          alignment: 'center',
-          bold: true,
-          fontSize: 17,
-          margin: [0, 0, 0, 4]
-        },
-
-        {
-          text: 'InternTrack | Internship Attendance Record',
-          alignment: 'center',
-          color: '#64748b',
-          fontSize: 9,
-          margin: [0, 0, 0, 22]
-        },
-
-        {
-          table: {
-
-            widths: [100, '*'],
-
-            body: [
-
-              [
-                { text: 'Student name:', bold: true },
-                student.full_name
-              ],
-
-              [
-                { text: 'Student ID:', bold: true },
-                student.student_id
-              ],
-
-              [
-                { text: 'Course:', bold: true },
-                student.course || 'Not recorded'
-              ],
-
-              [
-                { text: 'Current company:', bold: true },
-                student.company_name || 'Not recorded'
-              ],
-
-              [
-                { text: 'DTR period:', bold: true },
-                `${this.formatDate(startDate)} – ${
-                  this.formatDate(endDate)
-                }`
-              ]
-
-            ]
-
-          },
-
-          layout: 'noBorders',
-
-          margin: [0, 0, 0, 20]
-
-        },
-
-        {
-          table: {
-
-            headerRows: 1,
-
-            widths: ['*', 65, 65, 55, 85],
-
-            body
-
-          },
-
-          layout: {
-
-            fillColor: (rowIndex: number) =>
-              rowIndex === 0
-                ? '#edf1f7'
-                : rowIndex % 2 === 0
-                  ? '#f8fafc'
-                  : '#ffffff',
-
-            hLineColor: () => '#dce2ea',
-
-            vLineColor: () => '#dce2ea',
-
-            paddingTop: () => 7,
-
-            paddingBottom: () => 7
-
-          },
-
-          margin: [0, 0, 0, 20]
-
-        },
-
-        {
-          text: 'Attendance Summary',
-          bold: true,
-          fontSize: 12,
-          margin: [0, 0, 0, 8]
-        },
-
-        {
-          table: {
-
-            widths: ['*', 100],
-
-            body: [
-
-              [
-                'Required internship hours',
-                {
-                  text: requiredHours.toFixed(2),
-                  alignment: 'right'
-                }
-              ],
-
-              [
-                'Total verified hours',
-                {
-                  text: verifiedHours.toFixed(2),
-                  alignment: 'right',
-                  bold: true
-                }
-              ],
-
-              [
-                'Pending verification hours',
-                {
-                  text: provisionalHours.toFixed(2),
-                  alignment: 'right'
-                }
-              ],
-
-              [
-                'Remaining required hours',
-                {
-                  text: remainingHours.toFixed(2),
-                  alignment: 'right',
-                  bold: true
-                }
-              ]
-
-            ]
-
-          },
-
-          layout: 'lightHorizontalLines',
-
-          margin: [0, 0, 0, 15]
-
-        },
-
-        {
-          text: 'Only complete, synchronized, verified attendance records with valid rendered hours are included in the official verified total. Pending, incomplete, and rejected records are not counted toward completed OJT hours.',
-          fontSize: 9,
-          color: '#64748b',
-          margin: [0, 0, 0, 25]
-        },
-
-        {
-          columns: [
-
-            {
-              stack: [
-
-                {
-                  text: '____________________________',
-                  alignment: 'center'
-                },
-
-                {
-                  text: 'Student Intern',
-                  alignment: 'center',
-                  margin: [0, 5, 0, 0]
-                }
-
-              ]
-
-            },
-
-            {
-              stack: [
-
-                {
-                  text: '____________________________',
-                  alignment: 'center'
-                },
-
-                {
-                  text: 'Authorized Reviewer',
-                  alignment: 'center',
-                  margin: [0, 5, 0, 0]
-                }
-
-              ]
-
-            }
-
-          ],
-
-          margin: [0, 20, 0, 0]
-
-        }
-
-      ],
-
-      styles: {
-
-        tableHeader: {
-
-          bold: true,
-
-          fontSize: 10,
-
-          alignment: 'center',
-
-          color: '#172033'
-
-        }
-
-      },
-
-      footer: (
-        currentPage: number,
-        pageCount: number
-      ) => ({
-
-        columns: [
-
-          {
-            text: 'Generated by InternTrack',
-            fontSize: 8,
-            color: '#64748b'
-          },
-
-          {
-            text: `Page ${currentPage} of ${pageCount}`,
-            alignment: 'right',
-            fontSize: 8,
-            color: '#64748b'
-          }
-
-        ],
-
-        margin: [40, 10, 40, 0]
-
-      })
-
-    };
-
+      return {
+        date: record.attendance_date,
+        timeIn: this.formatTime(record.time_in),
+        timeOut: this.formatTime(record.time_out),
+        minutes: hours === null ? 0 : hours * 60,
+        status: status === 'pending' ? 'provisional' : status,
+        syncStatus: 'synced',
+        remarks: [record.remarks?.trim(), hours === null ? 'Rendered hours unavailable or require reconciliation; not credited.' : ''].filter(Boolean).join(' ')
+      };
+    });
+
+    const required = Number(student.required_hours);
+    const hasRequired = student.required_hours !== null && Number.isFinite(required) && required > 0;
+    const summary = [
+      `Required internship hours: ${hasRequired ? required.toFixed(2) : 'Not recorded'}`,
+      `Total verified hours: ${verifiedHours.toFixed(2)}`,
+      `Pending verification hours: ${provisionalHours.toFixed(2)}`,
+      `Remaining required hours: ${hasRequired ? Math.max(0, required - verifiedHours).toFixed(2) : 'Not recorded'}`,
+      'The current company may differ from earlier internship placements.',
+      'Rows with unavailable rendered hours are not credited.',
+      invalidPendingHours ? `${invalidPendingHours} pending record(s) require hours reconciliation.` : ''
+    ].filter(Boolean).join('\n');
+
+    return createDtrTemplate({
+      studentName: student.full_name,
+      studentId: student.student_id,
+      schoolName: student.school_name || 'Pamantasan ng Lungsod ng Valenzuela',
+      course: student.course || undefined,
+      company: student.company_name || 'Not recorded',
+      startDate,
+      endDate,
+      records: templateRecords,
+      isCachedData: false,
+      includeEmptyDates: false,
+      includeRemarks: true,
+      reviewerRole: 'Authorized Reviewer',
+      placementNote: summary
+    });
   }
 
   // ==========================================
@@ -1855,11 +1818,8 @@ export class AttendanceDetailsPage implements OnInit {
   // ==========================================
 
   goBack(): void {
-
     void this.router.navigate([
       '/coordinator/attendance'
     ]);
-
   }
-
 }

@@ -20,10 +20,22 @@ import {
   chevronBackOutline,
   chevronForwardOutline,
   refreshOutline,
-  peopleOutline
+  peopleOutline,
+  addOutline,
+  closeOutline,
+  eyeOutline,
+  eyeOffOutline,
+  checkmarkCircleOutline,
+  alertCircleOutline,
+  informationCircleOutline,
+  personAddOutline
 } from 'ionicons/icons';
 
 import { SupabaseService } from '../../../services/supabase.service';
+
+// =========================================
+// INTERFACES AND TYPES
+// =========================================
 
 type InternshipStatus =
   | 'ongoing'
@@ -50,6 +62,36 @@ interface StudentIntern {
   hasAssignment: boolean;
 }
 
+interface StudentRegistrationForm {
+  studentId: string;
+  fullName: string;
+  email: string;
+  course: string;
+  yearLevel: string;
+  schoolName: string;
+  requiredHours: number;
+  temporaryPassword: string;
+}
+
+interface StudentRegistrationResponse {
+  success: boolean;
+  message: string;
+  confirmationRequired?: boolean;
+  confirmationEmailSent?: boolean | null;
+
+  student?: {
+    id: string;
+    student_id: string;
+    full_name: string;
+    email: string;
+    account_status: string;
+  };
+}
+
+// =========================================
+// COMPONENT
+// =========================================
+
 @Component({
   selector: 'app-student-interns',
   standalone: true,
@@ -68,12 +110,20 @@ export class StudentInternsPage implements OnInit {
   // SERVICES
   // =========================================
 
-  private readonly supabaseService = inject(SupabaseService);
-  private readonly supabase = this.supabaseService.getClient();
+  private readonly supabaseService =
+    inject(SupabaseService);
 
-  private readonly router = inject(Router);
-  private readonly cdr = inject(ChangeDetectorRef);
-  private readonly ngZone = inject(NgZone);
+  private readonly supabase =
+    this.supabaseService.getClient();
+
+  private readonly router =
+    inject(Router);
+
+  private readonly cdr =
+    inject(ChangeDetectorRef);
+
+  private readonly ngZone =
+    inject(NgZone);
 
   // =========================================
   // PAGE STATE
@@ -85,17 +135,56 @@ export class StudentInternsPage implements OnInit {
 
   errorMessage = '';
 
+  successMessage = '';
+
   students: StudentIntern[] = [];
 
   searchTerm = '';
 
   selectedCourse = 'all';
+
   selectedCompany = 'all';
+
   selectedStatus = 'all';
 
   currentPage = 1;
 
   readonly pageSize = 8;
+
+  // =========================================
+  // STUDENT REGISTRATION STATE
+  // =========================================
+
+  showAddStudentModal = false;
+
+  isCreatingStudent = false;
+
+  showTemporaryPassword = false;
+
+  registrationError = '';
+
+  registrationForm: StudentRegistrationForm =
+    this.createEmptyRegistrationForm();
+
+  // =========================================
+  // REGISTRATION OPTIONS
+  // =========================================
+
+  readonly courseOptions = [
+    'BSIT',
+    'BSCS',
+    'BSIS',
+    'BSCpE',
+    'Other'
+  ];
+
+  readonly yearLevelOptions = [
+    '1st Year',
+    '2nd Year',
+    '3rd Year',
+    '4th Year',
+    '5th Year'
+  ];
 
   // =========================================
   // CONSTRUCTOR
@@ -109,14 +198,616 @@ export class StudentInternsPage implements OnInit {
       chevronBackOutline,
       chevronForwardOutline,
       refreshOutline,
-      peopleOutline
+      peopleOutline,
+      addOutline,
+      closeOutline,
+      eyeOutline,
+      eyeOffOutline,
+      checkmarkCircleOutline,
+      alertCircleOutline,
+      informationCircleOutline,
+      personAddOutline
     });
 
   }
 
+  // =========================================
+  // INITIALIZATION
+  // =========================================
+
   ngOnInit(): void {
 
     void this.loadStudents();
+
+  }
+
+  // =========================================
+  // CREATE EMPTY REGISTRATION FORM
+  // =========================================
+
+  private createEmptyRegistrationForm():
+    StudentRegistrationForm {
+
+    return {
+      studentId: '',
+      fullName: '',
+      email: '',
+      course: 'BSIT',
+      yearLevel: '4th Year',
+      schoolName:
+        'Pamantasan ng Lungsod ng Valenzuela',
+      requiredHours: 486,
+      temporaryPassword: ''
+    };
+
+  }
+
+  // =========================================
+  // OPEN STUDENT REGISTRATION MODAL
+  // =========================================
+
+  openAddStudentModal(): void {
+
+    if (
+      this.isCreatingStudent ||
+      this.isLoading
+    ) {
+      return;
+    }
+
+    this.registrationForm =
+      this.createEmptyRegistrationForm();
+
+    this.registrationError = '';
+
+    this.successMessage = '';
+
+    this.showTemporaryPassword = false;
+
+    this.showAddStudentModal = true;
+
+    this.cdr.markForCheck();
+
+  }
+
+  // =========================================
+  // CLOSE STUDENT REGISTRATION MODAL
+  // =========================================
+
+  closeAddStudentModal(): void {
+
+    if (this.isCreatingStudent) {
+      return;
+    }
+
+    this.showAddStudentModal = false;
+
+    this.registrationError = '';
+
+    this.showTemporaryPassword = false;
+
+    this.registrationForm =
+      this.createEmptyRegistrationForm();
+
+    this.cdr.markForCheck();
+
+  }
+
+  // =========================================
+  // PASSWORD VISIBILITY
+  // =========================================
+
+  toggleTemporaryPassword(): void {
+
+    this.showTemporaryPassword =
+      !this.showTemporaryPassword;
+
+  }
+
+  // =========================================
+  // CLEAR REGISTRATION ERROR
+  // =========================================
+
+  clearRegistrationError(): void {
+
+    if (this.registrationError) {
+      this.registrationError = '';
+    }
+
+  }
+
+  // =========================================
+  // DISMISS SUCCESS MESSAGE
+  // =========================================
+
+  dismissSuccessMessage(): void {
+
+    this.successMessage = '';
+
+  }
+
+  // =========================================
+  // NORMALIZE REGISTRATION FORM
+  // =========================================
+
+  private normalizeRegistrationForm():
+    StudentRegistrationForm {
+
+    const form = this.registrationForm;
+
+    return {
+      studentId:
+        String(form.studentId ?? '').trim(),
+
+      fullName:
+        String(form.fullName ?? '').trim(),
+
+      email:
+        String(form.email ?? '')
+          .trim()
+          .toLowerCase(),
+
+      course:
+        String(form.course ?? '').trim(),
+
+      yearLevel:
+        String(form.yearLevel ?? '').trim(),
+
+      schoolName:
+        String(form.schoolName ?? '').trim(),
+
+      requiredHours:
+        Number(form.requiredHours),
+
+      temporaryPassword:
+        String(form.temporaryPassword ?? '')
+    };
+
+  }
+
+  // =========================================
+  // REGISTRATION VALIDATION
+  // =========================================
+
+  private validateRegistrationForm(
+    form: StudentRegistrationForm
+  ): string | null {
+
+    // Student ID
+
+    if (!form.studentId) {
+      return 'Student ID is required.';
+    }
+
+    const studentIdPattern =
+      /^[A-Za-z0-9-]{1,30}$/;
+
+    if (!studentIdPattern.test(form.studentId)) {
+      return 'Please enter a valid Student ID.';
+    }
+
+    // Full name
+
+    if (!form.fullName) {
+      return 'Full name is required.';
+    }
+
+    if (form.fullName.length > 150) {
+      return 'Full name must not exceed 150 characters.';
+    }
+
+    // Email address
+
+    if (!form.email) {
+      return 'Email address is required.';
+    }
+
+    const emailPattern =
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (
+      !emailPattern.test(form.email) ||
+      form.email.length > 254
+    ) {
+      return 'Please enter a valid email address.';
+    }
+
+    // Course
+
+    if (!form.course) {
+      return 'Course is required.';
+    }
+
+    if (form.course.length > 150) {
+      return 'Course must not exceed 150 characters.';
+    }
+
+    // Year level
+
+    if (!form.yearLevel) {
+      return 'Year level is required.';
+    }
+
+    if (form.yearLevel.length > 30) {
+      return 'Year level must not exceed 30 characters.';
+    }
+
+    // School name
+
+    if (!form.schoolName) {
+      return 'School name is required.';
+    }
+
+    if (form.schoolName.length > 200) {
+      return 'School name must not exceed 200 characters.';
+    }
+
+    // Required internship hours
+
+    if (
+      !Number.isInteger(form.requiredHours) ||
+      form.requiredHours <= 0 ||
+      form.requiredHours > 10000
+    ) {
+      return 'Please enter valid required internship hours.';
+    }
+
+    // Temporary password
+
+    if (!form.temporaryPassword.trim()) {
+      return 'Temporary password is required.';
+    }
+
+    if (form.temporaryPassword.length < 8) {
+      return 'Temporary password must contain at least 8 characters.';
+    }
+
+    const passwordBytes =
+      new TextEncoder()
+        .encode(form.temporaryPassword)
+        .length;
+
+    if (passwordBytes > 72) {
+      return 'Temporary password must not exceed 72 bytes.';
+    }
+
+    // Local duplicate Student ID checking
+
+    const duplicateStudentId =
+      this.students.some(student =>
+        student.studentId === form.studentId
+      );
+
+    if (duplicateStudentId) {
+      return 'This Student ID is already registered.';
+    }
+
+    // Local duplicate email checking
+
+    const duplicateEmail =
+      this.students.some(student =>
+        student.email.trim().toLowerCase() ===
+        form.email
+      );
+
+    if (duplicateEmail) {
+      return 'This email address is already registered.';
+    }
+
+    return null;
+
+  }
+
+  // =========================================
+  // REGISTRATION FORM VALIDITY
+  // =========================================
+
+  get canCreateStudent(): boolean {
+
+    if (
+      this.isCreatingStudent ||
+      this.isLoading
+    ) {
+      return false;
+    }
+
+    const form =
+      this.normalizeRegistrationForm();
+
+    return (
+      this.validateRegistrationForm(form) === null
+    );
+
+  }
+
+  // =========================================
+  // EXTRACT EDGE FUNCTION ERROR
+  // =========================================
+
+  private async getRegistrationErrorMessage(
+    error: unknown
+  ): Promise<string> {
+
+    const fallback =
+      'Unable to create student intern. Please try again.';
+
+    if (
+      !error ||
+      typeof error !== 'object'
+    ) {
+      return fallback;
+    }
+
+    const functionError = error as {
+      message?: string;
+      context?: unknown;
+    };
+
+    const context = functionError.context;
+
+    if (context instanceof Response) {
+
+      try {
+
+        const response =
+          await context.clone().json();
+
+        if (
+          typeof response?.message === 'string' &&
+          response.message.trim()
+        ) {
+          return response.message;
+        }
+
+        if (
+          typeof response?.error === 'string' &&
+          response.error.trim()
+        ) {
+          return response.error;
+        }
+
+      } catch {
+
+        // Response may not contain valid JSON.
+
+      }
+
+      if (context.status === 401) {
+        return 'Your session has expired. Please log in again.';
+      }
+
+      if (context.status === 403) {
+        return 'You are not authorized to register student interns.';
+      }
+
+      if (context.status === 409) {
+        return 'Student ID or email address already exists.';
+      }
+
+      if (context.status === 429) {
+        return 'Too many requests. Please try again later.';
+      }
+
+    }
+
+    return fallback;
+
+  }
+
+  // =========================================
+  // CREATE STUDENT INTERN ACCOUNT
+  // =========================================
+
+  async createStudentIntern(): Promise<void> {
+
+    if (
+      this.isCreatingStudent ||
+      this.isLoading ||
+      !this.showAddStudentModal
+    ) {
+      return;
+    }
+
+    this.registrationError = '';
+
+    this.successMessage = '';
+
+    const form =
+      this.normalizeRegistrationForm();
+
+    const validationError =
+      this.validateRegistrationForm(form);
+
+    if (validationError) {
+
+      this.registrationError =
+        validationError;
+
+      this.cdr.markForCheck();
+
+      return;
+
+    }
+
+    this.isCreatingStudent = true;
+
+    this.cdr.markForCheck();
+
+    let accountCreated = false;
+
+    try {
+
+      // =====================================
+      // VERIFY CURRENT SESSION
+      // =====================================
+
+      const {
+        data: sessionData,
+        error: sessionError
+      } = await this.supabase.auth.getSession();
+
+      if (
+        sessionError ||
+        !sessionData.session?.access_token
+      ) {
+
+        this.registrationError =
+          'Your session has expired. Please log in again.';
+
+        return;
+
+      }
+
+      // =====================================
+      // INVOKE STUDENT REGISTRATION FUNCTION
+      // =====================================
+
+      const {
+        data,
+        error
+      } = await this.supabase.functions.invoke(
+        'create-student-intern',
+        {
+          body: {
+            studentId: form.studentId,
+            fullName: form.fullName,
+            email: form.email,
+            course: form.course,
+            yearLevel: form.yearLevel,
+            schoolName: form.schoolName,
+            requiredHours: form.requiredHours,
+            temporaryPassword:
+              form.temporaryPassword
+          },
+
+          headers: {
+            Authorization:
+              `Bearer ${sessionData.session.access_token}`
+          }
+        }
+      );
+
+      // =====================================
+      // HANDLE EDGE FUNCTION ERROR
+      // =====================================
+
+      if (error) {
+
+        this.registrationError =
+          await this.getRegistrationErrorMessage(
+            error
+          );
+
+        return;
+
+      }
+
+      const result =
+        data as StudentRegistrationResponse | null;
+
+      if (
+        !result ||
+        result.success !== true
+      ) {
+
+        this.registrationError =
+          result?.message ||
+          'Student registration could not be confirmed. Check existing accounts before retrying.';
+
+        return;
+
+      }
+
+      accountCreated = true;
+
+      // =====================================
+      // HANDLE SUCCESSFUL REGISTRATION
+      // =====================================
+
+      const registeredName =
+        result.student?.full_name ||
+        form.fullName;
+
+      if (
+        result.confirmationRequired === true &&
+        result.confirmationEmailSent === false
+      ) {
+
+        this.successMessage =
+          `${registeredName} was registered successfully, but the confirmation email could not be sent.`;
+
+      } else if (
+        result.confirmationRequired === true
+      ) {
+
+        this.successMessage =
+          `${registeredName} was registered successfully. Email confirmation is required before login.`;
+
+      } else {
+
+        this.successMessage =
+          `${registeredName} was registered successfully.`;
+
+      }
+
+      // Close registration modal.
+
+      this.showAddStudentModal = false;
+
+      this.showTemporaryPassword = false;
+
+      this.registrationError = '';
+
+      // Remove temporary password from form.
+
+      this.registrationForm =
+        this.createEmptyRegistrationForm();
+
+      // Reset filters to display new students.
+
+      this.resetFilters();
+
+      // Refresh registered student list.
+
+      await this.loadStudents();
+
+      if (this.errorMessage) {
+
+        this.successMessage +=
+          ' The account was created, but the student list could not be refreshed.';
+
+      }
+
+    } catch {
+
+      if (accountCreated) {
+
+        this.successMessage =
+          'Student account was created, but the page could not be refreshed.';
+
+        this.showAddStudentModal = false;
+
+        this.registrationForm =
+          this.createEmptyRegistrationForm();
+
+      } else {
+
+        this.registrationError =
+          'Registration could not be confirmed. Check existing accounts before retrying.';
+
+      }
+
+    } finally {
+
+      this.ngZone.run(() => {
+
+        this.isCreatingStudent = false;
+
+        this.cdr.detectChanges();
+
+      });
+
+    }
 
   }
 
@@ -131,7 +822,9 @@ export class StudentInternsPage implements OnInit {
     }
 
     this.loadingInProgress = true;
+
     this.isLoading = true;
+
     this.errorMessage = '';
 
     this.cdr.markForCheck();
@@ -144,7 +837,9 @@ export class StudentInternsPage implements OnInit {
         data: students,
         error: studentError
       } = await this.supabase
+
         .from('students')
+
         .select(`
           id,
           student_id,
@@ -157,6 +852,7 @@ export class StudentInternsPage implements OnInit {
           ojt_end_date,
           account_status
         `)
+
         .order('full_name', {
           ascending: true
         });
@@ -165,11 +861,13 @@ export class StudentInternsPage implements OnInit {
         throw studentError;
       }
 
-      const studentRows = students ?? [];
+      const studentRows =
+        students ?? [];
 
       if (!studentRows.length) {
 
         this.students = [];
+
         this.currentPage = 1;
 
         return;
@@ -178,17 +876,20 @@ export class StudentInternsPage implements OnInit {
 
       // Student database UUIDs.
 
-      const studentIds = studentRows.map(
-        student => student.id
-      );
+      const studentIds =
+        studentRows.map(
+          student => student.id
+        );
 
       // Student school IDs.
 
-      const schoolIds = studentRows.map(
-        student => student.student_id
-      );
+      const schoolIds =
+        studentRows.map(
+          student => student.student_id
+        );
 
-      // Retrieve active assignments and verified attendance.
+      // Retrieve active assignments
+      // and verified attendance.
 
       const [
         assignmentResult,
@@ -196,7 +897,9 @@ export class StudentInternsPage implements OnInit {
       ] = await Promise.all([
 
         this.supabase
+
           .from('intern_supervisor_assignments')
+
           .select(`
             id,
             student_id,
@@ -205,22 +908,32 @@ export class StudentInternsPage implements OnInit {
             assigned_date,
             assignment_status
           `)
+
           .in('student_id', studentIds)
+
           .eq('assignment_status', 'active')
+
           .order('assigned_date', {
             ascending: false
           }),
 
         this.supabase
+
           .from('attendance')
+
           .select(`
             student_id,
             total_hours_rendered
           `)
+
           .in('student_id', schoolIds)
+
           .eq('verification_status', 'verified')
+
           .eq('sync_status', 'synced')
+
           .not('time_in', 'is', null)
+
           .not('time_out', 'is', null)
 
       ]);
@@ -233,15 +946,23 @@ export class StudentInternsPage implements OnInit {
         throw attendanceResult.error;
       }
 
-      // =========================================
+      // =====================================
       // MAP ACTIVE COMPANY ASSIGNMENTS
-      // =========================================
+      // =====================================
 
-      const assignmentMap = new Map<string, string>();
+      const assignmentMap =
+        new Map<string, string>();
 
-      for (const assignment of assignmentResult.data ?? []) {
+      for (
+        const assignment of
+        assignmentResult.data ?? []
+      ) {
 
-        if (!assignmentMap.has(assignment.student_id)) {
+        if (
+          !assignmentMap.has(
+            assignment.student_id
+          )
+        ) {
 
           assignmentMap.set(
             assignment.student_id,
@@ -252,19 +973,27 @@ export class StudentInternsPage implements OnInit {
 
       }
 
-      // =========================================
+      // =====================================
       // CALCULATE VERIFIED INTERNSHIP HOURS
-      // =========================================
+      // =====================================
 
-      const hoursMap = new Map<string, number>();
+      const hoursMap =
+        new Map<string, number>();
 
-      for (const record of attendanceResult.data ?? []) {
+      for (
+        const record of
+        attendanceResult.data ?? []
+      ) {
 
-        const hours = Number(
-          record.total_hours_rendered ?? 0
-        );
+        const hours =
+          Number(
+            record.total_hours_rendered ?? 0
+          );
 
-        if (!Number.isFinite(hours) || hours < 0) {
+        if (
+          !Number.isFinite(hours) ||
+          hours < 0
+        ) {
           continue;
         }
 
@@ -278,89 +1007,103 @@ export class StudentInternsPage implements OnInit {
 
       }
 
-      // =========================================
+      // =====================================
       // PREPARE STUDENT RECORDS
-      // =========================================
+      // =====================================
 
-      this.students = studentRows.map((student, index) => {
+      this.students =
+        studentRows.map((student, index) => {
 
-        const requiredHours = Math.max(
-          0,
-          Number(student.required_hours) || 0
-        );
+          const requiredHours =
+            Math.max(
+              0,
+              Number(student.required_hours) || 0
+            );
 
-        const verifiedHours =
-          hoursMap.get(student.student_id) ?? 0;
+          const verifiedHours =
+            hoursMap.get(student.student_id) ?? 0;
 
-        // Prevent displaying 100% before the
-        // required internship hours are completed.
+          // Prevent displaying 100% before the
+          // required internship hours are completed.
 
-        const progress = requiredHours > 0
-          ? Math.min(
-              100,
-              Math.floor(
-                (verifiedHours / requiredHours) * 100
-              )
-            )
-          : 0;
+          const progress =
+            requiredHours > 0
 
-        const hasAssignment =
-          assignmentMap.has(student.id);
+              ? Math.min(
+                  100,
+                  Math.floor(
+                    (
+                      verifiedHours /
+                      requiredHours
+                    ) * 100
+                  )
+                )
 
-        const companyName =
-          assignmentMap.get(student.id) ||
-          (
+              : 0;
+
+          const hasAssignment =
+            assignmentMap.has(student.id);
+
+          const companyName =
+            assignmentMap.get(student.id) ||
+
+            (
+              hasAssignment
+                ? 'Company not specified'
+                : 'Unassigned'
+            );
+
+          const status =
+            this.calculateStatus(
+              student.account_status,
+              hasAssignment,
+              verifiedHours,
+              requiredHours,
+              student.ojt_start_date,
+              student.ojt_end_date
+            );
+
+          return {
+
+            id: student.id,
+
+            studentId: student.student_id,
+
+            fullName: student.full_name,
+
+            email: student.email || '',
+
+            course:
+              student.course || 'Not specified',
+
+            yearLevel:
+              student.year_level
+                ? String(student.year_level)
+                : '',
+
+            companyName,
+
+            requiredHours,
+
+            verifiedHours,
+
+            progress,
+
+            status,
+
+            initials:
+              this.getInitials(
+                student.full_name
+              ),
+
+            avatarColor:
+              this.getAvatarColor(index),
+
             hasAssignment
-              ? 'Company not specified'
-              : 'Unassigned'
-          );
 
-        const status = this.calculateStatus(
-          student.account_status,
-          hasAssignment,
-          verifiedHours,
-          requiredHours,
-          student.ojt_start_date,
-          student.ojt_end_date
-        );
+          };
 
-        return {
-
-          id: student.id,
-
-          studentId: student.student_id,
-
-          fullName: student.full_name,
-
-          email: student.email || '',
-
-          course: student.course || 'Not specified',
-
-          yearLevel: student.year_level
-            ? String(student.year_level)
-            : '',
-
-          companyName,
-
-          requiredHours,
-
-          verifiedHours,
-
-          progress,
-
-          status,
-
-          initials: this.getInitials(
-            student.full_name
-          ),
-
-          avatarColor: this.getAvatarColor(index),
-
-          hasAssignment
-
-        };
-
-      });
+        });
 
       this.currentPage = 1;
 
@@ -384,6 +1127,7 @@ export class StudentInternsPage implements OnInit {
       this.ngZone.run(() => {
 
         this.loadingInProgress = false;
+
         this.isLoading = false;
 
         this.cdr.detectChanges();
@@ -436,21 +1180,28 @@ export class StudentInternsPage implements OnInit {
 
     // Internship schedule is not yet configured.
 
-    if (!startDate || !endDate || requiredHours <= 0) {
+    if (
+      !startDate ||
+      !endDate ||
+      requiredHours <= 0
+    ) {
 
       return 'ongoing';
 
     }
 
-    const start = new Date(
-      `${startDate}T00:00:00`
-    ).getTime();
+    const start =
+      new Date(
+        `${startDate}T00:00:00`
+      ).getTime();
 
-    const end = new Date(
-      `${endDate}T23:59:59`
-    ).getTime();
+    const end =
+      new Date(
+        `${endDate}T23:59:59`
+      ).getTime();
 
-    const today = Date.now();
+    const today =
+      Date.now();
 
     // Validate internship schedule.
 
@@ -491,23 +1242,26 @@ export class StudentInternsPage implements OnInit {
   // STATUS DISPLAY LABELS
   // =========================================
 
-  getStatusLabel(status: InternshipStatus): string {
+  getStatusLabel(
+    status: InternshipStatus
+  ): string {
 
-    const labels: Record<InternshipStatus, string> = {
+    const labels:
+      Record<InternshipStatus, string> = {
 
-      ongoing: 'Ongoing',
+        ongoing: 'Ongoing',
 
-      unassigned: 'Unassigned',
+        unassigned: 'Unassigned',
 
-      needs_follow_up: 'Needs follow-up',
+        needs_follow_up: 'Needs follow-up',
 
-      hours_completed: 'Hours completed',
+        hours_completed: 'Hours completed',
 
-      inactive: 'Inactive',
+        inactive: 'Inactive',
 
-      not_started: 'Not started'
+        not_started: 'Not started'
 
-    };
+      };
 
     return labels[status];
 
@@ -528,8 +1282,11 @@ export class StudentInternsPage implements OnInit {
     return this.students.filter(student =>
 
       student.hasAssignment &&
+
       student.status !== 'inactive' &&
+
       student.status !== 'hours_completed' &&
+
       student.status !== 'not_started'
 
     ).length;
@@ -553,11 +1310,15 @@ export class StudentInternsPage implements OnInit {
   get courses(): string[] {
 
     return [
+
       ...new Set(
+
         this.students.map(
           student => student.course
         )
+
       )
+
     ].sort();
 
   }
@@ -565,11 +1326,21 @@ export class StudentInternsPage implements OnInit {
   get companies(): string[] {
 
     return [
+
       ...new Set(
+
         this.students
-          .filter(student => student.hasAssignment)
-          .map(student => student.companyName)
+
+          .filter(
+            student => student.hasAssignment
+          )
+
+          .map(
+            student => student.companyName
+          )
+
       )
+
     ].sort();
 
   }
@@ -580,9 +1351,10 @@ export class StudentInternsPage implements OnInit {
 
   get filteredStudents(): StudentIntern[] {
 
-    const search = this.searchTerm
-      .trim()
-      .toLowerCase();
+    const search =
+      this.searchTerm
+        .trim()
+        .toLowerCase();
 
     return this.students.filter(student => {
 
@@ -608,7 +1380,8 @@ export class StudentInternsPage implements OnInit {
 
         this.selectedCompany === 'all' ||
 
-        student.companyName === this.selectedCompany;
+        student.companyName ===
+          this.selectedCompany;
 
       const matchesStatus =
 
@@ -619,8 +1392,11 @@ export class StudentInternsPage implements OnInit {
       return (
 
         matchesSearch &&
+
         matchesCourse &&
+
         matchesCompany &&
+
         matchesStatus
 
       );
@@ -660,7 +1436,10 @@ export class StudentInternsPage implements OnInit {
       1,
 
       Math.ceil(
-        this.filteredStudents.length / this.pageSize
+
+        this.filteredStudents.length /
+        this.pageSize
+
       )
 
     );
@@ -670,7 +1449,9 @@ export class StudentInternsPage implements OnInit {
   get paginatedStudents(): StudentIntern[] {
 
     const start =
-      (this.currentPage - 1) * this.pageSize;
+
+      (this.currentPage - 1) *
+      this.pageSize;
 
     return this.filteredStudents.slice(
 
@@ -689,8 +1470,11 @@ export class StudentInternsPage implements OnInit {
       1,
 
       Math.min(
+
         this.currentPage - 2,
+
         this.totalPages - 4
+
       )
 
     );
@@ -719,7 +1503,9 @@ export class StudentInternsPage implements OnInit {
 
     return this.filteredStudents.length
 
-      ? (this.currentPage - 1) * this.pageSize + 1
+      ? (
+          this.currentPage - 1
+        ) * this.pageSize + 1
 
       : 0;
 
@@ -740,8 +1526,11 @@ export class StudentInternsPage implements OnInit {
   goToPage(page: number): void {
 
     if (
+
       page < 1 ||
+
       page > this.totalPages
+
     ) {
 
       return;
@@ -756,7 +1545,9 @@ export class StudentInternsPage implements OnInit {
   // STUDENT PROFILE NAVIGATION
   // =========================================
 
-  viewStudent(student: StudentIntern): void {
+  viewStudent(
+    student: StudentIntern
+  ): void {
 
     void this.router.navigate([
 
@@ -772,26 +1563,33 @@ export class StudentInternsPage implements OnInit {
   // DISPLAY HELPERS
   // =========================================
 
-  private getInitials(name: string): string {
+  private getInitials(
+    name: string
+  ): string {
 
-    const parts = (name || '')
-      .trim()
-      .split(/\s+/)
-      .filter(Boolean);
+    const parts =
+
+      (name || '')
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean);
 
     return parts
 
       .slice(0, 2)
 
       .map(
-        part => part.charAt(0).toUpperCase()
+        part =>
+          part.charAt(0).toUpperCase()
       )
 
       .join('') || 'ST';
 
   }
 
-  private getAvatarColor(index: number): string {
+  private getAvatarColor(
+    index: number
+  ): string {
 
     const colors = [
 

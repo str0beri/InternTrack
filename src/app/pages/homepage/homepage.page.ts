@@ -345,6 +345,7 @@ export class HomepagePage
   isTimedInToday = false;
 
   currentLiveTime = '';
+  greeting = 'Good Morning';
 
   private clockInterval?:
 
@@ -921,27 +922,33 @@ export class HomepagePage
   // =========================================
 
   updateLiveTime(): void {
+    const now = new Date();
 
-    this.currentLiveTime =
+    this.currentLiveTime = now.toLocaleTimeString(
+      'en-US',
+      {
+        timeZone: 'Asia/Manila',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+      }
+    );
 
-      new Date().toLocaleTimeString(
+    const hour = Number(
+      new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Manila',
+        hour: 'numeric',
+        hourCycle: 'h23'
+      }).format(now)
+    );
 
-        'en-US',
-
-        {
-
-          timeZone: 'Asia/Manila',
-
-          hour: 'numeric',
-
-          minute: '2-digit',
-
-          hour12: true
-
-        }
-
-      );
-
+    if (hour < 12) {
+      this.greeting = 'Good Morning';
+    } else if (hour < 18) {
+      this.greeting = 'Good Afternoon';
+    } else {
+      this.greeting = 'Good Evening';
+    }
   }
 
   // =========================================

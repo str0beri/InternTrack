@@ -1,16 +1,15 @@
 
 <ion-content class="home-content">
+
   <main class="home-container">
 
-    <!-- =====================================
-         STUDENT INFORMATION
-    ====================================== -->
+    <!-- STUDENT INFORMATION -->
 
     <header class="home-header">
 
       <div class="greeting-row">
 
-        <p class="greeting">Good Morning,</p>
+        <p class="greeting">{{ greeting }},</p>
 
         <span class="intern-badge">
           Active Intern
@@ -38,9 +37,30 @@
     </header>
 
 
-    <!-- =====================================
-         TODAY'S ATTENDANCE
-    ====================================== -->
+    <!-- DASHBOARD CONNECTION STATUS -->
+
+    @if (dashboardMessage) {
+
+      <div class="dashboard-notice" role="status">
+        {{ dashboardMessage }}
+      </div>
+
+    } @else if (!isOnline) {
+
+      <div class="dashboard-notice" role="status">
+        Offline mode
+      </div>
+
+    } @else if (isCachedDashboard) {
+
+      <div class="dashboard-notice" role="status">
+        Showing cached data
+      </div>
+
+    }
+
+
+    <!-- TODAY'S ATTENDANCE -->
 
     <section class="attendance-card">
 
@@ -60,9 +80,6 @@
 
       </div>
 
-
-      <!-- Attendance button -->
-
       <button
         type="button"
         class="time-in-button"
@@ -76,14 +93,11 @@
 
         <span>
           {{ isTimedInToday
-            ? 'View Attendance Status'
+            ? 'View Attendance'
             : 'Time In' }}
         </span>
 
       </button>
-
-
-      <!-- Attendance supporting evidence note -->
 
       @if (!isTimedInToday) {
 
@@ -96,9 +110,7 @@
     </section>
 
 
-    <!-- =====================================
-         OJT PROGRESS
-    ====================================== -->
+    <!-- OJT PROGRESS -->
 
     <section class="hours-card">
 
@@ -118,7 +130,7 @@
       </div>
 
 
-      <!-- Official completed hours -->
+      <!-- OFFICIAL COMPLETED HOURS -->
 
       <div class="hours-summary">
 
@@ -143,7 +155,7 @@
       </div>
 
 
-      <!-- Segmented progress bar -->
+      <!-- SEGMENTED PROGRESS BAR -->
 
       <div
         class="hours-progress"
@@ -153,14 +165,10 @@
         aria-valuemin="0"
         aria-valuemax="100">
 
-        <!-- Verified hours segment -->
-
         <div
           class="verified-progress"
           [style.width.%]="verifiedPercent">
         </div>
-
-        <!-- Provisional hours segment -->
 
         <div
           class="provisional-progress"
@@ -170,11 +178,9 @@
       </div>
 
 
-      <!-- Progress legend -->
+      <!-- PROGRESS LEGEND -->
 
       <div class="hours-legend">
-
-        <!-- Verified hours -->
 
         <div class="legend-item">
 
@@ -183,7 +189,7 @@
 
           <span>
 
-            Verified:
+            Verified
 
             <strong>
               {{ verifiedHours | number:'1.1-1' }}h
@@ -193,9 +199,6 @@
 
         </div>
 
-
-        <!-- Provisional hours -->
-
         <div class="legend-item">
 
           <span class="legend-dot provisional">
@@ -203,7 +206,7 @@
 
           <span>
 
-            Provisional:
+            Provisional
 
             <strong>
               {{ provisionalHours | number:'1.1-1' }}h
@@ -213,9 +216,6 @@
 
         </div>
 
-
-        <!-- Remaining official hours -->
-
         <div class="legend-item">
 
           <span class="legend-dot remaining">
@@ -223,7 +223,7 @@
 
           <span>
 
-            Remaining:
+            Remaining
 
             <strong>
               {{ remainingHours | number:'1.1-1' }}h
@@ -238,18 +238,16 @@
     </section>
 
 
-    <!-- =====================================
-         TO DO SECTION
-    ====================================== -->
+    <!-- ACTION REQUIRED -->
 
     <section class="todo-section">
 
       <h2 class="section-title">
-        To Do
+        Action Required
       </h2>
 
 
-      <!-- Reports loading error -->
+      <!-- REPORTS LOADING ERROR -->
 
       @if (reportsLoadError) {
 
@@ -264,7 +262,7 @@
       }
 
 
-      <!-- Available draft and returned reports -->
+      <!-- DRAFT AND RETURNED REPORTS -->
 
       @else if (todoReports.length > 0) {
 
@@ -275,8 +273,6 @@
             class="todo-card"
             routerLink="/tabs/reports">
 
-            <!-- Report icon -->
-
             <div class="todo-icon">
 
               <ion-icon name="document-text-outline">
@@ -284,12 +280,11 @@
 
             </div>
 
-
-            <!-- Report information -->
-
             <div class="todo-details">
 
-              <h3>Week {{ report.week }} Report</h3>
+              <h3>
+                Week {{ report.week }} Report
+              </h3>
 
               <p>
 
@@ -300,9 +295,6 @@
               </p>
 
             </div>
-
-
-            <!-- Report status -->
 
             <span
               class="draft-badge"
@@ -316,9 +308,6 @@
 
             </span>
 
-
-            <!-- Navigation arrow -->
-
             <ion-icon
               name="chevron-forward-outline"
               class="todo-arrow">
@@ -331,7 +320,7 @@
       }
 
 
-      <!-- No pending tasks -->
+      <!-- NO PENDING TASKS -->
 
       @else {
 
@@ -348,22 +337,15 @@
     </section>
 
 
-    <!-- =====================================
-         RECENT ACTIVITIES
-    ====================================== -->
+    <!-- RECENT ACTIVITIES -->
 
     <section class="activities-section">
-
-      <!-- Section header -->
 
       <div class="section-header">
 
         <h2 class="section-title">
           Recent Activities
         </h2>
-
-
-        <!-- See All / See Less button -->
 
         @if (activities.length > 3) {
 
@@ -384,7 +366,7 @@
       </div>
 
 
-      <!-- Activities loading error -->
+      <!-- ACTIVITIES LOADING ERROR -->
 
       @if (
         activitiesLoadError &&
@@ -402,7 +384,7 @@
       }
 
 
-      <!-- Available activities -->
+      <!-- AVAILABLE ACTIVITIES -->
 
       @else if (displayedActivities.length > 0) {
 
@@ -415,8 +397,6 @@
 
             <div class="activity-item">
 
-              <!-- Activity icon -->
-
               <div class="activity-icon">
 
                 <ion-icon
@@ -426,17 +406,11 @@
 
               </div>
 
-
-              <!-- Activity description -->
-
               <div class="activity-details">
 
                 <p>{{ activity.description }}</p>
 
               </div>
-
-
-              <!-- Activity date -->
 
               <span class="activity-day">
 
@@ -453,7 +427,7 @@
       }
 
 
-      <!-- No recent activities -->
+      <!-- NO RECENT ACTIVITIES -->
 
       @else {
 
@@ -468,4 +442,5 @@
     </section>
 
   </main>
+
 </ion-content>

@@ -1,4 +1,3 @@
-
 import {
   Component,
   ChangeDetectorRef,
@@ -44,9 +43,12 @@ import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 
 import type {
-  TDocumentDefinitions,
-  TableCell
+  TDocumentDefinitions
 } from 'pdfmake/interfaces';
+
+import {
+  createDtrTemplate
+} from '../../utils/dtr-template';
 
 import { AuthService } from '../../services/auth.service';
 import { SupabaseService } from '../../services/supabase.service';
@@ -1031,20 +1033,6 @@ export class DtrPage
     };
   }
 
-  private formatDate(
-    date: Date
-  ): string {
-
-    return date.toLocaleDateString(
-      'en-US',
-      {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
-      }
-    );
-  }
-
   private formatTime(
     value: string | null | undefined
   ): string {
@@ -1245,32 +1233,29 @@ export class DtrPage
 
   getMarker(
     date: string
-  ): 'verified' | 'provisional' | null {
+  ): 'verified' | 'provisional' | 'rejected' | 'incomplete' | null {
 
-    const dayRecords =
-      this.records.filter(
-        record => record.date === date
-      );
+    const record = this.records.find(
+      item => item.date === date
+    );
 
-    if (
-      dayRecords.some(
-        record => record.status === 'verified'
-      )
-    ) {
+    if (!record) {
+      return null;
+    }
 
+    if (record.status === 'rejected') {
+      return 'rejected';
+    }
+
+    if (!record.timeIn || !record.timeOut) {
+      return 'incomplete';
+    }
+
+    if (record.status === 'verified') {
       return 'verified';
     }
 
-    if (
-      dayRecords.some(
-        record => record.status === 'provisional'
-      )
-    ) {
-
-      return 'provisional';
-    }
-
-    return null;
+    return 'provisional';
   }
 
   get selectedRecord(): DtrRecord | undefined {
@@ -1657,7 +1642,9 @@ export class DtrPage
         verification_status:
           row.verification_status === 'verified'
             ? 'verified'
-            : 'provisional'
+            : row.verification_status === 'rejected'
+              ? 'rejected'
+              : 'provisional'
       };
 
       serverRecords.push(record);
@@ -1976,763 +1963,29 @@ export class DtrPage
 
   private createWeeklyPdf(): TDocumentDefinitions {
 
-    const { start, end } =
-      this.getWeekRange();
+    const { start, end } = this.getWeekRange();
 
-    const colors = {
+    return createDtrTemplate({
 
-      primary: '#3157D5',
+      studentName: this.studentFullName,
 
-      violet: '#7556D9',
+      studentId: this.studentId,
 
-      orange: '#FF9638',
+      schoolName:
+        'Pamantasan ng Lungsod ng Valenzuela',
 
-      background: '#F5F7FC',
+      company: this.studentCompany,
 
-      white: '#FFFFFF',
+      startDate: this.dateKey(start),
 
-      text: '#1E293B',
+      endDate: this.dateKey(end),
 
-      muted: '#64748B',
+      records: this.records,
 
-      border: '#E2E8F0'
-    };
+      isCachedData:
+        this.isCachedData || !this.isOnline
 
-    const startKey =
-      this.dateKey(start);
-
-    const endKey =
-      this.dateKey(end);
-
-    const weekRecords = this.records
-
-      .filter(record =>
-        record.date >= startKey &&
-        record.date <= endKey
-      )
-
-      .sort(
-        (a, b) =>
-          a.date.localeCompare(b.date)
-      );
-
-    const verifiedMinutes = weekRecords
-
-      .filter(
-        record => record.status === 'verified'
-      )
-
-      .reduce(
-        (total, record) =>
-          total + record.minutes,
-        0
-      );
-
-    const provisionalMinutes = weekRecords
-
-      .filter(
-        record => record.status === 'provisional'
-      )
-
-      .reduce(
-        (total, record) =>
-          total + record.minutes,
-        0
-      );
-
-    const verifiedHours =
-      verifiedMinutes / 60;
-
-    const provisionalHours =
-      provisionalMinutes / 60;
-
-    const weeklyTotal =
-      verifiedHours + provisionalHours;
-
-    const formatHours =
-      (minutes: number): string =>
-
-        minutes > 0
-          ? (minutes / 60).toFixed(1)
-          : '—';
-
-    const attendanceBody: TableCell[][] = [
-
-      [
-        'DATE',
-        'TIME IN',
-        'TIME OUT',
-        'HOURS',
-        'STATUS'
-      ].map(text => ({
-
-        text,
-
-        bold: true,
-
-        color: colors.primary,
-
-        fontSize: 8
-      }))
-    ];
-
-    for (let i = 0; i < 7; i++) {
-
-      const day = new Date(start);
-
-      day.setDate(
-        start.getDate() + i
-      );
-
-      const dayKey =
-        this.dateKey(day);
-
-      const dayRecords =
-        weekRecords.filter(
-          record => record.date === dayKey
-        );
-
-      if (dayRecords.length === 0) {
-
-        attendanceBody.push([
-
-          this.formatDate(day),
-
-          '—',
-
-          '—',
-
-          '—',
-
-          'No Record'
-        ]);
-
-        continue;
-      }
-
-      for (const record of dayRecords) {
-
-        const statusLabel =
-
-          record.syncStatus === 'pending_upload'
-
-            ? 'Pending Sync'
-
-            : record.status === 'verified'
-
-              ? 'Verified'
-
-              : record.status === 'rejected'
-
-                ? 'Rejected'
-
-                : 'Provisional';
-
-        attendanceBody.push([
-
-          this.formatDate(day),
-
-          record.timeIn || '—',
-
-          record.timeOut || '—',
-
-          formatHours(record.minutes),
-
-          {
-
-            text: statusLabel,
-
-            color:
-
-              record.syncStatus === 'pending_upload'
-
-                ? colors.orange
-
-                : record.status === 'verified'
-
-                  ? colors.primary
-
-                  : record.status === 'provisional'
-
-                    ? colors.violet
-
-                    : colors.muted,
-
-            bold: true
-          }
-        ]);
-      }
-    }
-
-    // =======================================
-    // STUDENT INFORMATION FIELD
-    // =======================================
-
-    const infoField = (
-      label: string,
-      value: string
-    ) => ({
-
-      stack: [
-
-        {
-
-          text: label.toUpperCase(),
-
-          fontSize: 7.5,
-
-          color: colors.muted,
-
-          margin: [0, 0, 0, 4] as [
-            number,
-            number,
-            number,
-            number
-          ]
-        },
-
-        {
-
-          text: value || 'Not available',
-
-          fontSize: 10,
-
-          bold: true,
-
-          color: colors.text
-        }
-      ]
     });
-
-    // =======================================
-    // HOURS SUMMARY CELL
-    // =======================================
-
-    const summaryCell = (
-      label: string,
-      value: string,
-      accent: string
-    ) => ({
-
-      table: {
-
-        widths: ['*'],
-
-        body: [[{
-
-          stack: [
-
-            {
-
-              text: label,
-
-              fontSize: 8,
-
-              color: colors.muted,
-
-              margin: [0, 0, 0, 6] as [
-                number,
-                number,
-                number,
-                number
-              ]
-            },
-
-            {
-
-              text: value,
-
-              fontSize: 15,
-
-              bold: true,
-
-              color: accent
-            }
-          ],
-
-          fillColor: colors.background,
-
-          margin: [8, 9, 8, 9] as [
-            number,
-            number,
-            number,
-            number
-          ]
-        }]]
-      },
-
-      layout: 'noBorders'
-    });
-
-    // =======================================
-    // PDF DOCUMENT DEFINITION
-    // =======================================
-
-    const definition: TDocumentDefinitions = {
-
-      pageSize: 'A4',
-
-      pageOrientation: 'portrait',
-
-      pageMargins: [35, 35, 35, 45],
-
-      defaultStyle: {
-
-        font: 'Roboto',
-
-        fontSize: 9,
-
-        color: colors.text
-      },
-
-      content: [
-
-        // ===================================
-        // CORPORATE BLUE HEADER
-        // ===================================
-
-        {
-
-          table: {
-
-            widths: ['*'],
-
-            body: [[{
-
-              stack: [
-
-                {
-
-                  columns: [
-
-                    {
-
-                      text: 'INTERNTRACK',
-
-                      bold: true,
-
-                      fontSize: 11,
-
-                      color: colors.white
-                    },
-
-                    {
-
-                      text: 'INTERNSHIP RECORD',
-
-                      alignment: 'right',
-
-                      fontSize: 8,
-
-                      color: '#E4EAFF'
-                    }
-                  ]
-                },
-
-                {
-
-                  text: 'Daily Time Record',
-
-                  bold: true,
-
-                  fontSize: 21,
-
-                  color: colors.white,
-
-                  margin: [0, 16, 0, 4]
-                },
-
-                {
-
-                  text: 'Weekly Attendance Report',
-
-                  fontSize: 10,
-
-                  color: '#E4EAFF'
-                }
-              ],
-
-              fillColor: colors.primary,
-
-              margin: [14, 14, 14, 16]
-            }]]
-          },
-
-          layout: 'noBorders',
-
-          margin: [0, 0, 0, 20]
-        },
-
-        // ===================================
-        // STUDENT INFORMATION
-        // ===================================
-
-        {
-
-          table: {
-
-            widths: ['*', '*'],
-
-            body: [
-
-              [
-
-                {
-
-                  ...infoField(
-                    'Student Name',
-                    this.studentFullName
-                  ),
-
-                  margin: [8, 8, 8, 10]
-                },
-
-                {
-
-                  ...infoField(
-                    'Student ID',
-                    this.studentId
-                  ),
-
-                  margin: [8, 8, 8, 10]
-                }
-              ],
-
-              [
-
-                {
-
-                  ...infoField(
-                    'Company',
-                    this.studentCompany
-                  ),
-
-                  margin: [8, 8, 8, 10]
-                },
-
-                {
-
-                  ...infoField(
-                    'Week Covered',
-                    `${this.formatDate(start)} - ${this.formatDate(end)}`
-                  ),
-
-                  margin: [8, 8, 8, 10]
-                }
-              ]
-            ]
-          },
-
-          layout: {
-
-            fillColor: () =>
-              colors.background,
-
-            hLineWidth: () => 0,
-
-            vLineWidth: () => 0
-          },
-
-          margin: [0, 0, 0, 22]
-        },
-
-        // ===================================
-        // ATTENDANCE HEADING
-        // ===================================
-
-        {
-
-          columns: [
-
-            {
-
-              text: 'ATTENDANCE DETAILS',
-
-              bold: true,
-
-              fontSize: 11,
-
-              color: colors.text
-            },
-
-            {
-
-              text: 'WEEKLY RECORD',
-
-              alignment: 'right',
-
-              fontSize: 8,
-
-              bold: true,
-
-              color: colors.violet
-            }
-          ],
-
-          margin: [0, 0, 0, 10]
-        },
-
-        // ===================================
-        // ATTENDANCE TABLE
-        // ===================================
-
-        {
-
-          table: {
-
-            headerRows: 1,
-
-            widths: ['*', 76, 76, 47, 76],
-
-            body: attendanceBody
-          },
-
-          layout: {
-
-            fillColor: (rowIndex: number) =>
-
-              rowIndex === 0
-
-                ? '#EAF0FF'
-
-                : rowIndex % 2 === 0
-
-                  ? colors.background
-
-                  : colors.white,
-
-            hLineColor: () =>
-              colors.border,
-
-            vLineColor: () =>
-              colors.border,
-
-            hLineWidth: () => 0.5,
-
-            vLineWidth: () => 0.5,
-
-            paddingTop: () => 9,
-
-            paddingBottom: () => 9,
-
-            paddingLeft: () => 7,
-
-            paddingRight: () => 7
-          },
-
-          margin: [0, 0, 0, 22]
-        },
-
-        // ===================================
-        // HOURS SUMMARY HEADING
-        // ===================================
-
-        {
-
-          text: 'WEEKLY HOURS SUMMARY',
-
-          bold: true,
-
-          fontSize: 11,
-
-          color: colors.text,
-
-          margin: [0, 0, 0, 10]
-        },
-
-        // ===================================
-        // HOURS SUMMARY CARDS
-        // ===================================
-
-        {
-
-          columns: [
-
-            {
-
-              width: '*',
-
-              ...summaryCell(
-
-                'Verified Hours',
-
-                `${verifiedHours.toFixed(1)} hrs`,
-
-                colors.primary
-              )
-            },
-
-            {
-
-              width: '*',
-
-              ...summaryCell(
-
-                'Provisional Hours',
-
-                `${provisionalHours.toFixed(1)} hrs`,
-
-                colors.violet
-              )
-            },
-
-            {
-
-              width: '*',
-
-              ...summaryCell(
-
-                'Weekly Total',
-
-                `${weeklyTotal.toFixed(1)} hrs`,
-
-                colors.primary
-              )
-            }
-          ],
-
-          columnGap: 8,
-
-          margin: [0, 0, 0, 12]
-        },
-
-        // ===================================
-        // ATTENDANCE EXPLANATORY NOTE
-        // ===================================
-
-        {
-
-          text:
-
-            'Pending Sync records have not yet been synchronized. ' +
-
-            'Provisional hours are subject to supervisor approval. ' +
-
-            'Only synchronized and verified hours count toward official OJT completion. ' +
-
-            'Rejected records are excluded from the hours summary.' +
-
-            (
-              this.isCachedData || !this.isOnline
-
-                ? ' This report was generated using locally saved information and may not reflect the latest server records.'
-
-                : ''
-            ),
-
-          fontSize: 8,
-
-          italics: true,
-
-          color: colors.muted,
-
-          margin: [0, 0, 0, 35]
-        },
-
-        // ===================================
-        // SIGNATURES
-        // ===================================
-
-        {
-
-          columns: [
-
-            {
-
-              width: '*',
-
-              stack: [
-
-                {
-
-                  text: '____________________________',
-
-                  alignment: 'center'
-                },
-
-                {
-
-                  text: 'Student Signature',
-
-                  alignment: 'center',
-
-                  fontSize: 8,
-
-                  color: colors.muted,
-
-                  margin: [0, 6, 0, 0]
-                }
-              ]
-            },
-
-            {
-
-              width: '*',
-
-              stack: [
-
-                {
-
-                  text: '____________________________',
-
-                  alignment: 'center'
-                },
-
-                {
-
-                  text: 'Company Supervisor Signature',
-
-                  alignment: 'center',
-
-                  fontSize: 8,
-
-                  color: colors.muted,
-
-                  margin: [0, 6, 0, 0]
-                }
-              ]
-            }
-          ],
-
-          columnGap: 25
-        }
-      ],
-
-      // =====================================
-      // PDF FOOTER
-      // =====================================
-
-      footer: (
-        currentPage: number,
-        pageCount: number
-      ) => ({
-
-        columns: [
-
-          {
-
-            text: 'Generated by InternTrack',
-
-            alignment: 'left'
-          },
-
-          {
-
-            text: `Page ${currentPage} of ${pageCount}`,
-
-            alignment: 'right'
-          }
-        ],
-
-        margin: [35, 0, 35, 0],
-
-        fontSize: 8,
-
-        color: colors.muted
-      })
-    };
-
-    return definition;
   }
 
   // =========================================

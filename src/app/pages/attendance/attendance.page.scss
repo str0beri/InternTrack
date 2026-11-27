@@ -1,12 +1,19 @@
+
 :host {
   display: block;
 
-  --primary: #3157d5;
-  --secondary: #7556d9;
-  --page-background: #f5f7fc;
-  --text-primary: #252525;
-  --text-secondary: #737780;
-  --border-color: #ededed;
+  --primary: var(--it-primary, #3157d5);
+  --secondary: var(--it-secondary, #7556d9);
+  --success: var(--it-success, #087b56);
+  --danger: var(--it-danger, #c92a2a);
+  --warning: var(--it-warning, #b36a08);
+
+  --page-background: var(--it-background, #f4f5f9);
+  --surface: var(--it-surface, #ffffff);
+
+  --text-primary: var(--it-text, #172033);
+  --text-secondary: var(--it-text-secondary, #64748b);
+  --border-color: var(--it-border, #dce2ed);
 }
 
 /* =========================================
@@ -15,14 +22,21 @@
 
 .attendance-content {
   --background: var(--page-background);
+
   font-family: 'Inter', sans-serif;
 }
 
 .attendance-container {
   width: 100%;
-  max-width: 440px;
+  max-width: 480px;
+  min-height: 100%;
   margin: 0 auto;
-  padding: 40px 29px 28px;
+
+  padding:
+    calc(20px + var(--ion-safe-area-top, 0px))
+    var(--it-mobile-page-padding, 16px)
+    20px;
+
   box-sizing: border-box;
 }
 
@@ -32,17 +46,33 @@
   box-sizing: border-box;
 }
 
+/* =========================================
+   PAGE HEADER
+========================================= */
+
 .attendance-header {
-  margin-bottom: 25px;
+  margin-bottom: 20px;
 }
 
 .attendance-header h1 {
   margin: 0;
-  font-size: 24px;
+
+  font-size: var(--it-mobile-title, 24px);
   font-weight: 700;
   line-height: 1.3;
-  letter-spacing: -0.5px;
+  letter-spacing: -0.6px;
+
   color: var(--text-primary);
+}
+
+.attendance-header p {
+  margin: 5px 0 0;
+
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+
+  color: var(--text-secondary);
 }
 
 /* =========================================
@@ -51,20 +81,24 @@
 
 .attendance-card {
   width: 100%;
-  min-height: 234px;
-  padding: 24px 25px;
-  background: #ffffff;
-  border: 1px solid #eef0f5;
-  border-radius: 16px;
+
+  padding: var(--it-mobile-card-padding, 16px);
+
+  background: var(--surface);
+
+  border: 1px solid #e8ecf3;
+  border-radius: var(--it-mobile-card-radius, 16px);
+
   text-align: center;
-  box-shadow: 0 2px 8px rgba(31, 45, 75, 0.03);
 }
 
 .current-date {
   margin: 0;
+
   font-size: 12px;
   font-weight: 500;
   line-height: 1.5;
+
   color: var(--text-secondary);
 }
 
@@ -76,24 +110,30 @@
   display: flex;
   align-items: baseline;
   justify-content: center;
+
   gap: 6px;
-  margin-top: 8px;
+
+  margin-top: 6px;
 }
 
 .clock-time {
   margin: 0;
-  font-size: 49px;
+
+  font-size: clamp(36px, 11vw, 44px);
   font-weight: 700;
-  line-height: 1.15;
-  letter-spacing: -2px;
+  line-height: 1.2;
+
+  letter-spacing: -1.5px;
   font-variant-numeric: tabular-nums;
+
   color: var(--text-primary);
 }
 
 .clock-period {
-  font-size: 18px;
-  font-weight: 500;
-  color: #858585;
+  font-size: 15px;
+  font-weight: 600;
+
+  color: var(--text-secondary);
 }
 
 /* =========================================
@@ -103,42 +143,113 @@
 .attendance-status {
   display: flex;
   justify-content: center;
-  margin-top: 10px;
+
+  margin-top: 8px;
 }
 
 .status-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 24px;
-  padding: 5px 12px;
-  border-radius: 20px;
-  background: #f0f1f3;
-  color: #656971;
-  font-size: 11px;
+
+  gap: 6px;
+
+  padding: 5px 10px;
+
+  border-radius: 100px;
+
+  background: #f1f3f6;
+  color: var(--text-secondary);
+
+  font-size: 12px;
   font-weight: 500;
   line-height: 1.4;
 }
 
+.status-dot {
+  width: 6px;
+  height: 6px;
+
+  flex-shrink: 0;
+
+  border-radius: 50%;
+
+  background: currentColor;
+}
+
 .status-badge.timed-in {
-  background: #e9eeff;
+  background: #eaf0ff;
   color: var(--primary);
 }
 
 .status-badge.timed-out {
-  background: #e8f5ec;
-  color: #287b45;
+  background: #e8f5ee;
+  color: var(--success);
+}
+
+.status-badge.rejected {
+  background: #fce8e8;
+  color: var(--danger);
 }
 
 /* =========================================
-   ATTENDANCE BUTTONS
+   RECORDED ATTENDANCE
+========================================= */
+
+.recorded-attendance {
+  display: grid;
+
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+
+  margin-top: 16px;
+  padding-top: 16px;
+
+  border-top: 1px solid #e8ecf3;
+}
+
+.recorded-time {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  min-width: 0;
+
+  gap: 5px;
+}
+
+.recorded-time + .recorded-time {
+  border-left: 1px solid #e8ecf3;
+}
+
+.recorded-time span {
+  font-size: 12px;
+  font-weight: 400;
+
+  color: var(--text-secondary);
+}
+
+.recorded-time strong {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+
+  font-variant-numeric: tabular-nums;
+
+  color: var(--text-primary);
+}
+
+/* =========================================
+   ATTENDANCE ACTIONS
 ========================================= */
 
 .attendance-actions {
   display: grid;
+
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-  margin-top: 24px;
+
+  gap: 10px;
+
+  margin-top: 16px;
 }
 
 .time-in-button,
@@ -146,21 +257,26 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
+
+  gap: 8px;
 
   width: 100%;
-  min-height: 44px;
+  min-width: 0;
+
+  min-height: var(--it-mobile-button-height, 48px);
+
   padding: 10px 8px;
 
   border: none;
-  border-radius: 8px;
+  border-radius: var(--it-mobile-button-radius, 12px);
 
   background: var(--primary);
   color: #ffffff;
 
   font-family: inherit;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
+  line-height: 1.4;
 
   cursor: pointer;
 
@@ -172,57 +288,25 @@
 .time-in-button ion-icon,
 .time-out-button ion-icon {
   flex-shrink: 0;
-  font-size: 16px;
+
+  font-size: 17px;
 }
 
 .time-in-button:not(:disabled):active,
 .time-out-button:not(:disabled):active {
   background: #2849bb;
+
   transform: scale(0.98);
 }
 
 .time-in-button:disabled,
 .time-out-button:disabled {
-  background: #eceef2;
-  color: #969ba5;
+  background: #edf0f5;
+  color: #8792a3;
+
   cursor: not-allowed;
+
   opacity: 1;
-}
-
-/* =========================================
-   RECORDED ATTENDANCE
-========================================= */
-
-.recorded-attendance {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  margin-top: 18px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border-color);
-}
-
-.recorded-time {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 5px;
-}
-
-.recorded-time + .recorded-time {
-  border-left: 1px solid var(--border-color);
-}
-
-.recorded-time span {
-  font-size: 11px;
-  font-weight: 400;
-  color: var(--text-secondary);
-}
-
-.recorded-time strong {
-  font-size: 14px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: var(--text-primary);
 }
 
 /* =========================================
@@ -230,95 +314,144 @@
 ========================================= */
 
 .attendance-note {
-  margin: 14px 0 0;
-  font-size: 10px;
+  margin: 12px 0 0;
+
+  font-size: 12px;
   font-weight: 400;
-  line-height: 1.6;
+  line-height: 1.5;
+
   color: var(--text-secondary);
+}
+
+.attendance-note.rejected-note {
+  color: var(--danger);
+  font-weight: 500;
 }
 
 .attendance-sync-note {
   display: flex;
   align-items: center;
   justify-content: center;
+
   gap: 5px;
 
   margin: 10px 0 0;
 
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   line-height: 1.5;
 }
 
 .attendance-sync-note ion-icon {
   flex-shrink: 0;
-  font-size: 14px;
+
+  font-size: 15px;
 }
 
 .attendance-sync-note.synced {
-  color: var(--primary);
+  color: var(--success);
 }
 
 .attendance-sync-note.pending {
-  color: #966016;
+  color: var(--warning);
 }
 
 .attendance-sync-note.failed {
-  color: #b63d3d;
+  color: var(--danger);
 }
 
 /* =========================================
-   OFFLINE BANNER
+   OFFLINE AND WARNING BANNERS
 ========================================= */
 
-.offline-banner {
+.offline-banner,
+.incomplete-banner,
+.attendance-error-banner,
+.pending-sync-banner,
+.failed-sync-banner {
   display: flex;
   align-items: center;
+
   gap: 10px;
 
   width: 100%;
-  padding: 12px 14px;
-  margin-bottom: 14px;
 
-  border: 1px solid #f2dfb9;
-  border-radius: 10px;
+  padding: 12px;
 
-  background: #fff8eb;
+  border: 1px solid transparent;
+  border-radius: 12px;
 }
 
-.offline-icon {
+.offline-banner,
+.attendance-error-banner,
+.pending-sync-banner,
+.failed-sync-banner {
+  margin-bottom: 12px;
+}
+
+.offline-banner,
+.incomplete-banner {
+  background: #fff8ed;
+  border-color: #f0dfc2;
+}
+
+.offline-icon,
+.incomplete-icon {
   display: flex;
   align-items: center;
   justify-content: center;
 
-  width: 30px;
-  height: 30px;
   flex-shrink: 0;
 
-  color: #a46c19;
+  color: var(--warning);
 }
 
 .offline-icon ion-icon {
-  font-size: 23px;
+  font-size: 22px;
 }
 
-.offline-details {
+.incomplete-icon ion-icon {
+  font-size: 20px;
+}
+
+.offline-details,
+.warning-details {
   flex: 1;
   min-width: 0;
 }
 
-.offline-details h3 {
+.offline-details h3,
+.warning-details h3 {
   margin: 0 0 4px;
-  font-size: 12px;
+
+  font-size: 13px;
   font-weight: 600;
+  line-height: 1.4;
+
+  color: var(--text-primary);
+}
+
+.offline-details p,
+.warning-details p {
+  margin: 0;
+
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+
+  color: var(--text-secondary);
+
+  overflow-wrap: anywhere;
+}
+
+.offline-details h3,
+.incomplete-banner .warning-details h3 {
   color: #875719;
 }
 
-.offline-details p {
-  margin: 0;
-  font-size: 11px;
-  line-height: 1.5;
-  color: #936d38;
+.offline-details p,
+.incomplete-banner .warning-details p {
+  color: #8c6b40;
 }
 
 /* =========================================
@@ -326,30 +459,28 @@
 ========================================= */
 
 .pending-sync-banner,
-.failed-sync-banner {
-  display: flex;
-  align-items: center;
+.failed-sync-banner,
+.attendance-error-banner {
   justify-content: space-between;
-  gap: 10px;
-
-  width: 100%;
-  padding: 10px 12px;
-  margin-bottom: 12px;
-
-  border: 1px solid transparent;
-  border-radius: 10px;
 }
 
 .pending-sync-banner {
   background: #edf1ff;
   border-color: #dce4fc;
+
   color: var(--primary);
 }
 
 .failed-sync-banner {
   background: #fff0f0;
   border-color: #f5d6d6;
-  color: #b63d3d;
+
+  color: var(--danger);
+}
+
+.attendance-error-banner {
+  background: var(--surface);
+  border-color: var(--border-color);
 }
 
 .pending-sync-banner p,
@@ -359,9 +490,82 @@
 
   margin: 0;
 
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   line-height: 1.5;
+}
+/* =========================================
+   PERMANENT ATTENDANCE CONFLICT
+========================================= */
+
+.attendance-conflict-banner {
+  display: flex;
+  align-items: flex-start;
+
+  gap: 10px;
+
+  width: 100%;
+
+  margin-bottom: 12px;
+  padding: 12px;
+
+  background: #fff0f0;
+
+  border: 1px solid #f5d6d6;
+  border-radius: 12px;
+}
+
+.conflict-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  flex-shrink: 0;
+
+  width: 32px;
+  height: 32px;
+
+  border-radius: 8px;
+
+  background: #fce8e8;
+  color: var(--danger);
+}
+
+.conflict-icon ion-icon {
+  font-size: 20px;
+}
+
+.conflict-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.conflict-details h3 {
+  margin: 0 0 4px;
+
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+
+  color: var(--danger);
+}
+
+.conflict-details p {
+  margin: 0;
+
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+
+  color: var(--text-primary);
+
+  overflow-wrap: anywhere;
+}
+
+.conflict-details .conflict-instruction {
+  margin-top: 6px;
+
+  color: var(--text-secondary);
 }
 
 /* =========================================
@@ -373,14 +577,15 @@
 .retry-button {
   flex-shrink: 0;
 
-  min-height: 36px;
+  min-height: 44px;
+
   padding: 8px 12px;
 
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
 
   font-family: inherit;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
 
   cursor: pointer;
@@ -392,123 +597,56 @@
 }
 
 .retry-failed-button {
-  background: #b63d3d;
+  background: var(--danger);
   color: #ffffff;
 }
 
 .retry-button {
-  background: #f0f1f4;
-  color: #50545c;
+  background: #edf0f5;
+  color: var(--text-primary);
 }
 
 .sync-now-button:disabled,
 .retry-failed-button:disabled,
 .retry-button:disabled {
   opacity: 0.55;
+
   cursor: not-allowed;
 }
 
 /* =========================================
-   ATTENDANCE ERROR BANNER
-========================================= */
-
-.attendance-error-banner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-
-  width: 100%;
-  padding: 12px 14px;
-  margin-bottom: 14px;
-
-  border: 1px solid #e4e6eb;
-  border-radius: 10px;
-
-  background: #ffffff;
-}
-
-.warning-details {
-  flex: 1;
-  min-width: 0;
-}
-
-.warning-details h3 {
-  margin: 0 0 4px;
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1.4;
-  color: var(--text-primary);
-}
-
-.warning-details p {
-  margin: 0;
-  font-size: 11px;
-  line-height: 1.6;
-  color: var(--text-secondary);
-}
-
-/* =========================================
-   ATTENDANCE FEEDBACK MESSAGE
+   ATTENDANCE FEEDBACK
 ========================================= */
 
 .sync-message {
-  margin: 10px 2px 0;
-  padding: 10px 12px;
+  margin: 10px 0 0;
+  padding: 12px;
 
-  border: 1px solid #e5e8ef;
-  border-radius: 8px;
+  border: 1px solid #e8ecf3;
+  border-radius: 10px;
 
-  background: #ffffff;
-  color: #5e6570;
+  background: var(--surface);
+  color: var(--text-secondary);
 
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 400;
-  line-height: 1.6;
+  line-height: 1.5;
 
   overflow-wrap: anywhere;
 }
 
 /* =========================================
-   INCOMPLETE ATTENDANCE BANNER
+   INCOMPLETE ATTENDANCE
 ========================================= */
 
 .incomplete-banner {
-  display: flex;
   align-items: flex-start;
-  gap: 10px;
 
-  width: 100%;
-  margin-top: 16px;
-  padding: 12px 14px;
-
-  border: 1px solid #f0dfc2;
-  border-radius: 10px;
-
-  background: #fff9ef;
+  margin-top: 12px;
 }
 
 .incomplete-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  flex-shrink: 0;
   padding-top: 1px;
-
-  color: #a46c19;
-}
-
-.incomplete-icon ion-icon {
-  font-size: 19px;
-}
-
-.incomplete-banner .warning-details h3 {
-  color: #875719;
-}
-
-.incomplete-banner .warning-details p {
-  color: #8c6b40;
 }
 
 /* =========================================
@@ -516,22 +654,23 @@
 ========================================= */
 
 .recent-logs-section {
-  margin-top: 28px;
+  margin-top: var(--it-mobile-section-gap, 24px);
 }
 
 .logs-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+
   gap: 12px;
 
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .logs-header h2 {
   margin: 0;
 
-  font-size: 16px;
+  font-size: var(--it-mobile-heading, 16px);
   font-weight: 600;
   line-height: 1.4;
 
@@ -542,12 +681,13 @@
   display: inline-flex;
   align-items: center;
 
-  min-height: 32px;
+  min-height: 44px;
 
   color: var(--primary);
 
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
+
   text-decoration: none;
   white-space: nowrap;
 }
@@ -558,25 +698,27 @@
 
 .logs-card {
   width: 100%;
-  padding: 2px 16px;
 
-  border: 1px solid #eef0f5;
-  border-radius: 14px;
+  padding: 0 var(--it-mobile-card-padding, 16px);
 
-  background: #ffffff;
-  box-shadow: 0 2px 8px rgba(31, 45, 75, 0.02);
+  border: 1px solid #e8ecf3;
+  border-radius: var(--it-mobile-card-radius, 16px);
+
+  background: var(--surface);
 }
 
 .log-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
 
-  min-height: 66px;
-  padding: 13px 0;
+  gap: 10px;
 
-  border-bottom: 1px solid var(--border-color);
+  min-height: 60px;
+
+  padding: 12px 0;
+
+  border-bottom: 1px solid #e8ecf3;
 }
 
 .log-item:last-child {
@@ -589,7 +731,7 @@
 }
 
 .log-details h3 {
-  margin: 0 0 5px;
+  margin: 0 0 4px;
 
   font-size: 13px;
   font-weight: 600;
@@ -604,6 +746,7 @@
   font-size: 12px;
   font-weight: 400;
   line-height: 1.5;
+
   font-variant-numeric: tabular-nums;
 
   color: var(--text-secondary);
@@ -618,13 +761,13 @@
 
   margin-top: 4px;
 
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 500;
   line-height: 1.4;
 }
 
 .log-condition.incomplete {
-  color: #a46c19;
+  color: var(--warning);
 }
 
 .log-condition.ongoing {
@@ -639,64 +782,73 @@
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 5px;
 
   flex-shrink: 0;
+
+  gap: 5px;
+
+  max-width: 48%;
 }
 
 .log-status {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+
   gap: 4px;
 
-  min-height: 23px;
   padding: 4px 8px;
 
-  border-radius: 20px;
+  border-radius: 100px;
 
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 500;
   line-height: 1.4;
-  white-space: nowrap;
+
+  text-align: center;
 }
 
 .log-status ion-icon {
   flex-shrink: 0;
+
   font-size: 12px;
 }
 
 .log-status.synced {
-  background: #e9eeff;
-  color: var(--primary);
+  background: #e8f5ee;
+  color: var(--success);
 }
 
 .log-status.pending {
   background: #fff3dc;
-  color: #966016;
+  color: var(--warning);
 }
 
 .log-status.failed {
   background: #fce8e8;
-  color: #b63d3d;
+  color: var(--danger);
 }
 
 /* =========================================
-   ATTENDANCE VERIFICATION
+   VERIFICATION STATUS
 ========================================= */
 
 .verification-label {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 500;
   line-height: 1.4;
 }
 
 .verification-label.verified {
-  color: #287b45;
+  color: var(--success);
 }
 
 .verification-label.provisional {
   color: var(--secondary);
+}
+
+.verification-label.rejected {
+  color: var(--danger);
 }
 
 /* =========================================
@@ -704,7 +856,8 @@
 ========================================= */
 
 .empty-logs {
-  padding: 26px 12px;
+  padding: 24px 8px;
+
   text-align: center;
 }
 
@@ -723,7 +876,7 @@
 
   font-size: 12px;
   font-weight: 400;
-  line-height: 1.6;
+  line-height: 1.5;
 
   color: var(--text-secondary);
 }
@@ -735,9 +888,10 @@
 .last-synced {
   margin: 12px 0 0;
 
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 400;
-  line-height: 1.6;
+  line-height: 1.5;
+
   text-align: center;
 
   color: var(--text-secondary);
@@ -754,54 +908,58 @@ a:focus-visible {
 }
 
 /* =========================================
-   MOBILE RESPONSIVENESS
+   SMALL MOBILE DEVICES
 ========================================= */
 
 @media (max-width: 360px) {
+
   .attendance-container {
-    padding: 28px 18px 24px;
+    padding-bottom: 16px;
   }
 
   .attendance-header {
-    margin-bottom: 20px;
-  }
-
-  .attendance-card {
-    padding: 22px 18px;
-  }
-
-  .clock-time {
-    font-size: 45px;
+    margin-bottom: 16px;
   }
 
   .attendance-actions {
-    gap: 12px;
+    gap: 8px;
   }
 
-  .logs-card {
-    padding-left: 12px;
-    padding-right: 12px;
+  .time-in-button,
+  .time-out-button {
+    gap: 6px;
+    font-size: 12px;
   }
 
   .log-item {
     gap: 8px;
   }
 
-  .log-details p {
-    font-size: 11px;
+  .log-status {
+    padding: 4px 6px;
   }
+
+  .attendance-conflict-banner {
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .conflict-icon {
+    width: 28px;
+    height: 28px;
+  }
+
+  .conflict-icon ion-icon {
+    font-size: 18px;
+  }
+
 }
 
-@media (max-width: 340px) {
-  .attendance-container {
-    padding-left: 14px;
-    padding-right: 14px;
-  }
+/* =========================================
+   EXTRA SMALL MOBILE DEVICES
+========================================= */
 
-  .attendance-card {
-    padding-left: 14px;
-    padding-right: 14px;
-  }
+@media (max-width: 340px) {
 
   .log-item {
     flex-wrap: wrap;
@@ -809,6 +967,7 @@ a:focus-visible {
 
   .log-status-group {
     margin-left: auto;
+    max-width: 100%;
   }
 
   .pending-sync-banner,
@@ -816,20 +975,19 @@ a:focus-visible {
   .attendance-error-banner {
     flex-wrap: wrap;
   }
-}
 
-@media (max-height: 750px) {
-  .attendance-container {
-    padding-top: 24px;
+  .pending-sync-banner p,
+  .failed-sync-banner p,
+  .attendance-error-banner .warning-details {
+    flex-basis: 100%;
   }
 
-  .attendance-header {
-    margin-bottom: 20px;
+  .sync-now-button,
+  .retry-failed-button,
+  .retry-button {
+    margin-left: auto;
   }
 
-  .recent-logs-section {
-    margin-top: 24px;
-  }
 }
 
 /* =========================================
@@ -837,6 +995,7 @@ a:focus-visible {
 ========================================= */
 
 @media (prefers-reduced-motion: reduce) {
+
   .time-in-button,
   .time-out-button {
     transition: none;
@@ -846,4 +1005,5 @@ a:focus-visible {
   .time-out-button:not(:disabled):active {
     transform: none;
   }
+
 }

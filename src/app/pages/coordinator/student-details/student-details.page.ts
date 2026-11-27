@@ -35,6 +35,11 @@ import {
 
 import { SupabaseService } from '../../../services/supabase.service';
 
+import {
+  createDtrTemplate,
+  type DtrTemplateRecord
+} from '../../../utils/dtr-template';
+
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
 
@@ -2072,607 +2077,170 @@ export class StudentDetailsPage implements OnInit {
   // DOWNLOAD DAILY TIME RECORD
   // =========================================
 
-  async downloadDTR(): Promise<void> {
+  
+async downloadDTR(): Promise<void> {
+
+  if (
+    this.downloadingDTR ||
+    this.isLoading ||
+    this.savingAcademicInfo ||
+    this.savingAssignment ||
+    !this.student
+  ) {
+    return;
+  }
+
+  this.downloadingDTR = true;
+  this.downloadError = '';
+  this.downloadMessage = '';
+
+  this.cdr.markForCheck();
+
+  try {
+
+    const student = this.student;
+    const today = this.getToday();
+    const start = this.getDTRStartDate(student);
+    const registeredEnd = student.ojt_end_date;
+
+    if (!start || !this.isValidDate(start)) {
+      throw new Error(
+        'A valid internship start date is required.'
+      );
+    }
+
+    if (start > today) {
+      throw new Error(
+        'The internship has not started yet.'
+      );
+    }
 
     if (
-      this.downloadingDTR ||
-      this.isLoading ||
-      this.savingAcademicInfo ||
-      this.savingAssignment ||
-      !this.student
+      registeredEnd &&
+      (
+        !this.isValidDate(registeredEnd) ||
+        registeredEnd < start
+      )
     ) {
-
-      return;
-
+      throw new Error(
+        'The registered internship end date is invalid.'
+      );
     }
 
-    this.downloadingDTR = true;
+    const end =
+      registeredEnd && registeredEnd < today
+        ? registeredEnd
+        : today;
 
-    this.downloadError = '';
-
-    this.downloadMessage = '';
-
-    this.cdr.markForCheck();
-
-    try {
-
-      const student = this.student;
-
-      const today = this.getToday();
-
-      const start = this.getDTRStartDate(student);
-
-      const registeredEnd =
-        student.ojt_end_date;
-
-      if (
-        !start ||
-        !this.isValidDate(start)
-      ) {
-
-        throw new Error(
-          'A valid internship start date is required.'
-        );
-
-      }
-
-      if (start > today) {
-
-        throw new Error(
-          'The internship has not started yet.'
-        );
-
-      }
-
-      if (
-        registeredEnd &&
-        (
-          !this.isValidDate(registeredEnd) ||
-          registeredEnd < start
-        )
-      ) {
-
-        throw new Error(
-          'The registered internship end date is invalid.'
-        );
-
-      }
-
-      // End date remains optional.
-
-      const end =
-        registeredEnd && registeredEnd < today
-          ? registeredEnd
-          : today;
-
-      const allRecords =
-        await this.fetchAttendanceRecords(
-          student.student_id
-        );
-
-      const records = allRecords
-        .filter(record =>
-          record.attendance_date >= start &&
-          record.attendance_date <= end
-        )
-        .sort((a, b) =>
-          a.attendance_date.localeCompare(
-            b.attendance_date
-          )
-        );
-
-      const verifiedHours = records
-        .filter(record =>
-          record.verification_status === 'verified' &&
-          record.sync_status === 'synced' &&
-          this.isCompleteAttendance(record)
-        )
-        .reduce(
-          (total, record) =>
-            total + this.getRecordHours(record),
-          0
-        );
-
-      const provisionalHours = records
-        .filter(record =>
-          record.verification_status === 'provisional' &&
-          record.sync_status === 'synced' &&
-          this.isCompleteAttendance(record)
-        )
-        .reduce(
-          (total, record) =>
-            total + this.getRecordHours(record),
-          0
-        );
-
-      const remainingHours = Math.max(
-        0,
-        this.requiredHours - verifiedHours
+    const allRecords =
+      await this.fetchAttendanceRecords(
+        student.student_id
       );
 
-      const tableBody: any[][] = [
+    const records = allRecords
+      .filter(record =>
+        record.attendance_date >= start &&
+        record.attendance_date <= end
+      )
+      .sort((a, b) =>
+        a.attendance_date.localeCompare(
+          b.attendance_date
+        )
+      );
 
-        [
-          {
-            text: 'Date',
-            style: 'tableHeader'
-          },
-          {
-            text: 'Time In',
-            style: 'tableHeader'
-          },
-          {
-            text: 'Time Out',
-            style: 'tableHeader'
-          },
-          {
-            text: 'Hours',
-            style: 'tableHeader'
-          },
-          {
-            text: 'Status',
-            style: 'tableHeader'
-          },
-          {
-            text: 'Remarks',
-            style: 'tableHeader'
-          }
-        ]
+    const templateRecords: DtrTemplateRecord[] =
+      records.map(record => {
 
-      ];
+        const status: DtrTemplateRecord['status'] =
+          record.verification_status === 'verified'
+            ? 'verified'
+            : record.verification_status === 'rejected'
+              ? 'rejected'
+              : 'provisional';
 
-      for (const record of records) {
+        return {
+          date: record.attendance_date,
 
-        const status =
-          this.getAttendanceStatus(record);
+          timeIn: record.time_in
+            ? this.formatTime(record.time_in)
+            : '',
 
-        const hours =
-          status === 'Verified' ||
-          status === 'Provisional'
-            ? this.getRecordHours(record)
-            : 0;
+          timeOut: record.time_out
+            ? this.formatTime(record.time_out)
+            : '',
 
-        tableBody.push([
-
-          this.formatDate(
-            record.attendance_date
-          ),
-
-          this.formatTime(record.time_in),
-
-          this.formatTime(record.time_out),
-
-          {
-            text: this.formatHours(hours),
-            alignment: 'right'
-          },
+          minutes:
+            this.isCompleteAttendance(record) &&
+            (status === 'verified' || status === 'provisional')
+              ? Math.round(this.getRecordHours(record) * 60)
+              : 0,
 
           status,
+          syncStatus: 'synced'
+        };
 
-          record.remarks || '—'
+      });
 
-        ]);
+    const documentDefinition = createDtrTemplate({
+      studentName: student.full_name,
+      studentId: student.student_id,
 
-      }
+      schoolName:
+        student.school_name ||
+        'Pamantasan ng Lungsod ng Valenzuela',
 
-      if (!records.length) {
+      course: student.course || 'Not specified',
 
-        tableBody.push([
+      company: this.companyName,
 
-          {
-            text:
-              'No attendance records available for this period.',
-            colSpan: 6,
-            alignment: 'center',
-            color: '#64748b',
-            margin: [0, 12, 0, 12]
-          },
+      supervisorName: this.supervisorName,
 
-          {},
-          {},
-          {},
-          {},
-          {}
+      startDate: start,
+      endDate: end,
 
-        ]);
+      records: templateRecords,
 
-      }
+      isCachedData: false
+    });
 
-      const documentDefinition: any = {
-
-        pageSize: 'A4',
-
-        pageOrientation: 'portrait',
-
-        pageMargins: [35, 35, 35, 45],
-
-        info: {
-
-          title:
-            `Daily Time Record - ${student.student_id}`,
-
-          author: 'InternTrack'
-
-        },
-
-        content: [
-
-          {
-            text:
-              student.school_name ||
-              'Pamantasan ng Lungsod ng Valenzuela',
-
-            alignment: 'center',
-
-            fontSize: 11,
-
-            bold: true
-          },
-
-          {
-            text: 'INTERNTRACK',
-
-            alignment: 'center',
-
-            color: '#3157d5',
-
-            fontSize: 11,
-
-            margin: [0, 5, 0, 5]
-          },
-
-          {
-            text: 'DAILY TIME RECORD',
-
-            alignment: 'center',
-
-            fontSize: 19,
-
-            bold: true
-          },
-
-          {
-            text:
-              'Internship attendance report to date',
-
-            alignment: 'center',
-
-            color: '#64748b',
-
-            margin: [0, 5, 0, 20]
-          },
-
-          {
-            table: {
-
-              widths: [90, '*'],
-
-              body: [
-
-                [
-                  'Student name',
-                  student.full_name
-                ],
-
-                [
-                  'Student ID',
-                  student.student_id
-                ],
-
-                [
-                  'Course',
-                  student.course || 'Not specified'
-                ],
-
-                [
-                  'Year level',
-                  student.year_level || 'Not specified'
-                ],
-
-                [
-                  'Current company',
-                  this.companyName
-                ],
-
-                [
-                  'Current supervisor',
-                  this.supervisorName
-                ],
-
-                [
-                  'Report coverage',
-                  `${this.formatDate(start)} to ${this.formatDate(end)}`
-                ],
-
-                [
-                  'Registered end date',
-                  registeredEnd
-                    ? this.formatDate(registeredEnd)
-                    : 'Not specified'
-                ]
-
-              ]
-
-            },
-
-            layout: 'noBorders',
-
-            margin: [0, 0, 0, 18]
-
-          },
-
-          ...(this.assignments.length > 1
-            ? [
-                {
-                  text:
-                    'This report may include attendance from previous internship assignments. The company and supervisor shown above refer to the current placement only.',
-
-                  fontSize: 8,
-
-                  color: '#64748b',
-
-                  margin: [0, 0, 0, 12]
-                }
-              ]
-            : []),
-
-          {
-            table: {
-
-              headerRows: 1,
-
-              widths: [
-                62,
-                48,
-                48,
-                35,
-                65,
-                '*'
-              ],
-
-              body: tableBody
-
-            },
-
-            layout: {
-
-              fillColor: (rowIndex: number) => {
-
-                if (rowIndex === 0) {
-
-                  return '#eef2f9';
-
-                }
-
-                return rowIndex % 2 === 0
-                  ? '#f8fafc'
-                  : null;
-
-              },
-
-              hLineColor: () => '#dfe5ee',
-
-              vLineColor: () => '#dfe5ee',
-
-              paddingTop: () => 6,
-
-              paddingBottom: () => 6
-
-            }
-
-          },
-
-          {
-            unbreakable: true,
-
-            stack: [
-
-              {
-                text: 'INTERNSHIP HOURS SUMMARY',
-
-                bold: true,
-
-                margin: [0, 20, 0, 10]
-              },
-
-              {
-                table: {
-
-                  widths: ['*', 90],
-
-                  body: [
-
-                    [
-                      'Required internship hours',
-                      `${this.formatHours(this.requiredHours)} h`
-                    ],
-
-                    [
-                      'Official verified hours',
-                      `${this.formatHours(verifiedHours)} h`
-                    ],
-
-                    [
-                      'Provisional hours',
-                      `${this.formatHours(provisionalHours)} h`
-                    ],
-
-                    [
-                      'Remaining hours based on report',
-                      `${this.formatHours(remainingHours)} h`
-                    ]
-
-                  ]
-
-                },
-
-                layout: 'lightHorizontalLines'
-
-              },
-
-              {
-                text:
-                  'Only verified, synchronized, and complete attendance contributes to official internship hours. Rejected and incomplete attendance receives zero credited hours.',
-
-                fontSize: 8,
-
-                color: '#64748b',
-
-                margin: [0, 10, 0, 0]
-
-              },
-
-              {
-                columns: [
-
-                  {
-                    stack: [
-
-                      {
-                        text:
-                          '________________________',
-
-                        alignment: 'center'
-                      },
-
-                      {
-                        text: 'Student Intern',
-
-                        alignment: 'center',
-
-                        margin: [0, 5, 0, 0]
-                      }
-
-                    ]
-                  },
-
-                  {
-                    stack: [
-
-                      {
-                        text:
-                          '________________________',
-
-                        alignment: 'center'
-                      },
-
-                      {
-                        text: this.assignments.length > 1
-                          ? 'OJT Coordinator'
-                          : 'Company Supervisor',
-
-                        alignment: 'center',
-
-                        margin: [0, 5, 0, 0]
-                      }
-
-                    ]
-                  }
-
-                ],
-
-                margin: [0, 35, 0, 0]
-
-              }
-
-            ]
-
-          }
-
-        ],
-
-        defaultStyle: {
-
-          fontSize: 9,
-
-          color: '#172033'
-
-        },
-
-        styles: {
-
-          tableHeader: {
-
-            bold: true,
-
-            fontSize: 9,
-
-            color: '#334155'
-
-          }
-
-        },
-
-        footer: (
-          currentPage: number,
-          pageCount: number
-        ) => ({
-
-          columns: [
-
-            {
-              text:
-                `Generated by InternTrack • ${this.formatDate(today)}`,
-
-              alignment: 'left'
-            },
-
-            {
-              text:
-                `Page ${currentPage} of ${pageCount}`,
-
-              alignment: 'right'
-            }
-
-          ],
-
-          fontSize: 8,
-
-          color: '#64748b',
-
-          margin: [35, 12, 35, 0]
-
-        })
-
-      };
-
-      const safeStudentId =
-        student.student_id.replace(
-          /[^a-zA-Z0-9_-]/g,
-          '_'
-        );
-
-      const filename =
-        `InternTrack-DTR-${safeStudentId}-${start}-to-${end}.pdf`;
-
-      await pdfMake
-        .createPdf(documentDefinition)
-        .download(filename);
-
-      this.downloadMessage =
-        'DTR download has been generated.';
-
-    } catch (error) {
-
-      console.error(
-        'Unable to download DTR:',
-        error
+    const safeStudentId =
+      student.student_id.replace(
+        /[^a-zA-Z0-9_-]/g,
+        '_'
       );
 
-      this.downloadError = this.getErrorMessage(
-        error,
-        'Unable to download DTR. Please try again.'
-      );
+    const filename =
+      `InternTrack-DTR-${safeStudentId}-${start}-to-${end}.pdf`;
 
-    } finally {
+    await pdfMake
+      .createPdf(documentDefinition)
+      .download(filename);
 
-      this.downloadingDTR = false;
+    this.downloadMessage =
+      'DTR download has been generated.';
 
-      this.refreshView();
+  } catch (error) {
 
-    }
+    console.error(
+      'Unable to download DTR:',
+      error
+    );
+
+    this.downloadError = this.getErrorMessage(
+      error,
+      'Unable to download DTR. Please try again.'
+    );
+
+  } finally {
+
+    this.downloadingDTR = false;
+
+    this.refreshView();
 
   }
+
+}
+
 
   // =========================================
   // DISPLAY HELPERS

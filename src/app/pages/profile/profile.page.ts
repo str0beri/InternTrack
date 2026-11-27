@@ -1,4 +1,3 @@
-
 import {
   Component,
   type OnDestroy,
@@ -27,6 +26,7 @@ import { AuthService } from '../../services/auth.service';
 import { SupabaseService } from '../../services/supabase.service';
 import { NetworkService } from '../../services/network.service';
 
+
 // =========================================
 // INTERFACES
 // =========================================
@@ -49,12 +49,27 @@ interface StudentProfile {
   initials: string;
   studentId: string;
   program: string;
+  yearLevel: string;
   university: string;
 }
 
 interface SupervisorContact {
   full_name: string;
   email: string | null;
+}
+
+interface CoordinatorContact {
+  full_name: string;
+  email: string | null;
+}
+
+interface InternshipDetails {
+  company_name: string | null;
+  company_location: string | null;
+  department: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  required_hours: number | null;
 }
 
 interface CachedProfile {
@@ -66,6 +81,7 @@ interface CachedProfile {
   contacts: ContactPerson[];
   cachedAt: number;
 }
+
 
 // =========================================
 // PROFILE PAGE
@@ -81,8 +97,10 @@ interface CachedProfile {
   templateUrl: './profile.page.html',
   styleUrls: ['./profile.page.scss']
 })
+
 export class ProfilePage
   implements ViewWillEnter, ViewWillLeave, OnDestroy {
+
 
   // =========================================
   // SERVICES
@@ -106,6 +124,7 @@ export class ProfilePage
   private readonly supabase =
     this.supabaseService.getClient();
 
+
   // =========================================
   // CACHE CONFIGURATION
   // =========================================
@@ -113,7 +132,8 @@ export class ProfilePage
   private readonly cachePrefix =
     'interntrack_profile_v1_';
 
-  private readonly cacheVersion = 1;
+  private readonly cacheVersion = 2;
+
 
   // =========================================
   // COMPONENT STATE
@@ -134,6 +154,7 @@ export class ProfilePage
   private reconnectTimer?:
     ReturnType<typeof setTimeout>;
 
+
   // =========================================
   // PAGE STATE
   // =========================================
@@ -152,6 +173,7 @@ export class ProfilePage
 
   profileMessage = '';
 
+
   // =========================================
   // STUDENT INFORMATION
   // =========================================
@@ -161,14 +183,17 @@ export class ProfilePage
     initials: '',
     studentId: '',
     program: '',
+    yearLevel: '',
     university: ''
   };
 
+
   // =========================================
-  // OJT PLACEMENT
+  // INTERNSHIP DETAILS
   // =========================================
 
   placementDetails: PlacementDetail[] = [];
+
 
   // =========================================
   // CONTACTS
@@ -176,16 +201,20 @@ export class ProfilePage
 
   contacts: ContactPerson[] = [];
 
+
   // =========================================
   // CONSTRUCTOR
   // =========================================
 
   constructor() {
+
     addIcons({
       mailOutline,
       logOutOutline
     });
+
   }
+
 
   // =========================================
   // PAGE INITIALIZATION
@@ -225,6 +254,7 @@ export class ProfilePage
       const userId =
         this.authService.getCurrentUser()?.id;
 
+
       // Require a valid student identity.
 
       if (
@@ -245,7 +275,9 @@ export class ProfilePage
           'Unable to identify your student account.';
 
         return;
+
       }
+
 
       // Prevent displaying another student's data.
 
@@ -253,11 +285,14 @@ export class ProfilePage
         this.currentStudentId !== studentId ||
         this.currentUserId !== userId
       ) {
+
         this.resetState();
+
       }
 
       this.currentStudentId = studentId;
       this.currentUserId = userId;
+
 
       // Restore locally saved profile first.
 
@@ -266,9 +301,11 @@ export class ProfilePage
         studentId
       );
 
+
       // Monitor connectivity.
 
       this.initializeNetworkSubscription();
+
 
       // Avoid server requests while offline.
 
@@ -277,7 +314,9 @@ export class ProfilePage
         this.updateOfflineMessage();
 
         return;
+
       }
+
 
       // Refresh the profile when online.
 
@@ -300,7 +339,9 @@ export class ProfilePage
       this.profileLoadError = true;
 
       this.profileMessage = this.hasProfile
+
         ? 'Showing previously saved profile information.'
+
         : 'Unable to load your profile information.';
 
     } finally {
@@ -308,8 +349,11 @@ export class ProfilePage
       this.isLoading = false;
 
       this.refresh();
+
     }
+
   }
+
 
   // =========================================
   // NETWORK MONITORING
@@ -353,11 +397,15 @@ export class ProfilePage
           } else {
 
             void this.loadProfileData();
+
           }
 
           this.refresh();
+
         });
+
   }
+
 
   private updateOfflineMessage(): void {
 
@@ -372,8 +420,11 @@ export class ProfilePage
 
       this.profileMessage =
         'No saved profile is available. Connect to the internet to load your profile.';
+
     }
+
   }
+
 
   // =========================================
   // PAGE EXIT
@@ -400,9 +451,13 @@ export class ProfilePage
       activeElement instanceof HTMLElement &&
       activeElement.closest('app-profile')
     ) {
+
       activeElement.blur();
+
     }
+
   }
+
 
   ngOnDestroy(): void {
 
@@ -416,14 +471,20 @@ export class ProfilePage
     this.clearReconnectTimer();
 
     this.networkSub?.unsubscribe();
+
   }
+
 
   private refresh(): void {
 
     if (!this.destroyed) {
+
       this.cdr.detectChanges();
+
     }
+
   }
+
 
   // =========================================
   // RECONNECTION HANDLING
@@ -436,8 +497,11 @@ export class ProfilePage
       clearTimeout(this.reconnectTimer);
 
       this.reconnectTimer = undefined;
+
     }
+
   }
+
 
   private scheduleReconnectRefresh(): void {
 
@@ -458,11 +522,15 @@ export class ProfilePage
         this.viewActive &&
         this.networkService.isOnline()
       ) {
+
         void this.loadProfileData();
+
       }
 
     }, 3000);
+
   }
+
 
   // =========================================
   // IDENTITY VALIDATION
@@ -474,15 +542,25 @@ export class ProfilePage
   ): boolean {
 
     return (
+
       !this.destroyed &&
+
       this.authService.isAuthenticated() &&
+
       this.authService.isStudent() &&
+
       this.currentUserId === userId &&
+
       this.currentStudentId === studentId &&
+
       this.authService.getCurrentUser()?.id === userId &&
+
       this.authService.getStudentId() === studentId
+
     );
+
   }
+
 
   private isCurrentLoad(
     userId: string,
@@ -491,14 +569,20 @@ export class ProfilePage
   ): boolean {
 
     return (
+
       this.viewActive &&
+
       version === this.loadVersion &&
+
       this.isCurrentIdentity(
         userId,
         studentId
       )
+
     );
+
   }
+
 
   // =========================================
   // RESET PROFILE STATE
@@ -511,6 +595,7 @@ export class ProfilePage
       initials: '',
       studentId: '',
       program: '',
+      yearLevel: '',
       university: ''
     };
 
@@ -526,7 +611,9 @@ export class ProfilePage
     this.contactsLoadError = false;
 
     this.profileMessage = '';
+
   }
+
 
   // =========================================
   // PROFILE CACHE KEY
@@ -538,12 +625,19 @@ export class ProfilePage
   ): string {
 
     return (
+
       this.cachePrefix +
+
       encodeURIComponent(userId) +
+
       '_' +
+
       encodeURIComponent(studentId)
+
     );
+
   }
+
 
   // =========================================
   // SAVE PROFILE CACHE
@@ -588,14 +682,18 @@ export class ProfilePage
           })),
 
         cachedAt: Date.now()
+
       };
 
       localStorage.setItem(
+
         this.getCacheKey(
           userId,
           studentId
         ),
+
         JSON.stringify(cache)
+
       );
 
       this.lastUpdated = cache.cachedAt;
@@ -606,8 +704,11 @@ export class ProfilePage
         'Unable to save profile cache:',
         error
       );
+
     }
+
   }
+
 
   // =========================================
   // RESTORE PROFILE CACHE
@@ -630,10 +731,12 @@ export class ProfilePage
     try {
 
       const raw = localStorage.getItem(
+
         this.getCacheKey(
           userId,
           studentId
         )
+
       );
 
       if (!raw) {
@@ -643,49 +746,82 @@ export class ProfilePage
       const cache =
         JSON.parse(raw) as CachedProfile;
 
+
       // Validate the cached identity and structure.
 
       if (
+
         !cache ||
+
         cache.version !== this.cacheVersion ||
+
         cache.userId !== userId ||
+
         cache.studentId !== studentId ||
+
         !cache.student ||
+
         cache.student.studentId !== studentId ||
+
         typeof cache.student.name !== 'string' ||
+
         typeof cache.student.initials !== 'string' ||
+
         typeof cache.student.program !== 'string' ||
+
+        typeof cache.student.yearLevel !== 'string' ||
+
         typeof cache.student.university !== 'string' ||
+
         !Array.isArray(cache.placementDetails) ||
+
         !Array.isArray(cache.contacts) ||
+
         typeof cache.cachedAt !== 'number' ||
+
         !Number.isFinite(cache.cachedAt)
+
       ) {
+
         return false;
+
       }
 
       const validPlacement =
         cache.placementDetails.every(detail =>
+
           detail &&
+
           typeof detail.label === 'string' &&
+
           typeof detail.value === 'string'
+
         );
 
       const validContacts =
         cache.contacts.every(contact =>
+
           contact &&
+
           typeof contact.id === 'number' &&
+
           typeof contact.name === 'string' &&
+
           typeof contact.initials === 'string' &&
+
           typeof contact.role === 'string' &&
+
           (
             contact.email === undefined ||
             typeof contact.email === 'string'
           )
+
         );
 
       if (!validPlacement || !validContacts) {
+
         return false;
+
       }
 
       this.student = {
@@ -717,8 +853,11 @@ export class ProfilePage
       );
 
       return false;
+
     }
+
   }
+
 
   // =========================================
   // REMOVE PROFILE CACHE
@@ -732,10 +871,12 @@ export class ProfilePage
     try {
 
       localStorage.removeItem(
+
         this.getCacheKey(
           userId,
           studentId
         )
+
       );
 
     } catch (error) {
@@ -744,8 +885,11 @@ export class ProfilePage
         'Unable to remove profile cache:',
         error
       );
+
     }
+
   }
+
 
   // =========================================
   // LOAD PROFILE DATA
@@ -774,6 +918,7 @@ export class ProfilePage
     this.isOnline =
       this.networkService.isOnline();
 
+
     // =======================================
     // OFFLINE MODE
     // =======================================
@@ -792,7 +937,9 @@ export class ProfilePage
       this.refresh();
 
       return;
+
     }
+
 
     // =======================================
     // SESSION REVALIDATION
@@ -810,7 +957,9 @@ export class ProfilePage
       this.refresh();
 
       return;
+
     }
+
 
     // =======================================
     // ONLINE MODE
@@ -832,7 +981,10 @@ export class ProfilePage
 
     try {
 
-      // Only request confirmed students columns.
+
+      // =====================================
+      // LOAD STUDENT INFORMATION
+      // =====================================
 
       const {
         data: studentData,
@@ -846,12 +998,8 @@ export class ProfilePage
           full_name,
           student_id,
           course,
-          school_name,
-          company_name,
-          company_location,
-          department,
-          ojt_start_date,
-          required_hours
+          year_level,
+          school_name
         `)
 
         .eq('student_id', studentId)
@@ -859,6 +1007,7 @@ export class ProfilePage
         .abortSignal(controller.signal)
 
         .maybeSingle();
+
 
       // Ignore outdated requests.
 
@@ -873,8 +1022,11 @@ export class ProfilePage
       }
 
       if (error) {
+
         throw error;
+
       }
+
 
       // No accessible student record.
 
@@ -893,34 +1045,96 @@ export class ProfilePage
           'Your student profile could not be found. Please contact your OJT Coordinator.';
 
         return;
+
       }
+
+
+      // =====================================
+      // LOAD INTERNSHIP DETAILS
+      // =====================================
+
+      const {
+        data: internshipData,
+        error: internshipError
+      } = await this.supabase
+
+        .rpc('get_my_internship_details')
+
+        .abortSignal(controller.signal)
+
+        .single();
+
+
+      // Ignore outdated requests.
+
+      if (
+        !this.isCurrentLoad(
+          userId,
+          studentId,
+          version
+        )
+      ) {
+        return;
+      }
+
+
+      // Preserve the existing cached profile
+      // if internship details cannot be retrieved.
+
+      if (internshipError) {
+
+        throw internshipError;
+
+      }
+
+      if (!internshipData) {
+
+        throw new Error(
+          'Internship details could not be retrieved.'
+        );
+
+      }
+
+      const internship =
+        internshipData as InternshipDetails;
+
 
       // =====================================
       // STUDENT INFORMATION
       // =====================================
 
-      const fullName =
-        studentData.full_name || 'Unknown';
-
       this.student = {
 
-        name: fullName,
+        name:
+          studentData.full_name ||
+          'Unknown Student',
 
-        initials:
-          this.generateInitials(fullName),
+        initials: this.generateInitials(
+          studentData.full_name ||
+          'Unknown Student'
+        ),
 
-        studentId,
+        studentId:
+          studentData.student_id ||
+          studentId,
 
         program:
-          studentData.course || 'N/A',
+          studentData.course ||
+          'Not specified',
+
+        yearLevel: this.formatYearLevel(
+          studentData.year_level
+        ),
 
         university:
           studentData.school_name ||
           'Pamantasan ng Lungsod ng Valenzuela'
+
       };
 
+
       // =====================================
-      // OJT PLACEMENT
+      // INTERNSHIP DETAILS
       // =====================================
 
       this.placementDetails = [
@@ -929,36 +1143,62 @@ export class ProfilePage
           label: 'Company',
 
           value:
-            studentData.company_name ||
+            internship.company_name?.trim() ||
             'Not assigned'
+        },
+
+        {
+          label: 'Company Location',
+
+          value:
+            internship.company_location?.trim() ||
+            'Not specified'
         },
 
         {
           label: 'Department',
 
           value:
-            studentData.department ||
+            internship.department?.trim() ||
             'Not specified'
         },
 
         {
           label: 'Start Date',
 
-          value:
-            this.formatStartDate(
-              studentData.ojt_start_date
-            )
+          value: internship.start_date
+
+            ? this.formatStartDate(
+                internship.start_date
+              )
+
+            : 'Not set'
+        },
+
+        {
+          label: 'End Date',
+
+          value: internship.end_date
+
+            ? this.formatStartDate(
+                internship.end_date
+              )
+
+            : 'Not set'
         },
 
         {
           label: 'Required Hours',
 
-          value:
-            studentData.required_hours == null
-              ? 'Not set'
-              : `${studentData.required_hours} hrs`
+          value: internship.required_hours != null
+
+            ? `${internship.required_hours} hours`
+
+            : 'Not specified'
         }
+
       ];
+
 
       // =====================================
       // SAVE BASIC PROFILE INFORMATION
@@ -973,6 +1213,7 @@ export class ProfilePage
 
       this.lastUpdated = Date.now();
 
+
       // Do not retain potentially outdated contacts
       // after refreshing the student profile.
 
@@ -985,15 +1226,21 @@ export class ProfilePage
 
       this.refresh();
 
+
       // =====================================
-      // LOAD ASSIGNED SUPERVISOR CONTACTS
+      // LOAD ASSIGNED CONTACTS
       // =====================================
 
       await this.loadSupervisorContacts(
+
         userId,
+
         studentId,
+
         version,
+
         controller.signal
+
       );
 
       if (
@@ -1005,6 +1252,7 @@ export class ProfilePage
       ) {
         return;
       }
+
 
       // Persist the completed profile.
 
@@ -1033,6 +1281,7 @@ export class ProfilePage
       this.isOnline =
         this.networkService.isOnline();
 
+
       // Restore previously saved information.
 
       if (!this.hasProfile) {
@@ -1041,6 +1290,7 @@ export class ProfilePage
           userId,
           studentId
         );
+
       }
 
       if (!this.isOnline) {
@@ -1064,13 +1314,17 @@ export class ProfilePage
 
           this.profileMessage =
             'Unable to load your profile. Please try again.';
+
         }
+
       }
 
     } finally {
 
       if (this.serverRequest === controller) {
+
         this.serverRequest = undefined;
+
       }
 
       if (
@@ -1081,45 +1335,64 @@ export class ProfilePage
         this.isLoading = false;
 
         this.refresh();
+
       }
+
     }
+
   }
 
+
   // =========================================
-  // LOAD SUPERVISOR CONTACTS
+  // LOAD SUPERVISOR AND COORDINATOR CONTACTS
   // =========================================
 
   private async loadSupervisorContacts(
+
     userId: string,
+
     studentId: string,
+
     version: number,
+
     signal: AbortSignal
+
   ): Promise<void> {
 
     if (
+
       !this.isCurrentLoad(
         userId,
         studentId,
         version
       ) ||
-      !this.networkService.isOnline()
+
+      !this.isOnline
+
     ) {
       return;
     }
 
     try {
 
-      // Retrieve only assigned supervisor contacts
-      // through the restricted database function.
+      const [
+        supervisorResult,
+        coordinatorResult
+      ] = await Promise.all([
 
-      const {
-        data,
-        error
-      } = await this.supabase
+        this.supabase
 
-        .rpc('get_my_supervisor_contacts')
+          .rpc('get_my_supervisor_contacts')
 
-        .abortSignal(signal);
+          .abortSignal(signal),
+
+        this.supabase
+
+          .rpc('get_my_coordinator_contact')
+
+          .abortSignal(signal)
+
+      ]);
 
       if (
         !this.isCurrentLoad(
@@ -1131,44 +1404,184 @@ export class ProfilePage
         return;
       }
 
-      if (error) {
-        throw error;
+      if (!this.isOnline) {
+
+        this.updateOfflineMessage();
+
+        return;
+
       }
 
-      const supervisors =
-        (data ?? []) as SupervisorContact[];
+      const contacts: ContactPerson[] = [];
 
-      this.contacts = supervisors
 
-        .filter(supervisor =>
-          typeof supervisor.full_name === 'string' &&
-          supervisor.full_name.trim().length > 0
-        )
+      // =====================================
+      // COMPANY SUPERVISOR
+      // =====================================
 
-        .map((supervisor, index) => ({
+      if (!supervisorResult.error) {
 
-          id: index + 1,
+        const supervisors: SupervisorContact[] =
+          supervisorResult.data ?? [];
 
-          name:
-            supervisor.full_name,
+        const validSupervisors =
+          supervisors.filter(supervisor =>
 
-          initials:
-            this.generateInitials(
-              supervisor.full_name
+            typeof supervisor.full_name === 'string' &&
+
+            supervisor.full_name.trim().length > 0
+
+          );
+
+        validSupervisors.forEach(
+          (supervisor, index) => {
+
+            contacts.push({
+
+              id: index + 1,
+
+              name: supervisor.full_name,
+
+              initials: this.generateInitials(
+                supervisor.full_name
+              ),
+
+              role: 'Company Supervisor',
+
+              email: supervisor.email || undefined
+
+            });
+
+          }
+        );
+
+        if (validSupervisors.length === 0) {
+
+          contacts.push({
+
+            id: -1,
+
+            name: 'Not assigned',
+
+            initials: 'CS',
+
+            role: 'Company Supervisor'
+
+          });
+
+        }
+
+      }
+
+
+      // =====================================
+      // OJT COORDINATOR
+      // =====================================
+
+      if (!coordinatorResult.error) {
+
+        const coordinators: CoordinatorContact[] =
+          coordinatorResult.data ?? [];
+
+        const validCoordinators =
+          coordinators.filter(coordinator =>
+
+            typeof coordinator.full_name === 'string' &&
+
+            coordinator.full_name.trim().length > 0
+
+          );
+
+        if (validCoordinators.length === 1) {
+
+          const coordinator =
+            validCoordinators[0];
+
+          contacts.push({
+
+            id: -2,
+
+            name: coordinator.full_name,
+
+            initials: this.generateInitials(
+              coordinator.full_name
             ),
 
-          role: 'Company Supervisor',
+            role: 'OJT Coordinator',
 
-          email:
-            supervisor.email || undefined
-        }));
+            email: coordinator.email || undefined
 
-      this.contactsLoadError = false;
+          });
 
-      // No coordinator contact is added until
-      // a valid assignment relationship exists.
+        } else {
 
-    } catch (error: unknown) {
+          contacts.push({
+
+            id: -2,
+
+            name: 'Not available',
+
+            initials: 'OC',
+
+            role: 'OJT Coordinator'
+
+          });
+
+        }
+
+      }
+
+
+      // =====================================
+      // UPDATE CONTACTS
+      // =====================================
+
+      this.contacts = contacts;
+
+      this.contactsLoadError = Boolean(
+
+        supervisorResult.error ||
+
+        coordinatorResult.error
+
+      );
+
+      if (this.contactsLoadError) {
+
+        this.profileMessage =
+          'Some contacts could not be refreshed. Please try again.';
+
+        if (supervisorResult.error) {
+
+          console.warn(
+
+            'Supervisor contact error:',
+
+            supervisorResult.error
+
+          );
+
+        }
+
+        if (coordinatorResult.error) {
+
+          console.warn(
+
+            'Coordinator contact error:',
+
+            coordinatorResult.error
+
+          );
+
+        }
+
+      } else {
+
+        this.profileMessage = '';
+
+      }
+
+    } catch (error) {
 
       if (
         !this.isCurrentLoad(
@@ -1180,29 +1593,28 @@ export class ProfilePage
         return;
       }
 
-      // Contact errors must not prevent the
-      // basic student profile from displaying.
+      if (!this.isOnline) {
 
-      this.contacts = [];
+        this.updateOfflineMessage();
 
-      if (this.networkService.isOnline()) {
+      } else {
 
         this.contactsLoadError = true;
 
         this.profileMessage =
-          'Profile loaded, but supervisor contacts could not be refreshed.';
+          'Profile loaded, but contacts could not be refreshed.';
 
         console.warn(
-          'Unable to load supervisor contacts:',
+          'Contact loading error:',
           error
         );
 
-      } else {
-
-        this.updateOfflineMessage();
       }
+
     }
+
   }
+
 
   // =========================================
   // MANUAL PROFILE REFRESH
@@ -1216,40 +1628,106 @@ export class ProfilePage
     this.isOnline = status.connected;
 
     await this.loadProfileData();
+
   }
 
+
   // =========================================
-  // FORMAT START DATE
+  // FORMAT YEAR LEVEL
+  // =========================================
+
+  private formatYearLevel(
+
+    value: string | number | null | undefined
+
+  ): string {
+
+    if (
+      value == null ||
+      String(value).trim() === ''
+    ) {
+      return '';
+    }
+
+    const year = String(value).trim();
+
+    switch (year) {
+
+      case '1':
+        return '1st Year';
+
+      case '2':
+        return '2nd Year';
+
+      case '3':
+        return '3rd Year';
+
+      case '4':
+        return '4th Year';
+
+      case '5':
+        return '5th Year';
+
+      default:
+        return year;
+
+    }
+
+  }
+
+
+  // =========================================
+  // FORMAT INTERNSHIP DATE
   // =========================================
 
   private formatStartDate(
+
     value: string | null | undefined
+
   ): string {
 
     if (!value) {
+
       return 'Not set';
+
     }
 
     const date = new Date(
+
       /^\d{4}-\d{2}-\d{2}$/.test(value)
+
         ? `${value}T00:00:00+08:00`
+
         : value
+
     );
 
     if (Number.isNaN(date.getTime())) {
+
       return 'Not set';
+
     }
 
     return date.toLocaleDateString(
+
       'en-US',
+
       {
+
         timeZone: 'Asia/Manila',
+
         month: 'long',
+
         day: 'numeric',
+
         year: 'numeric'
+
       }
+
     );
+
   }
+
 
   // =========================================
   // LAST UPDATED LABEL
@@ -1258,67 +1736,104 @@ export class ProfilePage
   get lastUpdatedLabel(): string {
 
     if (!this.lastUpdated) {
+
       return '';
+
     }
 
     return new Date(
+
       this.lastUpdated
+
     ).toLocaleString(
+
       'en-US',
+
       {
+
         timeZone: 'Asia/Manila',
+
         month: 'short',
+
         day: 'numeric',
+
         year: 'numeric',
+
         hour: 'numeric',
+
         minute: '2-digit',
+
         hour12: true
+
       }
+
     );
+
   }
+
 
   // =========================================
   // GENERATE INITIALS
   // =========================================
 
   private generateInitials(
+
     name: string
+
   ): string {
 
     const parts = name
+
       .trim()
+
       .split(/\s+/)
+
       .filter(Boolean);
 
     if (parts.length === 0) {
+
       return '??';
+
     }
 
     if (parts.length >= 2) {
 
       return (
+
         parts[0][0] +
+
         parts[parts.length - 1][0]
+
       ).toUpperCase();
+
     }
 
     return parts[0]
+
       .substring(0, 2)
+
       .toUpperCase();
+
   }
+
 
   // =========================================
   // EMAIL CONTACT
   // =========================================
 
   async emailContact(
+
     contact: ContactPerson
+
   ): Promise<void> {
 
     if (
       !this.isCurrentIdentity(
+
         this.currentUserId,
+
         this.currentStudentId
+
       )
     ) {
       return;
@@ -1326,27 +1841,37 @@ export class ProfilePage
 
     const currentContact =
       this.contacts.find(item =>
+
         item.id === contact.id &&
+
         item.email === contact.email &&
+
         item.name === contact.name
+
       );
 
     if (!currentContact) {
+
       return;
+
     }
 
     const email =
       currentContact.email?.trim();
 
     if (
+
       email &&
+
       /^[^\s@?&#]+@[^\s@?&#]+\.[^\s@?&#]+$/.test(email)
+
     ) {
 
       window.location.href =
         `mailto:${encodeURIComponent(email)}`;
 
       return;
+
     }
 
     const alert =
@@ -1358,10 +1883,13 @@ export class ProfilePage
           'A valid email address is not available for this contact.',
 
         buttons: ['OK']
+
       });
 
     await alert.present();
+
   }
+
 
   // =========================================
   // LOGOUT
@@ -1370,7 +1898,9 @@ export class ProfilePage
   async logout(): Promise<void> {
 
     if (this.isLoggingOut) {
+
       return;
+
     }
 
     this.isLoggingOut = true;
@@ -1381,6 +1911,7 @@ export class ProfilePage
 
       await this.networkService
         .waitForInitialization();
+
 
       // Require connectivity before logout.
 
@@ -1395,6 +1926,7 @@ export class ProfilePage
               'Please connect to the internet before logging out. Your locally saved attendance records will be retained.',
 
             buttons: ['OK']
+
           });
 
         await offlineAlert.present();
@@ -1402,7 +1934,9 @@ export class ProfilePage
         await offlineAlert.onDidDismiss();
 
         return;
+
       }
+
 
       // Confirm logout.
 
@@ -1425,7 +1959,9 @@ export class ProfilePage
               text: 'Log Out',
               role: 'confirm'
             }
+
           ]
+
         });
 
       await confirmationAlert.present();
@@ -1434,8 +1970,11 @@ export class ProfilePage
         await confirmationAlert.onDidDismiss();
 
       if (role !== 'confirm') {
+
         return;
+
       }
+
 
       // Capture identity before authentication
       // information is cleared.
@@ -1446,6 +1985,7 @@ export class ProfilePage
       const userId =
         this.currentUserId;
 
+
       // Prevent outdated profile requests.
 
       this.loadVersion++;
@@ -1454,9 +1994,11 @@ export class ProfilePage
 
       this.clearReconnectTimer();
 
+
       // Sign out through AuthService.
 
       await this.authService.signOut();
+
 
       // Remove the current student's profile cache.
 
@@ -1466,11 +2008,14 @@ export class ProfilePage
           userId,
           studentId
         );
+
       }
+
 
       // Attendance IndexedDB remains untouched.
 
       this.currentStudentId = '';
+
       this.currentUserId = '';
 
       this.resetState();
@@ -1483,11 +2028,15 @@ export class ProfilePage
           header: 'Unable to Log Out',
 
           message:
+
             error instanceof Error
+
               ? error.message
+
               : 'Something went wrong. Please try again.',
 
           buttons: ['OK']
+
         });
 
       await errorAlert.present();
@@ -1499,6 +2048,9 @@ export class ProfilePage
       this.isLoggingOut = false;
 
       this.refresh();
+
     }
+
   }
+
 }

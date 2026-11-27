@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 
 import { authGuard } from './guards/auth.guard';
 import { startupGuard } from './guards/startup.guard';
+import { onboardingGuard } from './guards/onboarding.guard';
 
 export const routes: Routes = [
 
@@ -19,23 +20,26 @@ export const routes: Routes = [
   },
 
   // =========================================
-  // ONBOARDING PAGES
+  // MOBILE ONBOARDING
   // =========================================
 
   {
     path: 'onboarding/welcome',
+    canActivate: [onboardingGuard],
     loadComponent: () =>
       import('./pages/onboarding/welcome/welcome.page')
         .then(m => m.WelcomePage),
   },
   {
     path: 'onboarding/hours',
+    canActivate: [onboardingGuard],
     loadComponent: () =>
       import('./pages/onboarding/hours/hours.page')
         .then(m => m.HoursPage),
   },
   {
     path: 'onboarding/all-in-one',
+    canActivate: [onboardingGuard],
     loadComponent: () =>
       import('./pages/onboarding/all-in-one/all-in-one.page')
         .then(m => m.AllInOnePage),
@@ -194,35 +198,23 @@ export const routes: Routes = [
     canActivateChild: [authGuard],
 
     children: [
-
-      // Default coordinator page
-
       {
         path: '',
         redirectTo: 'dashboard',
         pathMatch: 'full',
       },
-
-      // Dashboard
-
       {
         path: 'dashboard',
         loadComponent: () =>
           import('./pages/coordinator/dashboard/dashboard.page')
             .then(m => m.DashboardPage),
       },
-
-      // Individual student details
-
       {
         path: 'student-interns/:studentId',
         loadComponent: () =>
           import('./pages/coordinator/student-details/student-details.page')
             .then(m => m.StudentDetailsPage),
       },
-
-      // Student Interns
-
       {
         path: 'student-interns',
         pathMatch: 'full',
@@ -230,18 +222,12 @@ export const routes: Routes = [
           import('./pages/coordinator/student-interns/student-interns.page')
             .then(m => m.StudentInternsPage),
       },
-
-      // Individual supervisor details
-
       {
         path: 'company-supervisors/:supervisorId',
         loadComponent: () =>
           import('./pages/coordinator/supervisor-details/supervisor-details.page')
             .then(m => m.SupervisorDetailsPage),
       },
-
-      // Company Supervisors
-
       {
         path: 'company-supervisors',
         pathMatch: 'full',
@@ -249,27 +235,18 @@ export const routes: Routes = [
           import('./pages/coordinator/company-supervisors/company-supervisors.page')
             .then(m => m.CompanySupervisorsPage),
       },
-
-      // Internship Assignments
-
       {
         path: 'internship-assignments',
         loadComponent: () =>
           import('./pages/coordinator/internship-assignments/internship-assignments.page')
             .then(m => m.InternshipAssignmentsPage),
       },
-
-      // Individual attendance details
-
       {
         path: 'attendance/:recordId',
         loadComponent: () =>
           import('./pages/coordinator/attendance-details/attendance-details.page')
             .then(m => m.AttendanceDetailsPage),
       },
-
-      // Attendance Monitoring
-
       {
         path: 'attendance',
         pathMatch: 'full',
@@ -277,18 +254,12 @@ export const routes: Routes = [
           import('./pages/coordinator/attendance-monitoring/attendance-monitoring.page')
             .then(m => m.AttendanceMonitoringPage),
       },
-
-      // Individual weekly report
-
       {
         path: 'reports/:reportId',
         loadComponent: () =>
           import('./pages/coordinator/report-details/report-details.page')
             .then(m => m.ReportDetailsPage),
       },
-
-      // Weekly Reports Monitoring
-
       {
         path: 'reports',
         pathMatch: 'full',
@@ -296,18 +267,12 @@ export const routes: Routes = [
           import('./pages/coordinator/reports-monitoring/reports-monitoring.page')
             .then(m => m.ReportsMonitoringPage),
       },
-
-      // Reports and Records
-
       {
         path: 'reports-records',
         loadComponent: () =>
           import('./pages/coordinator/reports-records/reports-records.page')
             .then(m => m.ReportsRecordsPage),
       },
-
-      // Settings
-
       {
         path: 'settings',
         loadComponent: () =>
@@ -316,4 +281,14 @@ export const routes: Routes = [
       },
     ],
   },
+
+  // =========================================
+  // UNKNOWN ROUTES
+  // =========================================
+
+  {
+    path: '**',
+    redirectTo: '',
+  },
+
 ];

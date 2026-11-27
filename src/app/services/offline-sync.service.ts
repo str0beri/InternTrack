@@ -41,6 +41,9 @@ export interface PendingAttendance {
   retry_count: number;
   last_retry_at?: string;
   last_error?: string;
+
+  permanent_conflict?: boolean;
+  conflict_detected_at?: string;
 }
 
 export interface SyncState {
@@ -68,8 +71,7 @@ export interface CachedAttendance {
   total_hours_rendered: number | null;
 
   sync_status: 'pending_upload' | 'synced';
-  verification_status: 'provisional' | 'verified';
-}
+  verification_status: 'verified' | 'provisional' | 'rejected';}
 
 // ======================================================
 // CONSTANTS
@@ -87,6 +89,19 @@ const PHOTO_BUCKET = 'attendance-photos';
 const MAX_RETRIES = 6;
 const BASE_DELAY_MS = 5_000;
 const MAX_DELAY_MS = 15 * 60_000;
+
+// ======================================================
+// SYNCHRONIZATION CONFLICT ERROR
+// ======================================================
+
+class AttendanceConflictError extends Error {
+
+  constructor(message: string) {
+    super(message);
+    this.name = 'AttendanceConflictError';
+  }
+
+}
 
 // ======================================================
 // PHILIPPINE DATE HELPER
@@ -755,6 +770,24 @@ async reconcileAttendanceCache(
               .map(record => record.attendance_date)
           );
 
+          const permanentConflictDates = new Set(
+            pendingRecords
+              .filter(record =>
+                record.sync_status === 'failed' &&
+                record.permanent_conflict === true
+              )
+              .map(record => record.attendance_date)
+          );
+
+          const retryablePendingDates = new Set(
+            pendingRecords
+              .filter(record =>
+                record.sync_status !== 'synced' &&
+                record.permanent_conflict !== true
+              )
+              .map(record => record.attendance_date)
+          );
+
           const cacheRequest = cacheStore
             .index('student_id')
             .getAll(studentId);
@@ -807,11 +840,31 @@ async reconcileAttendanceCache(
             // Insert or update current server records.
 
             for (const record of serverRecords) {
+
+              const attendanceDate = record.attendance_date;
+
+              const isReviewed =
+                record.verification_status === 'verified' ||
+                record.verification_status === 'rejected';
+
+              const hasPermanentConflict =
+                permanentConflictDates.has(attendanceDate);
+
+              const hasRetryablePending =
+                retryablePendingDates.has(attendanceDate);
+
+              const canReconcileReviewedConflict =
+                isReviewed &&
+                hasPermanentConflict &&
+                !hasRetryablePending;
+
               if (
-                !protectedDates.has(record.attendance_date)
+                !protectedDates.has(attendanceDate) ||
+                canReconcileReviewedConflict
               ) {
                 cacheStore.put(record);
               }
+
             }
 
           };
@@ -835,15 +888,19 @@ async reconcileAttendanceCache(
   // ====================================================
 
   private validateTimestamp(timestamp: string): void {
+    const timestampMs = new Date(timestamp).getTime();
 
-    if (Number.isNaN(new Date(timestamp).getTime())) {
-
+    if (!Number.isFinite(timestampMs)) {
       throw new Error(
         'Invalid attendance timestamp.'
       );
-
     }
 
+    if (timestampMs > Date.now()) {
+      throw new Error(
+        'Attendance timestamp cannot be in the future.'
+      );
+    }
   }
 
   private validateLocation(
@@ -871,43 +928,62 @@ async reconcileAttendanceCache(
   }
 
   private validatePhoto(photo?: Blob): void {
-
-    if (
-      !photo ||
-      photo.size === 0 ||
-      !photo.type.startsWith('image/')
-    ) {
-
-      throw new Error(
-        'Valid photo evidence is required.'
-      );
-
+    if (!photo || photo.size === 0) {
+      throw new Error('Valid photo evidence is required.');
     }
-
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(photo.type)) {
+      throw new Error('Only JPEG, PNG and WebP photos are supported.');
+    }
+    if (photo.size > 10 * 1024 * 1024) {
+      throw new Error('Attendance photo must not exceed 10 MB.');
+    }
   }
 
   private calculateRenderedHours(
     timeIn: string,
     timeOut: string
   ): number {
+    this.validateTimestamp(timeIn);
+    this.validateTimestamp(timeOut);
 
     const start = new Date(timeIn).getTime();
     const end = new Date(timeOut).getTime();
 
-    if (
-      !Number.isFinite(start) ||
-      !Number.isFinite(end) ||
-      end < start
-    ) {
-
+    if (end <= start) {
       throw new Error(
-        'Time-Out cannot be earlier than Time-In.'
+        'Time-Out must be later than Time-In.'
       );
-
     }
 
-    return (end - start) / 3_600_000;
+    // Determine the Philippine date of Time-In.
+    const attendanceDate = getPhilippineDate(timeIn);
 
+    // Lunch period: 12:00 PM to 1:00 PM Philippine time.
+    const lunchStart = new Date(
+      `${attendanceDate}T12:00:00+08:00`
+    ).getTime();
+
+    const lunchEnd = new Date(
+      `${attendanceDate}T13:00:00+08:00`
+    ).getTime();
+
+    // Deduct only the actual overlap with lunch.
+    const lunchOverlap = Math.max(
+      0,
+      Math.min(end, lunchEnd) -
+        Math.max(start, lunchStart)
+    );
+
+    const renderedMilliseconds = Math.max(
+      0,
+      end - start - lunchOverlap
+    );
+
+    const renderedHours =
+      renderedMilliseconds / 3_600_000;
+
+    // Match the database's six-decimal precision.
+    return Number(renderedHours.toFixed(6));
   }
 
   // ====================================================
@@ -1108,12 +1184,10 @@ async reconcileAttendanceCache(
 
       }
 
-      if (cached.verification_status === 'verified') {
-
+      if (cached.verification_status !== 'provisional') {
         throw new Error(
-          'Verified attendance cannot be modified.'
+          'Reviewed attendance cannot be modified.'
         );
-
       }
 
       if (
@@ -1347,13 +1421,33 @@ async reconcileAttendanceCache(
       return;
     }
 
+    const isPermanentConflict =
+      record.permanent_conflict === true ||
+      error instanceof AttendanceConflictError;
+
+    const retryCount = isPermanentConflict
+      ? record.retry_count
+      : record.retry_count + 1;
+
     const updated: PendingAttendance = {
       ...record,
-      retry_count: record.retry_count + 1,
+
+      retry_count: retryCount,
+
       last_retry_at: new Date().toISOString(),
+
       last_error: this.getErrorMessage(error),
+
+      permanent_conflict: isPermanentConflict,
+
+      conflict_detected_at: isPermanentConflict
+        ? record.conflict_detected_at ??
+          new Date().toISOString()
+        : undefined,
+
       sync_status:
-        record.retry_count + 1 >= MAX_RETRIES
+        isPermanentConflict ||
+        retryCount >= MAX_RETRIES
           ? 'failed'
           : 'pending'
     };
@@ -1480,8 +1574,13 @@ async reconcileAttendanceCache(
     const failedRecords = this.pendingAttendance.filter(
       record =>
         this.belongsToActiveStudent(record) &&
-        record.sync_status === 'failed'
+        record.sync_status === 'failed' &&
+        record.permanent_conflict !== true
     );
+
+    if (failedRecords.length === 0) {
+      return;
+    }
 
     for (const record of failedRecords) {
 
@@ -1615,6 +1714,7 @@ async reconcileAttendanceCache(
 
     let synced = 0;
     let failed = 0;
+    let conflictsDetected = 0;
 
     this.emitState();
 
@@ -1722,6 +1822,10 @@ async reconcileAttendanceCache(
             error
           );
 
+          if (error instanceof AttendanceConflictError) {
+            conflictsDetected++;
+          }
+
           blockedSessions.add(sessionKey);
 
           failed++;
@@ -1730,17 +1834,17 @@ async reconcileAttendanceCache(
 
       }
 
-    } finally {
+      } finally {
 
-      this.syncInProgress = false;
+        this.syncInProgress = false;
 
-      this.emitState();
+        this.emitState();
 
-      if (synced > 0) {
-        this.syncedSubject.next();
+        if (synced > 0 || conflictsDetected > 0) {
+          this.syncedSubject.next();
+        }
+
       }
-
-    }
 
     return {
       synced,
@@ -1820,7 +1924,7 @@ async reconcileAttendanceCache(
         return;
       }
 
-      throw new Error(
+      throw new AttendanceConflictError(
         'A different attendance record already exists for this date.'
       );
 
@@ -1962,21 +2066,21 @@ async reconcileAttendanceCache(
         return;
       }
 
-      throw new Error(
+      throw new AttendanceConflictError(
         'A different Time-Out has already been recorded.'
       );
 
     }
 
-    if (existing.verification_status === 'verified') {
-
-      throw new Error(
-        'Verified attendance cannot be modified.'
+    if (existing.verification_status !== 'provisional') {
+      throw new AttendanceConflictError(
+        existing.verification_status === 'rejected'
+          ? 'Attendance has already been rejected by the supervisor.'
+          : 'Reviewed attendance cannot be modified.'
       );
-
     }
 
-    const renderedHours = this.calculateRenderedHours(
+    this.calculateRenderedHours(
       existing.time_in,
       record.time_out!
     );
@@ -2011,8 +2115,6 @@ async reconcileAttendanceCache(
 
           time_out_location_long:
             record.time_out_location_long,
-
-          total_hours_rendered: renderedHours,
 
           sync_status: 'synced'
         })
@@ -2065,12 +2167,12 @@ async reconcileAttendanceCache(
 
     }
 
+    this.validatePhoto(blob);
+
     const extensionMap: Record<string, string> = {
       'image/jpeg': 'jpg',
       'image/png': 'png',
-      'image/webp': 'webp',
-      'image/heic': 'heic',
-      'image/heif': 'heif'
+      'image/webp': 'webp'
     };
 
     const extension = extensionMap[blob.type];
@@ -2107,21 +2209,42 @@ async reconcileAttendanceCache(
 
     }
 
-    const { error } = await client
-      .storage
-      .from(PHOTO_BUCKET)
-      .upload(fileName, blob, {
-        contentType: blob.type,
-        cacheControl: '3600',
-        upsert: true
-      });
+    this.validatePhoto(blob);
+    const studentId = this.activeStudentId;
+    const bucket = client.storage.from(PHOTO_BUCKET);
+    const { error } = await bucket.upload(fileName, blob, {
+      contentType: blob.type,
+      cacheControl: '0',
+      upsert: false
+    });
 
     if (error) {
-      throw error;
+      // A previous upload may have succeeded before the connection failed.
+      // Reuse only an existing object with identical bytes; never overwrite it.
+      if (!this.canSynchronize() || this.activeStudentId !== studentId) {
+        throw new Error('Synchronization interrupted.');
+      }
+      const { data: existing, error: downloadError } =
+        await bucket.download(fileName);
+      if (downloadError || !existing) {
+        throw error;
+      }
+      if (existing.size !== blob.size) {
+        throw new AttendanceConflictError('Existing photo evidence differs from local evidence.');
+      }
+      const localBytes = new Uint8Array(await blob.arrayBuffer());
+      const remoteBytes = new Uint8Array(await existing.arrayBuffer());
+      if (!localBytes.every((value, index) => value === remoteBytes[index])) {
+        throw new AttendanceConflictError('Existing photo evidence differs from local evidence.');
+      }
     }
 
-    // Retain the existing public URL implementation.
+    if (!this.canSynchronize() || this.activeStudentId !== studentId) {
+      throw new Error('Synchronization interrupted.');
+    }
 
+    // Retain the legacy URL as a stable database reference only.
+    // Authorized display will use signed URLs after the private-bucket migration.
     const { data } = client
       .storage
       .from(PHOTO_BUCKET)

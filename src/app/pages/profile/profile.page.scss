@@ -1,184 +1,429 @@
-// page background
-.profile-content {
-  --background: #f5f7fc;
-  --color: #252525;
+:host {
+  display: block;
+  font-family: 'Inter', sans-serif;
 }
 
-// main container
+.profile-content {
+  --background: #f5f7fc;
+  --color: #172033;
+}
+
+
+/* ==============================
+   PAGE CONTAINER
+============================== */
+
 .profile-container {
   width: 100%;
-  max-width: 440px;
+  max-width: 480px;
   min-height: 100%;
-
   margin: 0 auto;
-  padding: 40px 29px 26px;
+
+  padding:
+    calc(24px + var(--ion-safe-area-top, env(safe-area-inset-top, 0px)))
+    var(--it-mobile-page-padding, 16px)
+    24px;
 
   box-sizing: border-box;
   font-family: 'Inter', sans-serif;
 }
 
-// page header
+
+/* ==============================
+   PAGE HEADER
+============================== */
+
 .profile-header {
-  width: 100%;
-  margin-bottom: 25px;
+  margin-bottom: 20px;
 }
 
 .profile-header h1 {
   margin: 0;
-  padding: 0;
 
-  font-size: 24px;
+  font-size: var(--it-mobile-title, 24px);
   font-weight: 700;
-  line-height: 1.2;
-  letter-spacing: -0.7px;
+  line-height: 1.3;
+  letter-spacing: -0.5px;
 
-  color: #252525;
+  color: #172033;
 }
 
-// student profile card
+
+/* ==============================
+   PROFILE NOTICE
+============================== */
+
+.profile-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  margin-bottom: 16px;
+  padding: 12px;
+
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  border-radius: 12px;
+}
+
+.profile-notice p {
+  margin: 0;
+
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+
+  color: #9a5b16;
+  overflow-wrap: anywhere;
+}
+
+.retry-button {
+  flex-shrink: 0;
+
+  min-height: 40px;
+  padding: 8px 12px;
+
+  border: none;
+  border-radius: 8px;
+
+  background: #ffffff;
+  color: #3157d5;
+
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+.retry-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+
+/* ==============================
+   LOADING STATE
+============================== */
+
+.profile-state {
+  padding: 24px 16px;
+
+  background: #ffffff;
+  border: 1px solid #e8ecf3;
+  border-radius: 14px;
+
+  text-align: center;
+}
+
+.profile-state p {
+  margin: 0;
+
+  font-size: 13px;
+  line-height: 1.5;
+
+  color: #64748b;
+}
+
+
+/* ==============================
+   STUDENT PROFILE CARD
+============================== */
+
 .student-card {
+  position: relative;
+  isolation: isolate;
+
   display: flex;
   flex-direction: column;
+  align-items: stretch;
+
+  width: 100%;
+  min-width: 0;
+
+  padding: 18px 16px;
+
+  background: #ffffff;
+  border: 1px solid #dce2ed;
+  border-radius: var(--it-mobile-card-radius, 16px);
+
+  box-shadow: 0 2px 8px rgba(23, 32, 51, 0.03);
+
+  box-sizing: border-box;
+  overflow: hidden;
+
+  text-align: left;
+}
+
+
+/* ==============================
+   ABSTRACT GEOMETRIC BACKGROUND
+============================== */
+
+.student-card-decoration {
+  position: absolute;
+  inset: 0;
+
+  z-index: 0;
+
+  overflow: hidden;
+  pointer-events: none;
+
+  border-radius: inherit;
+}
+
+.shape {
+  position: absolute;
+  display: block;
+
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+
+/* Pastel purple upper shape */
+
+.shape-purple {
+  width: 190px;
+  height: 190px;
+
+  top: -130px;
+  right: 10px;
+
+  background: #e4ddf6;
+}
+
+
+/* Pastel orange right shape */
+
+.shape-orange {
+  width: 140px;
+  height: 140px;
+
+  top: -65px;
+  right: -65px;
+
+  background: #fbe3cd;
+}
+
+
+/* Pastel blue lower shape */
+
+.shape-blue {
+  width: 210px;
+  height: 210px;
+
+  right: -125px;
+  bottom: -135px;
+
+  background: #dce5f8;
+}
+
+
+/* ==============================
+   STUDENT IDENTITY
+============================== */
+
+.student-identity {
+  position: relative;
+  z-index: 1;
+
+  display: flex;
   align-items: center;
 
   width: 100%;
-  min-height: 227px;
-  padding: 18px 18px 23px;
+  min-width: 0;
 
-  background: #ffffff;
-  border-radius: 13px;
-
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.035);
-  box-sizing: border-box;
+  gap: 14px;
 }
 
-// student avatar
+
+/* ==============================
+   STUDENT AVATAR
+============================== */
+
 .student-avatar {
   display: flex;
   align-items: center;
   justify-content: center;
 
-  width: 86px;
-  height: 86px;
+  width: 58px;
+  height: 58px;
+
   flex-shrink: 0;
 
   background: #d9e2ff;
   border-radius: 50%;
-}
 
-.student-avatar span {
-  font-size: 25px;
+  color: #3157d5;
+
+  font-size: 20px;
   font-weight: 600;
   line-height: 1;
 
-  color: #3157d5;
+  user-select: none;
 }
 
-// student name
-.student-name {
-  margin: 16px 0 0;
-  padding: 0;
 
-  font-size: 18px;
-  font-weight: 700;
-  line-height: 1.3;
-  letter-spacing: -0.3px;
+/* ==============================
+   STUDENT INFORMATION
+============================== */
 
-  color: #252525;
-  text-align: center;
-}
-
-// student information
 .student-information {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
 
-  width: 100%;
-  margin-top: 4px;
+  flex: 1;
+  min-width: 0;
 
-  text-align: center;
+  gap: 4px;
+}
+
+.student-name {
+  max-width: 100%;
+
+  margin: 0 0 2px;
+
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: -0.3px;
+
+  color: #172033;
+
+  overflow-wrap: anywhere;
 }
 
 .student-details {
   display: flex;
-  align-items: center;
-  justify-content: center;
   flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
 
-  gap: 7px;
+  gap: 4px 6px;
+
   margin: 0;
-  padding: 0;
 
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 400;
-  line-height: 1.4;
+  line-height: 1.5;
 
-  color: #858585;
+  color: #64748b;
+
+  overflow-wrap: anywhere;
+}
+
+.student-details span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .separator {
-  font-size: 14px;
-  color: #858585;
+  color: #94a3b8;
+}
+
+.student-year {
+  margin: 0;
+
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+
+  color: #64748b;
+
+  overflow-wrap: anywhere;
+}
+
+
+/* ==============================
+   UNIVERSITY INFORMATION
+============================== */
+
+.student-school {
+  position: relative;
+  z-index: 1;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 4px;
+
+  margin-top: 16px;
+  padding-top: 12px;
+
+  border-top: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+.student-school-label {
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.4;
+
+  color: #64748b;
 }
 
 .student-university {
-  max-width: 260px;
-
-  margin: 1px 0 0;
-  padding: 0;
-
-  font-size: 14px;
-  font-weight: 400;
-  line-height: 1.3;
-
-  color: #858585;
-  text-align: center;
-}
-
-// ojt placement
-.placement-section {
   width: 100%;
-  margin-top: 26px;
+
+  margin: 0;
+
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.6;
+
+  color: #172033;
+
+  overflow-wrap: anywhere;
 }
+
+
+/* ==============================
+   SECTION HEADINGS
+============================== */
 
 .section-title {
-  margin: 0 0 9px;
-  padding: 0;
+  margin: 0 0 10px;
 
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 1.3;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: -0.2px;
 
-  color: #151515;
+  color: #172033;
 }
 
-// placement card
+
+/* ==============================
+   INTERNSHIP DETAILS
+============================== */
+
+.placement-section {
+  margin-top: 24px;
+}
+
 .placement-card {
-  width: 100%;
+  overflow: hidden;
 
   background: #ffffff;
-  border-radius: 13px;
+  border: 1px solid #e8ecf3;
+  border-radius: var(--it-mobile-card-radius, 16px);
 
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.035);
-
-  overflow: hidden;
-  box-sizing: border-box;
+  box-shadow: 0 2px 8px rgba(23, 32, 51, 0.03);
 }
 
-// placement rows
 .placement-row {
   position: relative;
 
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
   align-items: center;
-  justify-content: space-between;
-
-  width: 100%;
-  min-height: 48px;
 
   gap: 12px;
-  padding: 0 17px;
+
+  min-height: 48px;
+  padding: 12px 14px;
 
   box-sizing: border-box;
 }
@@ -187,69 +432,67 @@
   content: '';
 
   position: absolute;
+
+  right: 14px;
   bottom: 0;
-  left: 17px;
-  right: 17px;
+  left: 14px;
 
   height: 1px;
-  background: #ebebeb;
+
+  background: #edf0f5;
 }
 
 .placement-label {
-  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.5;
 
-  font-size: 11px;
-  font-weight: 400;
-  line-height: 1.4;
-
-  color: #252525;
-}
-
-.placement-value {
-  min-width: 0;
-  max-width: 65%;
-
-  font-size: 11px;
-  font-weight: 400;
-  line-height: 1.4;
-
-  color: #858585;
-  text-align: right;
+  color: #172033;
 
   overflow-wrap: anywhere;
 }
 
-// contacts section
-.contacts-section {
-  width: 100%;
-  margin-top: 16px;
+.placement-value {
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+
+  color: #64748b;
+
+  text-align: right;
+  overflow-wrap: anywhere;
 }
 
-// contacts card
+
+/* ==============================
+   CONTACTS
+============================== */
+
+.contacts-section {
+  margin-top: 24px;
+}
+
 .contacts-card {
-  width: 100%;
+  overflow: hidden;
 
   background: #ffffff;
-  border-radius: 13px;
+  border: 1px solid #e8ecf3;
+  border-radius: var(--it-mobile-card-radius, 16px);
 
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.035);
-
-  overflow: hidden;
-  box-sizing: border-box;
+  box-shadow: 0 2px 8px rgba(23, 32, 51, 0.03);
 }
 
-// contact rows
 .contact-row {
   position: relative;
 
-  display: flex;
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) 48px;
   align-items: center;
 
-  width: 100%;
-  min-height: 48px;
+  gap: 10px;
 
-  gap: 13px;
-  padding: 0 17px;
+  min-height: 68px;
+  padding: 8px 14px;
 
   box-sizing: border-box;
 }
@@ -258,226 +501,443 @@
   content: '';
 
   position: absolute;
+
+  right: 14px;
   bottom: 0;
-  left: 17px;
-  right: 17px;
+  left: 14px;
 
   height: 1px;
-  background: #ebebeb;
+
+  background: #edf0f5;
 }
 
-// contact avatar
 .contact-avatar {
   display: flex;
   align-items: center;
   justify-content: center;
 
-  width: 30px;
-  height: 30px;
-  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
 
-  border-radius: 50%;
   background: #d9e2ff;
-
-  font-size: 9px;
-  font-weight: 600;
+  border-radius: 50%;
 
   color: #3157d5;
+
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+
+  user-select: none;
 }
 
-// contact information
 .contact-information {
   display: flex;
   flex-direction: column;
   justify-content: center;
 
-  flex: 1;
+  gap: 4px;
+
   min-width: 0;
 }
 
 .contact-name {
   margin: 0;
-  padding: 0;
 
-  font-size: 11px;
-  font-weight: 500;
-  line-height: 1.3;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
 
-  color: #252525;
+  color: #172033;
+
+  overflow-wrap: anywhere;
 }
 
 .contact-role {
-  margin: 2px 0 0;
-  padding: 0;
+  margin: 0;
 
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 400;
-  line-height: 1.3;
+  line-height: 1.4;
 
-  color: #b0b0b0;
+  color: #64748b;
+
+  overflow-wrap: anywhere;
 }
 
-// contact email button
+
+/* ==============================
+   CONTACT EMAIL BUTTON
+============================== */
+
 .contact-email {
   display: flex;
   align-items: center;
   justify-content: center;
 
-  width: 26px;
-  height: 26px;
-  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
 
-  margin-left: auto;
   padding: 0;
 
+  background: transparent;
   border: none;
-  border-radius: 5px;
-
-  background: #ffd3b0;
-  color: #ff8f36;
+  border-radius: 10px;
 
   cursor: pointer;
 
-  transition:
-    background-color 0.2s ease,
-    transform 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .contact-email ion-icon {
-  font-size: 17px;
-  color: #ff8f36;
+  display: block;
 
-  --ionicon-stroke-width: 40px;
+  width: 18px;
+  height: 18px;
+
+  padding: 7px;
+
+  box-sizing: content-box;
+
+  background: #ffd3b0;
+  border-radius: 7px;
+
+  color: #b85c16;
+
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease;
 }
 
-// button interactions
-.contact-email:active {
-  background: #ffc49a;
+.contact-email:not(:disabled):active ion-icon {
+  background: #ffc18f;
   transform: scale(0.94);
 }
 
-.contact-email:focus-visible {
-  outline: 2px solid #3157d5;
-  outline-offset: 3px;
+.contact-email:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
-// responsive - narrow screens
-@media (max-width: 360px) {
-  .profile-container {
-    padding-left: 19px;
-    padding-right: 19px;
-  }
+.contacts-empty {
+  padding: 20px 14px;
 
-  .student-card {
-    padding-left: 12px;
-    padding-right: 12px;
-  }
-
-  .student-details {
-    font-size: 12px;
-    gap: 5px;
-  }
-
-  .student-university {
-    font-size: 12px;
-  }
-
-  .placement-row {
-    padding-left: 14px;
-    padding-right: 14px;
-  }
-
-  .placement-label,
-  .placement-value {
-    font-size: 10px;
-  }
-
-  .contact-row {
-    padding-left: 14px;
-    padding-right: 14px;
-  }
-
-  .contact-name {
-    font-size: 10px;
-  }
+  text-align: center;
 }
 
-// responsive - short screens
-@media (max-height: 750px) {
-  .profile-container {
-    padding-top: 45px;
-  }
+.contacts-empty p {
+  margin: 0;
 
-  .profile-header {
-    margin-bottom: 20px;
-  }
+  font-size: 12px;
+  line-height: 1.5;
 
-  .placement-section {
-    margin-top: 22px;
-  }
-
-  .contacts-section {
-    margin-top: 14px;
-  }
+  color: #64748b;
 }
 
-// accessibility - reduced motion
-@media (prefers-reduced-motion: reduce) {
-  .contact-email {
-    transition: none;
-  }
-}
 
-// logout section
+/* ==============================
+   LOGOUT
+============================== */
+
 .logout-section {
-  width: 100%;
-  margin-top: 26px;
+  margin-top: 24px;
 }
 
-// logout button
 .logout-button {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+
+  gap: 8px;
 
   width: 100%;
-  height: 50px;
+  min-height: 48px;
 
-  border: none;
-  border-radius: 10px;
+  padding: 12px 16px;
 
   background: #ffffff;
-  color: #ff5a5f;
+  border: 1px solid #e8ecf3;
+  border-radius: 12px;
 
+  box-shadow: 0 2px 8px rgba(23, 32, 51, 0.03);
+
+  color: #c92a2a;
+
+  font-family: inherit;
   font-size: 14px;
   font-weight: 600;
-  font-family: 'Inter', sans-serif;
 
   cursor: pointer;
 
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.035);
-
   transition:
-    background-color 0.2s ease,
-    transform 0.2s ease;
+    background 0.15s ease,
+    border-color 0.15s ease;
+
+  -webkit-tap-highlight-color: transparent;
 }
 
 .logout-button ion-icon {
-  font-size: 20px;
-  color: #ff5a5f;
+  flex-shrink: 0;
+
+  font-size: 19px;
 }
 
-// logout button interactions
-.logout-button:hover {
-  background: #fff5f5;
+.logout-button:not(:disabled):active {
+  background: #fff1f2;
+  border-color: #fecdd3;
 }
 
-.logout-button:active {
-  transform: scale(0.98);
+.logout-button:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
-.logout-button:focus-visible {
+
+/* ==============================
+   ACCESSIBILITY
+============================== */
+
+.contact-email:focus-visible,
+.logout-button:focus-visible,
+.retry-button:focus-visible {
   outline: 2px solid #3157d5;
-  outline-offset: 3px;
+  outline-offset: 2px;
+}
+
+
+/* ==============================
+   SMALL MOBILE DEVICES
+============================== */
+
+@media (max-width: 360px) {
+
+  .profile-header {
+    margin-bottom: 16px;
+  }
+
+  .student-card {
+    padding: 16px 14px;
+  }
+
+  .student-identity {
+    gap: 12px;
+  }
+
+  .student-avatar {
+    width: 52px;
+    height: 52px;
+
+    font-size: 18px;
+  }
+
+  .student-name {
+    font-size: 16px;
+  }
+
+  .student-details {
+    font-size: 12px;
+  }
+
+  .student-school {
+    margin-top: 14px;
+    padding-top: 10px;
+  }
+
+  .shape-purple {
+    width: 170px;
+    height: 170px;
+
+    top: -115px;
+    right: 0;
+  }
+
+  .shape-orange {
+    width: 120px;
+    height: 120px;
+
+    top: -55px;
+    right: -55px;
+  }
+
+  .shape-blue {
+    width: 180px;
+    height: 180px;
+
+    right: -105px;
+    bottom: -115px;
+  }
+
+  .placement-section,
+  .contacts-section,
+  .logout-section {
+    margin-top: 20px;
+  }
+
+  .placement-row {
+    padding: 12px;
+    gap: 8px;
+  }
+
+  .placement-row:not(:last-child)::after,
+  .contact-row:not(:last-child)::after {
+    right: 12px;
+    left: 12px;
+  }
+
+  .contact-row {
+    grid-template-columns: 34px minmax(0, 1fr) 48px;
+
+    gap: 8px;
+
+    padding: 8px 12px;
+  }
+
+  .contact-avatar {
+    width: 34px;
+    height: 34px;
+  }
+
+}
+
+
+/* ==============================
+   EXTRA SMALL MOBILE DEVICES
+============================== */
+
+@media (max-width: 320px) {
+
+  .student-card {
+    padding: 14px 12px;
+  }
+
+  .student-identity {
+    gap: 10px;
+  }
+
+  .student-avatar {
+    width: 46px;
+    height: 46px;
+
+    font-size: 17px;
+  }
+
+  .student-name {
+    font-size: 15px;
+  }
+
+  .student-details {
+    font-size: 11px;
+  }
+
+  .student-year {
+    font-size: 11px;
+  }
+
+  .placement-row {
+    grid-template-columns: minmax(0, 1fr);
+
+    gap: 4px;
+  }
+
+  .placement-value {
+    text-align: left;
+  }
+
+  .contact-row {
+    gap: 6px;
+  }
+
+}
+
+
+/* ==============================
+   LARGER MOBILE DEVICES
+============================== */
+
+@media (min-width: 430px) {
+
+  .student-card {
+    padding: 20px;
+  }
+
+  .student-identity {
+    gap: 16px;
+  }
+
+  .student-avatar {
+    width: 64px;
+    height: 64px;
+
+    font-size: 22px;
+  }
+
+  .student-name {
+    font-size: 20px;
+  }
+
+  .student-details {
+    font-size: 13px;
+  }
+
+  .student-school {
+    margin-top: 18px;
+    padding-top: 14px;
+  }
+
+  .shape-purple {
+    width: 220px;
+    height: 220px;
+
+    top: -145px;
+    right: 15px;
+  }
+
+  .shape-orange {
+    width: 160px;
+    height: 160px;
+
+    top: -70px;
+    right: -70px;
+  }
+
+  .shape-blue {
+    width: 240px;
+    height: 240px;
+
+    right: -135px;
+    bottom: -150px;
+  }
+
+  .placement-row {
+    padding: 14px 16px;
+  }
+
+  .contact-row {
+    padding: 10px 16px;
+  }
+
+  .placement-row:not(:last-child)::after,
+  .contact-row:not(:last-child)::after {
+    right: 16px;
+    left: 16px;
+  }
+
+}
+
+
+/* ==============================
+   REDUCED MOTION
+============================== */
+
+@media (prefers-reduced-motion: reduce) {
+
+  .contact-email ion-icon,
+  .logout-button {
+    transition: none;
+  }
+
+  .contact-email:not(:disabled):active ion-icon {
+    transform: none;
+  }
+
 }

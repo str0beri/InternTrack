@@ -1,6 +1,9 @@
 import pdfMake from 'pdfmake/build/pdfmake';
 import pdfFonts from 'pdfmake/build/vfs_fonts';
-import type { TDocumentDefinitions, TableCell } from 'pdfmake/interfaces';
+import {
+  createDtrTemplate,
+  type DtrTemplateRecord
+} from '../../../utils/dtr-template';
 import { CommonModule } from '@angular/common';
 import {
   ChangeDetectorRef,
@@ -922,133 +925,530 @@ private async loadWeeklyReports(
     });
   }
 
-  async downloadDTR(): Promise<void> {
-    if (this.downloadingDTR || this.loading || !this.intern) return;
-    const studentId = this.studentId;
-    const userId = this.authService.getCurrentUser()?.id;
-    const version = this.loadVersion;
-    if (!userId || !this.authService.isSupervisor() || !this.authService.isOnline()) {
-      window.alert('An active online supervisor session is required.');
-      return;
-    }
-    this.downloadingDTR = true;
-    this.cdr.markForCheck();
-    const current = () => this.isCurrentRequest(version, userId, studentId)
-      && this.authService.isSupervisor() && this.authService.isOnline();
-    try {
-      const { data: supervisor, error: supervisorError } = await this.supabase
-        .from('company_supervisors').select('id, full_name, company_name')
-        .eq('user_id', userId).eq('account_status', 'active').single();
-      if (supervisorError || !supervisor) throw new Error('Supervisor access is unavailable.');
-      const getAssignment = async () => {
-        const { data, error } = await this.supabase
-          .from('intern_supervisor_assignments')
-          .select('id, company_name, students!student_id!inner(student_id, full_name, course, school_name, required_hours, ojt_start_date, ojt_end_date)')
-          .eq('supervisor_id', supervisor.id).eq('assignment_status', 'active')
-          .eq('students.student_id', studentId).limit(1).maybeSingle();
-        if (error || !data) throw new Error('This intern is not assigned to your account.');
-        return data;
-      };
-      const assignment = await getAssignment();
-      const student = Array.isArray(assignment.students) ? assignment.students[0] : assignment.students;
-      if (!student || student.student_id !== studentId || !current()) return;
-      const parts = new Intl.DateTimeFormat('en-US', {
-        timeZone: 'Asia/Manila', year: 'numeric', month: '2-digit', day: '2-digit'
-      }).formatToParts(new Date());
-      const part = (type: string) => parts.find(p => p.type === type)?.value || '';
-      const today = `${part('year')}-${part('month')}-${part('day')}`;
-      const start = student.ojt_start_date;
-      const registeredEnd = student.ojt_end_date;
-      const validDate = (value: string): boolean => {
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-        const date = new Date(value + 'T00:00:00Z');
-        return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
-      };
-      if (!start || !validDate(start)) throw new Error('Please specify a valid internship start date.');
-      if (registeredEnd && (!validDate(registeredEnd) || registeredEnd < start)) throw new Error('Invalid internship end date.');
-      if (start > today) throw new Error('The internship has not started yet.');
-      const end = registeredEnd && registeredEnd < today ? registeredEnd : today;
-      const records: AttendanceRecord[] = [];
-      let expected: number | null = null;
-      while (current()) {
-        const { data, error, count } = await this.supabase.from('attendance')
-          .select('id, student_id, attendance_date, time_in, time_out, total_hours_rendered, verification_status, sync_status', { count: 'exact' })
-          .eq('student_id', studentId).eq('sync_status', 'synced')
-          .gte('attendance_date', start).lte('attendance_date', end)
-          .order('attendance_date', { ascending: true }).order('id', { ascending: true })
-          .range(records.length, records.length + 499);
-        if (error) throw new Error('Unable to retrieve attendance records.');
-        if (!current()) return;
-        if (count === null || (expected !== null && expected !== count)) throw new Error('Attendance changed during export. Please retry.');
-        expected = count;
-        const batch = (data || []) as AttendanceRecord[];
-        records.push(...batch);
-        if (records.length >= expected) break;
-        if (!batch.length) throw new Error('Attendance retrieval was incomplete. Please retry.');
-      }
-      if (!current()) return;
-      if (records.length !== expected || new Set(records.map(r => r.id)).size !== records.length) throw new Error('Attendance retrieval was incomplete. Please retry.');
-      const verified = records.filter(r => this.attendanceStatus(r) === 'verified').reduce((sum, r) => sum + this.calculateHours(r), 0);
-      const provisional = records.filter(r => this.attendanceStatus(r) === 'provisional').reduce((sum, r) => sum + this.calculateHours(r), 0);
-      const required = Number(student.required_hours);
-      const validRequired = Number.isFinite(required) && required > 0;
-      const body: TableCell[][] = [
-        ['Date', 'Day', 'Time in', 'Time out', 'Hours', 'Status'].map(text => ({ text, bold: true, color: '#FFFFFF', fillColor: '#3157D5' }))
-      ];
-      for (const record of records) {
-        const status = this.attendanceStatus(record);
-        body.push([
-          this.formatDate(record.attendance_date), this.formatDay(record.attendance_date),
-          this.formatTime(record.time_in), this.formatTime(record.time_out),
-          status === 'incomplete' ? '—' : status === 'rejected' ? '0.00' : this.calculateHours(record).toFixed(2),
-          this.attendanceStatusLabel(record)
-        ]);
-      }
-      if (!records.length) body.push([{ text: 'No synced attendance records in this period.', colSpan: 6, alignment: 'center' }, '', '', '', '', '']);
-      const definition: TDocumentDefinitions = {
-        pageSize: 'A4', pageMargins: [36, 36, 36, 45],
-        defaultStyle: { fontSize: 9, color: '#1E293B' },
-        footer: (page, total) => ({ text: `InternTrack | ${studentId} | Page ${page} of ${total}`, alignment: 'center', fontSize: 8, color: '#64748B', margin: [0, 12, 0, 0] }),
-        content: [
-          { text: 'INTERNTRACK', alignment: 'center', bold: true, color: '#3157D5', fontSize: 12 },
-          { text: student.school_name || 'School not provided', alignment: 'center', margin: [0, 3, 0, 0] },
-          { text: 'DAILY TIME RECORD', alignment: 'center', bold: true, fontSize: 18, margin: [0, 8, 0, 2] },
-          { text: 'Internship attendance report to date', alignment: 'center', color: '#64748B', margin: [0, 0, 0, 16] },
-          { text: `Student: ${student.full_name} (${studentId})` },
-          { text: `Course: ${student.course || 'Not provided'}` },
-          { text: `Company: ${assignment.company_name || supervisor.company_name}` },
-          { text: `Supervisor: ${supervisor.full_name}` },
-          { text: `Report coverage: ${this.formatDate(start)} to ${this.formatDate(end)}` },
-          { text: `Generated: ${this.formatDate(new Date().toISOString())}`, margin: [0, 0, 0, 12] },
-          { table: { headerRows: 1, dontBreakRows: true, widths: ['auto', 'auto', 'auto', 'auto', 'auto', '*'], body }, layout: 'lightHorizontalLines' },
-          { unbreakable: true, stack: [
-            { text: 'Attendance summary', bold: true, fontSize: 12, margin: [0, 15, 0, 6] },
-            { text: `Required hours: ${validRequired ? required.toFixed(2) : 'Not provided'}` },
-            { text: `Verified hours: ${verified.toFixed(2)}`, bold: true },
-            { text: `Provisional hours: ${provisional.toFixed(2)}` },
-            { text: `Remaining hours: ${validRequired ? Math.max(0, required - verified).toFixed(2) : 'Not available'}` },
-            { text: 'Only complete, synced and verified records count toward official hours. Unsynced records and dates without attendance are not included.', color: '#64748B', margin: [0, 8, 0, 0] },
-            { columns: [{ text: '________________________\nStudent Intern', alignment: 'center' }, { text: '________________________\nCompany Supervisor', alignment: 'center' }], margin: [0, 30, 0, 0] }
-          ] }
-        ]
-      };
-      const blob = await pdfMake.createPdf(definition).getBlob();
-      const latestAssignment = await getAssignment();
-      if (!current() || latestAssignment.id !== assignment.id) throw new Error('Assignment changed. Please refresh and retry.');
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `InternTrack-DTR-${studentId.replace(/[^a-zA-Z0-9_-]/g, '_')}-${start}-to-${end}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 30000);
-    } catch (error) {
-      if (current()) window.alert(error instanceof Error ? error.message : 'Unable to download DTR. Please try again.');
-    } finally {
-      this.downloadingDTR = false;
-      if (!this.destroyed) this.cdr.markForCheck();
-    }
+async downloadDTR(): Promise<void> {
+
+  if (
+    this.downloadingDTR ||
+    this.loading ||
+    !this.intern
+  ) {
+    return;
   }
 
+  const studentId = this.studentId;
+
+  const userId =
+    this.authService.getCurrentUser()?.id;
+
+  const version = this.loadVersion;
+
+  if (
+    !userId ||
+    !this.authService.isSupervisor() ||
+    !this.authService.isOnline()
+  ) {
+    window.alert(
+      'An active online supervisor session is required.'
+    );
+
+    return;
+  }
+
+  this.downloadingDTR = true;
+  this.cdr.markForCheck();
+
+  const current = () =>
+    this.isCurrentRequest(
+      version,
+      userId,
+      studentId
+    ) &&
+    this.authService.isSupervisor() &&
+    this.authService.isOnline();
+
+  try {
+
+    // =====================================
+    // VALIDATE SUPERVISOR ACCESS
+    // =====================================
+
+    const {
+      data: supervisor,
+      error: supervisorError
+    } = await this.supabase
+
+      .from('company_supervisors')
+
+      .select('id, full_name, company_name')
+
+      .eq('user_id', userId)
+
+      .eq('account_status', 'active')
+
+      .single();
+
+    if (supervisorError || !supervisor) {
+
+      throw new Error(
+        'Supervisor access is unavailable.'
+      );
+    }
+
+    // =====================================
+    // VALIDATE ACTIVE ASSIGNMENT
+    // =====================================
+
+    const getAssignment = async () => {
+
+      const {
+        data,
+        error
+      } = await this.supabase
+
+        .from('intern_supervisor_assignments')
+
+        .select(`
+          id,
+          company_name,
+          students!student_id!inner(
+            student_id,
+            full_name,
+            course,
+            school_name,
+            required_hours,
+            ojt_start_date,
+            ojt_end_date
+          )
+        `)
+
+        .eq('supervisor_id', supervisor.id)
+
+        .eq('assignment_status', 'active')
+
+        .eq('students.student_id', studentId)
+
+        .limit(1)
+
+        .maybeSingle();
+
+      if (error || !data) {
+
+        throw new Error(
+          'This intern is not assigned to your account.'
+        );
+      }
+
+      return data;
+    };
+
+    const assignment = await getAssignment();
+
+    const student = Array.isArray(
+      assignment.students
+    )
+
+      ? assignment.students[0]
+
+      : assignment.students;
+
+    if (
+      !student ||
+      student.student_id !== studentId ||
+      !current()
+    ) {
+      return;
+    }
+
+    // =====================================
+    // GET CURRENT PHILIPPINE DATE
+    // =====================================
+
+    const parts = new Intl.DateTimeFormat(
+      'en-US',
+      {
+        timeZone: 'Asia/Manila',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }
+    ).formatToParts(new Date());
+
+    const part = (type: string) =>
+      parts.find(p => p.type === type)?.value || '';
+
+    const today =
+      `${part('year')}-${part('month')}-${part('day')}`;
+
+    // =====================================
+    // VALIDATE INTERNSHIP PERIOD
+    // =====================================
+
+    const start = student.ojt_start_date;
+
+    const registeredEnd =
+      student.ojt_end_date;
+
+    const validDate = (
+      value: string
+    ): boolean => {
+
+      if (
+        !/^\d{4}-\d{2}-\d{2}$/.test(value)
+      ) {
+        return false;
+      }
+
+      const date = new Date(
+        value + 'T00:00:00Z'
+      );
+
+      return (
+        Number.isFinite(date.getTime()) &&
+        date.toISOString().slice(0, 10) === value
+      );
+    };
+
+    if (!start || !validDate(start)) {
+
+      throw new Error(
+        'Please specify a valid internship start date.'
+      );
+    }
+
+    if (
+      registeredEnd &&
+      (
+        !validDate(registeredEnd) ||
+        registeredEnd < start
+      )
+    ) {
+
+      throw new Error(
+        'Invalid internship end date.'
+      );
+    }
+
+    if (start > today) {
+
+      throw new Error(
+        'The internship has not started yet.'
+      );
+    }
+
+    const end =
+      registeredEnd && registeredEnd < today
+
+        ? registeredEnd
+
+        : today;
+
+    // =====================================
+    // RETRIEVE SYNCED ATTENDANCE
+    // =====================================
+
+    const records: AttendanceRecord[] = [];
+
+    let expected: number | null = null;
+
+    while (current()) {
+
+      const {
+        data,
+        error,
+        count
+      } = await this.supabase
+
+        .from('attendance')
+
+        .select(
+          `
+            id,
+            student_id,
+            attendance_date,
+            time_in,
+            time_out,
+            total_hours_rendered,
+            verification_status,
+            sync_status
+          `,
+          {
+            count: 'exact'
+          }
+        )
+
+        .eq('student_id', studentId)
+
+        .eq('sync_status', 'synced')
+
+        .gte('attendance_date', start)
+
+        .lte('attendance_date', end)
+
+        .order('attendance_date', {
+          ascending: true
+        })
+
+        .order('id', {
+          ascending: true
+        })
+
+        .range(
+          records.length,
+          records.length + 499
+        );
+
+      if (error) {
+
+        throw new Error(
+          'Unable to retrieve attendance records.'
+        );
+      }
+
+      if (!current()) {
+        return;
+      }
+
+      if (
+        count === null ||
+        (
+          expected !== null &&
+          expected !== count
+        )
+      ) {
+
+        throw new Error(
+          'Attendance changed during export. Please retry.'
+        );
+      }
+
+      expected = count;
+
+      const batch =
+        (data || []) as AttendanceRecord[];
+
+      records.push(...batch);
+
+      if (records.length >= expected) {
+        break;
+      }
+
+      if (!batch.length) {
+
+        throw new Error(
+          'Attendance retrieval was incomplete. Please retry.'
+        );
+      }
+    }
+
+    if (!current()) {
+      return;
+    }
+
+    // =====================================
+    // VALIDATE ATTENDANCE RESULTS
+    // =====================================
+
+    if (
+      records.length !== expected ||
+      new Set(
+        records.map(record => record.id)
+      ).size !== records.length
+    ) {
+
+      throw new Error(
+        'Attendance retrieval was incomplete. Please retry.'
+      );
+    }
+
+    // =====================================
+    // MAP RECORDS TO SHARED DTR TEMPLATE
+    // =====================================
+
+    const templateRecords: DtrTemplateRecord[] =
+      records.map(record => {
+
+        const attendanceStatus =
+          this.attendanceStatus(record);
+
+        let status: DtrTemplateRecord['status'];
+
+        switch (attendanceStatus) {
+
+          case 'verified':
+
+            status = 'verified';
+            break;
+
+          case 'provisional':
+
+            status = 'provisional';
+            break;
+
+          case 'rejected':
+
+            status = 'rejected';
+            break;
+
+          case 'incomplete':
+
+            status = 'incomplete';
+            break;
+
+          default:
+
+            status = 'unknown';
+        }
+
+        const minutes =
+
+          status === 'rejected' ||
+          status === 'incomplete'
+
+            ? 0
+
+            : this.calculateHours(record) * 60;
+
+        return {
+
+          date: record.attendance_date,
+
+          timeIn: this.formatTime(
+            record.time_in
+          ),
+
+          timeOut: this.formatTime(
+            record.time_out
+          ),
+
+          minutes,
+
+          status,
+
+          syncStatus: 'synced'
+        };
+      });
+
+    // =====================================
+    // CREATE SHARED DTR DOCUMENT
+    // =====================================
+
+    const definition = createDtrTemplate({
+
+      studentName:
+        student.full_name || 'Unknown student',
+
+      studentId,
+
+      schoolName:
+        student.school_name ||
+        'School not provided',
+
+      course:
+        student.course || 'Not provided',
+
+      company:
+        assignment.company_name ||
+        supervisor.company_name ||
+        'Not available',
+
+      supervisorName:
+        supervisor.full_name,
+
+      startDate: start,
+
+      endDate: end,
+
+      records: templateRecords,
+
+      includeEmptyDates: false,
+
+      includeRemarks: false,
+
+      isCachedData: false,
+
+      reviewerRole: 'Company Supervisor',
+
+      placementNote:
+        'This report contains synchronized attendance records only. Dates without attendance are not included.'
+    });
+
+    // =====================================
+    // GENERATE PDF
+    // =====================================
+
+    const blob = await pdfMake
+      .createPdf(definition)
+      .getBlob();
+
+    // =====================================
+    // REVALIDATE ASSIGNMENT BEFORE DOWNLOAD
+    // =====================================
+
+    const latestAssignment =
+      await getAssignment();
+
+    if (
+      !current() ||
+      latestAssignment.id !== assignment.id
+    ) {
+
+      throw new Error(
+        'Assignment changed. Please refresh and retry.'
+      );
+    }
+
+    // =====================================
+    // DOWNLOAD PDF
+    // =====================================
+
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement('a');
+
+    const safeStudentId = studentId.replace(
+      /[^a-zA-Z0-9_-]/g,
+      '_'
+    );
+
+    link.href = url;
+
+    link.download =
+      `InternTrack-DTR-${safeStudentId}-${start}-to-${end}.pdf`;
+
+    document.body.appendChild(link);
+
+    link.click();
+
+    link.remove();
+
+    setTimeout(() => {
+
+      URL.revokeObjectURL(url);
+
+    }, 30000);
+
+  } catch (error) {
+
+    if (current()) {
+
+      window.alert(
+
+        error instanceof Error
+
+          ? error.message
+
+          : 'Unable to download DTR. Please try again.'
+      );
+    }
+
+  } finally {
+
+    this.downloadingDTR = false;
+
+    if (!this.destroyed) {
+
+      this.cdr.markForCheck();
+    }
+  }
+}
 }

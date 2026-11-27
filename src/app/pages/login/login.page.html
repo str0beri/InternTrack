@@ -1,183 +1,478 @@
-<ion-content class="login-content">
-  <main class="login-container">
+<ion-content
+  class="login-content"
+  [class.mobile-content]="isMobile"
+  [class.web-content]="!isMobile"
+>
 
-    <!-- campus background -->
-    <div class="campus-background">
-      <img
-        src="assets/plv_bg.png"
-        class="background-image"
-        alt=""
-      />
-    </div>
+  <!-- =====================================
+       STUDENT MOBILE LOGIN
+  ====================================== -->
 
-    <!-- branding -->
-    <header class="login-header">
-      <img
-        src="assets/interntrack_logo.png"
-        class="login-logo"
-        alt="InternTrack Logo"
-      />
+  @if (isMobile) {
 
-      <h1 class="brand-name">
-        Intern<span>Track</span>
-      </h1>
+    <main class="login-container mobile-login">
 
-      <p class="brand-description">
-        Weekly Report and DTR Monitoring System
-      </p>
-    </header>
+      <div class="campus-background">
 
-    <!-- login card -->
-    <section class="login-card">
-      <h2>Log In</h2>
+        <img
+          src="assets/plv_bg.png"
+          class="background-image"
+          alt=""
+        />
 
-      <form (ngSubmit)="login()">
+      </div>
 
-        <!-- role selector (desktop only) -->
-        @if (!isMobile) {
+      <header class="login-header">
+
+        <img
+          src="assets/interntrack_logo.png"
+          class="login-logo"
+          alt="InternTrack Logo"
+        />
+
+        <h1 class="brand-name">
+          Intern<span>Track</span>
+        </h1>
+
+        <p class="brand-description">
+          Weekly Report and DTR Monitoring System
+        </p>
+
+      </header>
+
+      <section class="login-card">
+
+        <h2>Log In</h2>
+
+        <form (ngSubmit)="login()">
+
+          <!-- STUDENT ID -->
+
           <div class="form-group">
-            <label for="role">
-              Role <span>*</span>
+
+            <label for="mobileStudentId">
+              Student ID <span>*</span>
             </label>
 
             <div class="input-container">
-              <ion-icon name="person-circle-outline"></ion-icon>
 
-              <select
-                id="role"
-                name="role"
-                [(ngModel)]="selectedRole"
-                class="role-select">
-                <option value="student_intern">Student Intern</option>
-                <option value="company_supervisor">Company Supervisor</option>
-                <option value="ojt_coordinator">OJT Coordinator</option>
-              </select>
+              <ion-icon
+                name="person-circle-outline"
+              ></ion-icon>
 
-              <ion-icon name="chevron-down-outline" class="dropdown-arrow"></ion-icon>
-            </div>
-          </div>
-        }
-
-        <!-- student id / email -->
-        <div class="form-group">
-          <label for="studentIdOrEmail">
-            @if (selectedRole === 'student_intern' || isMobile) {
-              Student ID
-            } @else {
-              Email
-            } <span>*</span>
-          </label>
-
-          <div class="input-container">
-            <ion-icon name="person-circle-outline"></ion-icon>
-
-            @if (selectedRole === 'student_intern' || isMobile) {
               <input
-                id="studentIdOrEmail"
+                id="mobileStudentId"
                 type="text"
                 name="studentIdOrEmail"
                 [(ngModel)]="studentIdOrEmail"
+                (ngModelChange)="clearError()"
                 placeholder="2#-#####"
                 autocomplete="username"
+                autocapitalize="none"
+                [disabled]="isLoading"
+                required
               />
-            } @else {
-              <input
-                id="studentIdOrEmail"
-                type="email"
-                name="studentIdOrEmail"
-                [(ngModel)]="studentIdOrEmail"
-                placeholder="email@example.com"
-                autocomplete="email"
-              />
-            }
+
+            </div>
+
           </div>
-        </div>
 
-        <!-- password -->
-        <div class="form-group">
-          <label for="password">
-            Password <span>*</span>
-          </label>
+          <!-- PASSWORD -->
 
-          <div class="input-container">
-            <ion-icon name="lock-closed-outline"></ion-icon>
+          <div class="form-group">
 
-            <input
-              id="password"
-              name="password"
-              [(ngModel)]="password"
-              [type]="showPassword ? 'text' : 'password'"
-              placeholder="********"
-              autocomplete="current-password"
-            />
+            <label for="mobilePassword">
+              Password <span>*</span>
+            </label>
 
-            <!-- password toggle -->
-            <button
-              type="button"
-              class="password-toggle"
-              [attr.aria-label]="showPassword ? 'Hide password' : 'Show password'"
-              (click)="togglePassword()">
+            <div class="input-container">
+
               <ion-icon
-                [name]="showPassword ? 'eye-outline' : 'eye-off-outline'">
-              </ion-icon>
-            </button>
+                name="lock-closed-outline"
+              ></ion-icon>
+
+              <input
+                id="mobilePassword"
+                name="password"
+                [(ngModel)]="password"
+                (ngModelChange)="clearError()"
+                [type]="showPassword ? 'text' : 'password'"
+                placeholder="********"
+                autocomplete="current-password"
+                [disabled]="isLoading"
+                required
+              />
+
+              <button
+                type="button"
+                class="password-toggle"
+                [attr.aria-label]="
+                  showPassword
+                    ? 'Hide password'
+                    : 'Show password'
+                "
+                (click)="togglePassword()"
+              >
+
+                <ion-icon
+                  [name]="
+                    showPassword
+                      ? 'eye-outline'
+                      : 'eye-off-outline'
+                  "
+                ></ion-icon>
+
+              </button>
+
+            </div>
+
           </div>
+
+          <!-- ERROR -->
+
+          @if (errorMessage) {
+
+            <p class="error-message" role="alert">
+              {{ errorMessage }}
+            </p>
+
+          }
+
+          <!-- LOGIN -->
+
+          <button
+            type="submit"
+            class="login-button"
+            [disabled]="isLoading"
+          >
+
+            @if (isLoading) {
+              LOGGING IN...
+            } @else {
+              LOG IN
+            }
+
+          </button>
+
+        </form>
+
+        <div class="account-notice">
+
+          <p>
+            Don't have an account?
+          </p>
+
+          <span>
+            Contact your OJT Coordinator.
+          </span>
+
         </div>
 
-        <!-- forgot password -->
-        <div class="forgot-password">
+        <footer class="login-footer">
+
           <button
             type="button"
-            (click)="forgotPassword()">
-            Forgot Password?
+            (click)="openLegal('Privacy Policy')"
+          >
+            Privacy Policy
           </button>
+
+          <button
+            type="button"
+            (click)="openLegal('Terms and Conditions')"
+          >
+            Terms and Conditions
+          </button>
+
+        </footer>
+
+      </section>
+
+    </main>
+
+  } @else {
+
+    <!-- =====================================
+         STAFF WEB LOGIN
+    ====================================== -->
+
+    <main class="web-login">
+
+      <!-- BRANDING PANEL -->
+
+      <section class="web-brand-panel">
+
+        <img
+          src="assets/plv_bg.png"
+          class="web-campus-image"
+          alt=""
+        />
+
+        <div class="web-brand-overlay"></div>
+
+        <div class="web-brand-top">
+
+          <img
+            src="assets/interntrack_logo.png"
+            class="web-logo"
+            alt="InternTrack Logo"
+          />
+
+          <div class="web-brand-identity">
+
+            <h1>
+              Intern<span>Track</span>
+            </h1>
+
+            <p>Internship Management System</p>
+
+          </div>
+
         </div>
 
-        <!-- error message -->
-        @if (errorMessage) {
-          <p class="error-message" role="alert">
-            {{ errorMessage }}
+        <div class="web-brand-main">
+
+          <h2>
+            Internship management,
+            made simpler.
+          </h2>
+
+          <p>
+            Monitor student attendance, review weekly reports,
+            and manage internship placements in one place.
           </p>
-        }
 
-        <!-- login button -->
-        <button
-          type="submit"
-          class="login-button"
-          [disabled]="isLoading">
-          @if (isLoading) {
-            LOGGING IN...
-          } @else {
-            LOG IN
-          }
-        </button>
+        </div>
 
-      </form>
+        <div class="web-brand-footer">
 
-      <!-- sign up -->
-      <div class="signup-container">
-        <p>
-          Don't have an account?
-          <a routerLink="/signup">Sign Up</a>
-        </p>
-      </div>
+          Pamantasan ng Lungsod ng Valenzuela
 
-      <!-- footer links -->
-      <footer class="login-footer">
-        <button
-          type="button"
-          (click)="openLegal('Privacy Policy')">
-          Privacy Policy
-        </button>
+        </div>
 
-        <button
-          type="button"
-          (click)="openLegal('Terms and Conditions')">
-          Terms and Conditions
-        </button>
-      </footer>
+      </section>
 
-    </section>
+      <!-- LOGIN PANEL -->
 
-  </main>
+      <section class="web-form-panel">
+
+        <div class="web-form-wrapper">
+
+          <div class="web-mobile-brand">
+
+            <img
+              src="assets/interntrack_logo.png"
+              alt="InternTrack Logo"
+            />
+
+            <strong>
+              Intern<span>Track</span>
+            </strong>
+
+          </div>
+
+          <header class="web-form-header">
+
+            <h2>Welcome back</h2>
+
+            <p>
+              Log in to your InternTrack staff account.
+            </p>
+
+          </header>
+
+          <form
+            class="web-form"
+            (ngSubmit)="login()"
+          >
+
+            <!-- ROLE -->
+
+            <div class="form-group">
+
+              <label for="webRole">
+                Account role
+              </label>
+
+              <div class="input-container">
+
+                <select
+                  id="webRole"
+                  name="role"
+                  class="role-select"
+                  [(ngModel)]="selectedRole"
+                  (ngModelChange)="onRoleChange()"
+                  [disabled]="isLoading"
+                  required
+                >
+
+                  <option value="company_supervisor">
+                    Company Supervisor
+                  </option>
+
+                  <option value="ojt_coordinator">
+                    OJT Coordinator
+                  </option>
+
+                </select>
+
+                <ion-icon
+                  name="chevron-down-outline"
+                  class="dropdown-arrow"
+                ></ion-icon>
+
+              </div>
+
+            </div>
+
+            <!-- EMAIL -->
+
+            <div class="form-group">
+
+              <label for="webEmail">
+                Email address
+              </label>
+
+              <div class="input-container">
+
+                <input
+                  id="webEmail"
+                  type="email"
+                  name="studentIdOrEmail"
+                  [(ngModel)]="studentIdOrEmail"
+                  (ngModelChange)="clearError()"
+                  placeholder="Enter your email address"
+                  autocomplete="username"
+                  autocapitalize="none"
+                  [disabled]="isLoading"
+                  required
+                />
+
+              </div>
+
+            </div>
+
+            <!-- PASSWORD -->
+
+            <div class="form-group">
+
+              <label for="webPassword">
+                Password
+              </label>
+
+              <div class="input-container">
+
+                <input
+                  id="webPassword"
+                  name="password"
+                  [(ngModel)]="password"
+                  (ngModelChange)="clearError()"
+                  [type]="showPassword ? 'text' : 'password'"
+                  placeholder="Enter your password"
+                  autocomplete="current-password"
+                  [disabled]="isLoading"
+                  required
+                />
+
+                <button
+                  type="button"
+                  class="password-toggle"
+                  [attr.aria-label]="
+                    showPassword
+                      ? 'Hide password'
+                      : 'Show password'
+                  "
+                  (click)="togglePassword()"
+                >
+
+                  <ion-icon
+                    [name]="
+                      showPassword
+                        ? 'eye-outline'
+                        : 'eye-off-outline'
+                    "
+                  ></ion-icon>
+
+                </button>
+
+              </div>
+
+            </div>
+
+            <!-- ERROR MESSAGE -->
+
+            @if (errorMessage) {
+
+              <div
+                class="web-error-message"
+                role="alert"
+              >
+                {{ errorMessage }}
+              </div>
+
+            }
+
+            <!-- LOGIN BUTTON -->
+
+            <button
+              type="submit"
+              class="login-button"
+              [disabled]="isLoading"
+            >
+
+              @if (isLoading) {
+                Logging in...
+              } @else {
+                Log in
+              }
+
+            </button>
+
+          </form>
+
+          <!-- STUDENT ACCESS NOTICE -->
+
+          <div class="student-access-notice">
+
+            <strong>Are you a student intern?</strong>
+
+            <p>
+              Please use the InternTrack mobile application
+              to access your account.
+            </p>
+
+          </div>
+
+        </div>
+
+        <footer class="web-login-footer">
+
+          <span>InternTrack</span>
+
+          <div class="web-footer-links">
+
+            <button
+              type="button"
+              (click)="openLegal('Privacy Policy')"
+            >
+              Privacy Policy
+            </button>
+
+            <button
+              type="button"
+              (click)="openLegal('Terms and Conditions')"
+            >
+              Terms and Conditions
+            </button>
+
+          </div>
+
+        </footer>
+
+      </section>
+
+    </main>
+
+  }
+
 </ion-content>
