@@ -83,3 +83,5 @@ Thumbs.db
 supabase/.temp/
 
 supabase/.temp/
+
+/android/app/release/
